@@ -70,6 +70,24 @@ class SettingSeeder extends Seeder
                 'type' => 'string',
                 'description' => 'Nama perusahaan',
             ],
+            [
+                'key' => 'email_reminder_subject',
+                'value' => 'Agreement [XX] – Expiration Reminder',
+                'type' => 'text',
+                'description' => 'Subject email reminder kontrak',
+            ],
+            [
+                'key' => 'email_reminder_body',
+                'value' => "Dear Sir/Madam,\n\nWe would like to inform you that Agreement [XX] will expire on [expiration date].\n\nIn this regard, we kindly request your confirmation regarding the extension of the said agreement. Should you wish to proceed with the renewal, please contact us at legal@pfimegalife.co.id. Otherwise, kindly disregard this reminder.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary",
+                'type' => 'text',
+                'description' => 'Body email reminder kontrak',
+            ],
+            [
+                'key' => 'reminder_excluded_document_types',
+                'value' => json_encode(['nda']),
+                'type' => 'json',
+                'description' => 'Jenis dokumen yang dikecualikan dari reminder otomatis',
+            ],
         ];
 
         foreach ($settings as $setting) {

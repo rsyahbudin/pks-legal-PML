@@ -3,19 +3,16 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
+use App\Console\Commands\ExpireContracts;
+use App\Console\Commands\SendContractReminders;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule contract reminders (only if settings table exists)
-if (Schema::hasTable('settings')) {
-    $sendTime = \App\Models\Setting::get('reminder_send_time', '08:00');
-} else {
-    $sendTime = '08:00';
-}
+// Expire contracts daily at midnight
+Schedule::command(ExpireContracts::class)->daily();
 
-Schedule::command('contracts:send-reminders')
-    ->dailyAt($sendTime)
-    ->description('Send contract expiry reminder emails');
+// Send contract reminders daily at 8 AM
+Schedule::command(SendContractReminders::class)->dailyAt('08:00');

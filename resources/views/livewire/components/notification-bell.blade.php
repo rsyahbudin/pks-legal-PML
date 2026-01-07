@@ -58,7 +58,7 @@ new class extends Component {
     </button>
 
     <div 
-        x-show="open" 
+        x-show="open"
         @click.outside="open = false"
         x-transition
         class="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-zinc-900"

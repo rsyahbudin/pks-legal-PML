@@ -16,16 +16,26 @@ class Contract extends Model
 
     protected $fillable = [
         'contract_number',
+        'agreement_name',
+        'proposed_document_title',
+        'document_type',
+        'financial_impact',
+        'tat_legal_compliance',
         'partner_id',
         'division_id',
+        'department_id',
         'pic_id',
         'pic_name',
         'pic_email',
         'start_date',
         'end_date',
+        'is_auto_renewal',
         'description',
         'status',
         'document_path',
+        'draft_document_path',
+        'mandatory_documents_path',
+        'approval_document_path',
         'created_by',
     ];
 
@@ -34,6 +44,9 @@ class Contract extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'is_auto_renewal' => 'boolean',
+            'tat_legal_compliance' => 'boolean',
+            'mandatory_documents_path' => 'array',
         ];
     }
 
@@ -51,6 +64,14 @@ class Contract extends Model
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);
+    }
+
+    /**
+     * Get the department for this contract.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
     }
 
     /**
@@ -98,6 +119,9 @@ class Contract extends Model
      */
     public function getDaysRemainingAttribute(): int
     {
+        if ($this->is_auto_renewal || !$this->end_date) {
+            return 999; // Treat as far in the future or handle as needed
+        }
         return (int) now()->startOfDay()->diffInDays($this->end_date, false);
     }
 
@@ -113,6 +137,10 @@ class Contract extends Model
         $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
 
         $daysRemaining = $this->days_remaining;
+
+        if ($this->is_auto_renewal) {
+            return 'green';
+        }
 
         if ($daysRemaining < 0 || $this->status === 'expired') {
             return 'red';
@@ -150,6 +178,8 @@ class Contract extends Model
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
 
         return $query->where('status', 'active')
+            ->where('is_auto_renewal', false)
+            ->whereNotNull('end_date')
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->whereDate('end_date', '>=', now());
     }
@@ -182,6 +212,8 @@ class Contract extends Model
         $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
 
         return $query->where('status', 'active')
+            ->where('is_auto_renewal', false)
+            ->whereNotNull('end_date')
             ->whereDate('end_date', '<=', now()->addDays($criticalThreshold))
             ->whereDate('end_date', '>=', now());
     }
@@ -221,6 +253,39 @@ class Contract extends Model
      */
     public function isExpired(): bool
     {
-        return $this->end_date->isPast() || $this->status === 'expired';
+        if ($this->is_auto_renewal) {
+            return false;
+        }
+        return ($this->end_date && $this->end_date->isPast()) || $this->status === 'expired';
+    }
+
+    /**
+     * Get human-readable document type label.
+     */
+    public function getDocumentTypeLabelAttribute(): string
+    {
+        return match ($this->document_type) {
+            'nda' => 'NDA',
+            'surat_kuasa' => 'Surat Kuasa',
+            'pendapat_hukum' => 'Pendapat Hukum',
+            'surat_pernyataan' => 'Surat Pernyataan',
+            'lainnya' => 'Surat Lainnya',
+            default => $this->document_type,
+        };
+    }
+
+    /**
+     * Get human-readable financial impact label.
+     */
+    public function getFinancialImpactLabelAttribute(): ?string
+    {
+        if (!$this->financial_impact) {
+            return null;
+        }
+        return match ($this->financial_impact) {
+            'income' => 'Income (Pemasukan)',
+            'expenditure' => 'Expenditure (Pengeluaran)',
+            default => $this->financial_impact,
+        };
     }
 }

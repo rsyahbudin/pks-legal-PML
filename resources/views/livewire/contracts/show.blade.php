@@ -12,7 +12,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function mount(Contract $contract): void
     {
-        $this->contract = $contract->load(['partner', 'division', 'pic', 'creator', 'activityLogs.user']);
+        $this->contract = $contract->load(['partner', 'division', 'department', 'pic', 'creator', 'activityLogs.user']);
     }
 
     public function sendReminder(): void
@@ -24,9 +24,11 @@ new #[Layout('components.layouts.app')] class extends Component {
             return;
         }
 
-        // Get CC emails from division
+        // Get CC emails from sub-division or division
         $ccEmails = [];
-        if ($this->contract->division && $this->contract->division->cc_emails) {
+        if ($this->contract->department && $this->contract->department->cc_emails) {
+            $ccEmails = array_filter(array_map('trim', explode(',', $this->contract->department->cc_emails)));
+        } elseif ($this->contract->division && $this->contract->division->cc_emails) {
             $ccEmails = array_filter(array_map('trim', explode(',', $this->contract->division->cc_emails)));
         }
 
@@ -144,7 +146,15 @@ new #[Layout('components.layouts.app')] class extends Component {
                         </div>
                         <div>
                             <dt class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->end_date->format('d F Y') }}</dd>
+                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">
+                                @if($contract->is_auto_renewal)
+                                <flux:badge color="blue">Auto Renewal</flux:badge>
+                                @elseif($contract->end_date)
+                                {{ $contract->end_date->format('d F Y') }}
+                                @else
+                                -
+                                @endif
+                            </dd>
                         </div>
                         @if($contract->description)
                         <div class="sm:col-span-2">
@@ -181,7 +191,10 @@ new #[Layout('components.layouts.app')] class extends Component {
                                     <span class="font-medium">{{ $log->user?->name ?? 'System' }}</span>
                                     {{ $log->action_label }} kontrak
                                 </p>
-                                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                                @if($log->changes_description)
+                                <p class="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{{ $log->changes_description }}</p>
+                                @endif
+                                <p class="text-xs text-neutral-500 dark:text-neutral-400 {{ $log->changes_description ? 'mt-1' : '' }}">
                                     {{ $log->created_at->diffForHumans() }}
                                 </p>
                             </div>
@@ -208,6 +221,12 @@ new #[Layout('components.layouts.app')] class extends Component {
                             <dt class="text-sm text-neutral-500 dark:text-neutral-400">Divisi</dt>
                             <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->division->name }}</dd>
                         </div>
+                        @if($contract->department)
+                        <div>
+                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Departemen</dt>
+                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->department->name }}</dd>
+                        </div>
+                        @endif
                         <div>
                             <dt class="text-sm text-neutral-500 dark:text-neutral-400">PIC</dt>
                             <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->pic_name }}</dd>

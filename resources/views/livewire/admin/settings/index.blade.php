@@ -15,6 +15,8 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $reminder_send_time = '08:00';
     public string $app_name = '';
     public string $company_name = '';
+    public string $email_reminder_subject = '';
+    public string $email_reminder_body = '';
 
     public function mount(): void
     {
@@ -28,6 +30,8 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->reminder_send_time = Setting::get('reminder_send_time', '08:00');
         $this->app_name = Setting::get('app_name', 'PKS Tracking System');
         $this->company_name = Setting::get('company_name', '');
+        $this->email_reminder_subject = Setting::get('email_reminder_subject', 'Agreement [XX] – Expiration Reminder');
+        $this->email_reminder_body = Setting::get('email_reminder_body', '');
     }
 
     public function save(): void
@@ -44,6 +48,8 @@ new #[Layout('components.layouts.app')] class extends Component {
             'reminder_send_time' => ['required', 'date_format:H:i'],
             'app_name' => ['required', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:100'],
+            'email_reminder_subject' => ['required', 'string', 'max:255'],
+            'email_reminder_body' => ['required', 'string', 'max:2000'],
         ]);
 
         Setting::set('reminder_threshold_warning', $this->reminder_threshold_warning, 'integer');
@@ -56,6 +62,8 @@ new #[Layout('components.layouts.app')] class extends Component {
         Setting::set('reminder_send_time', $this->reminder_send_time, 'string');
         Setting::set('app_name', $this->app_name, 'string');
         Setting::set('company_name', $this->company_name, 'string');
+        Setting::set('email_reminder_subject', $this->email_reminder_subject, 'text');
+        Setting::set('email_reminder_body', $this->email_reminder_body, 'text');
 
         session()->flash('success', 'Pengaturan berhasil disimpan.');
     }
@@ -133,6 +141,30 @@ new #[Layout('components.layouts.app')] class extends Component {
                 </div>
             </div>
         </div>
+
+        <!-- Email Template Settings -->
+        @if(auth()->user()?->hasPermission('email_templates.edit'))
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Template Email Reminder</h2>
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>Subject Email</flux:label>
+                    <flux:input wire:model="email_reminder_subject" placeholder="Agreement [XX] – Expiration Reminder" required />
+                    <flux:description>Gunakan [XX] untuk nomor kontrak</flux:description>
+                    <flux:error name="email_reminder_subject" />
+                </flux:field>
+                
+                <flux:field>
+                    <flux:label>Isi Email</flux:label>
+                    <flux:textarea wire:model="email_reminder_body" rows="10" required />
+                    <flux:description>
+                        Placeholder yang tersedia: [XX] = Nomor Kontrak, [expiration date] = Tanggal Berakhir
+                    </flux:description>
+                    <flux:error name="email_reminder_body" />
+                </flux:field>
+            </div>
+        </div>
+        @endif
 
         <div class="flex justify-end">
             <flux:button type="submit" variant="primary">Simpan Pengaturan</flux:button>

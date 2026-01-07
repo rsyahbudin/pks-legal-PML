@@ -205,7 +205,9 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 @endphp
                                 <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium {{ $badgeClass }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $dotClass }}"></span>
-                                    @if($contract->days_remaining > 0)
+                                    @if($contract->status === 'terminated')
+                                        Terminated
+                                    @elseif($contract->days_remaining > 0)
                                         {{ $contract->days_remaining }} hari
                                     @elseif($contract->days_remaining == 0)
                                         Hari ini

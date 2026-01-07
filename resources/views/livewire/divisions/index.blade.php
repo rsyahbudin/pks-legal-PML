@@ -131,6 +131,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                             <div class="flex items-center justify-center gap-2">
                                 @if(auth()->user()?->hasPermission('divisions.manage'))
                                 <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $division->id }})" />
+                                <flux:button size="sm" variant="ghost" icon="squares-plus" wire:click="$dispatch('manage-sub-divisions', { divisionId: {{ $division->id }} })" tooltip="Kelola Departemen" />
                                 <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $division->id }})" wire:confirm="Apakah Anda yakin?" />
                                 @endif
                             </div>
@@ -168,11 +169,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <flux:label>Deskripsi</flux:label>
                 <flux:textarea wire:model="description" rows="2" />
             </flux:field>
-            <flux:field>
-                <flux:label>CC Emails (untuk reminder)</flux:label>
-                <flux:textarea wire:model="cc_emails" rows="2" placeholder="email1@company.com, email2@company.com" />
-                <flux:description>Pisahkan beberapa email dengan koma</flux:description>
-            </flux:field>
+
             <flux:switch wire:model="is_active" label="Aktif" />
             <div class="flex justify-end gap-3 pt-4">
                 <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Batal</flux:button>
@@ -180,4 +177,6 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
         </form>
     </flux:modal>
+    
+    <livewire:divisions.manage-sub-divisions />
 </div>

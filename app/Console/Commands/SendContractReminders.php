@@ -28,9 +28,17 @@ class SendContractReminders extends Command
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
         $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
 
+        // Get excluded document types from settings
+        $excludedTypes = Setting::get('reminder_excluded_document_types', ['nda']);
+        if (is_string($excludedTypes)) {
+            $excludedTypes = json_decode($excludedTypes, true) ?? ['nda'];
+        }
+
         // Get contracts that are expiring within warning threshold
+        // Exclude: configured document types, terminated contracts
         $contracts = Contract::with(['partner', 'division', 'pic'])
-            ->where('status', 'active')
+            ->where('status', 'active') // Only active contracts
+            ->whereNotIn('document_type', $excludedTypes)
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->whereDate('end_date', '>=', now()->subDays(7)) // Include recently expired (up to 7 days)
             ->get();
@@ -103,9 +111,11 @@ class SendContractReminders extends Command
                 }
 
                 try {
-                    // Get CC emails from division
+                    // Get CC emails from sub-division or division
                     $ccEmails = [];
-                    if ($contract->division && $contract->division->cc_emails) {
+                    if ($contract->subDivision && $contract->subDivision->cc_emails) {
+                        $ccEmails = array_filter(array_map('trim', explode(',', $contract->subDivision->cc_emails)));
+                    } elseif ($contract->division && $contract->division->cc_emails) {
                         $ccEmails = array_filter(array_map('trim', explode(',', $contract->division->cc_emails)));
                     }
 

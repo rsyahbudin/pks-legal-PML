@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Rename the table
+        Schema::rename('sub_divisions', 'departments');
+        
+        // Rename the foreign key column in contracts table
         Schema::table('contracts', function (Blueprint $table) {
-            $table->foreignId('pic_id')->nullable()->change();
-            $table->string('pic_name')->nullable()->after('pic_id');
-            $table->string('pic_email')->nullable()->after('pic_name');
+            $table->renameColumn('sub_division_id', 'department_id');
         });
     }
 
@@ -23,9 +25,12 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Rename back the foreign key column
         Schema::table('contracts', function (Blueprint $table) {
-            $table->foreignId('pic_id')->nullable(false)->change();
-            $table->dropColumn(['pic_name', 'pic_email']);
+            $table->renameColumn('department_id', 'sub_division_id');
         });
+        
+        // Rename back the table
+        Schema::rename('departments', 'sub_divisions');
     }
 };

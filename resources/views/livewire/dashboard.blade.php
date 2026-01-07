@@ -211,7 +211,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 @endphp
                                 <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $color === 'green' ? 'bg-green-500' : ($color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500') }}"></span>
-                                    {{ $contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired' }}
+                                    {{ $contract->status === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
                                 </span>
                             </td>
                         </tr>
@@ -248,7 +248,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     </div>
                     <div class="text-right">
                         <p class="font-medium {{ $contract->status_color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400' }}">
-                            {{ $contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired' }}
+                            {{ $contract->status === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
                         </p>
                         <p class="text-xs text-neutral-500 dark:text-neutral-400">
                             {{ $contract->end_date->format('d M Y') }}

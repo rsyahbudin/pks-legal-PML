@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('contracts', function (Blueprint $table) {
-            $table->foreignId('pic_id')->nullable()->change();
-            $table->string('pic_name')->nullable()->after('pic_id');
-            $table->string('pic_email')->nullable()->after('pic_name');
+            $table->foreignId('sub_division_id')->nullable()->after('division_id')->constrained('sub_divisions')->nullOnDelete();
+            $table->boolean('is_auto_renewal')->default(false)->after('end_date');
+            $table->date('end_date')->nullable()->change();
         });
     }
 
@@ -24,8 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('contracts', function (Blueprint $table) {
-            $table->foreignId('pic_id')->nullable(false)->change();
-            $table->dropColumn(['pic_name', 'pic_email']);
+            $table->dropForeign(['sub_division_id']);
+            $table->dropColumn(['sub_division_id', 'is_auto_renewal']);
+            $table->date('end_date')->nullable(false)->change();
         });
     }
 };

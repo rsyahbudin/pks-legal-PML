@@ -41,6 +41,7 @@ class PermissionSeeder extends Seeder
             // Settings
             ['name' => 'View Settings', 'slug' => 'settings.view', 'group' => 'settings', 'description' => 'Melihat pengaturan sistem'],
             ['name' => 'Manage Settings', 'slug' => 'settings.manage', 'group' => 'settings', 'description' => 'Mengubah pengaturan sistem'],
+            ['name' => 'Edit Email Templates', 'slug' => 'email_templates.edit', 'group' => 'settings', 'description' => 'Mengedit template email reminder'],
 
             // Reports
             ['name' => 'View Reports', 'slug' => 'reports.view', 'group' => 'reports', 'description' => 'Melihat laporan dan statistik'],

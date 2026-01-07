@@ -42,6 +42,14 @@ class Division extends Model
     }
 
     /**
+     * Get the departments for this division.
+     */
+    public function departments(): HasMany
+    {
+        return $this->hasMany(Department::class);
+    }
+
+    /**
      * Scope to filter only active divisions.
      */
     public function scopeActive($query)
