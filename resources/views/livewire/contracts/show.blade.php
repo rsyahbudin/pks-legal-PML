@@ -52,17 +52,19 @@ new #[Layout('components.layouts.app')] class extends Component {
             ));
         }
 
-        // Create internal notification
-        Notification::create([
-            'user_id' => $this->contract->pic_id,
-            'title' => 'Reminder: ' . $this->contract->contract_number,
-            'message' => "Kontrak dengan {$this->contract->partner->display_name} akan berakhir dalam {$this->contract->days_remaining} hari.",
-            'type' => $this->contract->days_remaining <= 30 ? 'critical' : 'warning',
-            'data' => [
-                'contract_id' => $this->contract->id,
-                'sent_by' => $user->name,
-            ],
-        ]);
+        // Create internal notification only if PIC is a registered user
+        if ($this->contract->pic_id) {
+            Notification::create([
+                'user_id' => $this->contract->pic_id,
+                'title' => 'Reminder: ' . $this->contract->contract_number,
+                'message' => "Kontrak dengan {$this->contract->partner->display_name} akan berakhir dalam {$this->contract->days_remaining} hari.",
+                'type' => $this->contract->days_remaining <= 30 ? 'critical' : 'warning',
+                'data' => [
+                    'contract_id' => $this->contract->id,
+                    'sent_by' => $user->name,
+                ],
+            ]);
+        }
 
         $ccInfo = !empty($ccEmails) ? ' (CC: ' . implode(', ', $ccEmails) . ')' : '';
         session()->flash('success', 'Reminder berhasil dikirim ke ' . $picName . $ccInfo);

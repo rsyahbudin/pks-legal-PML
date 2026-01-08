@@ -61,7 +61,7 @@ new class extends Component {
         x-show="open"
         @click.outside="open = false"
         x-transition
-        class="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-zinc-900"
+        class="absolute right-0 top-full z-[1000] mt-2 w-80 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-zinc-900"
     >
         <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
             <h3 class="font-semibold text-neutral-900 dark:text-white">Notifikasi</h3>

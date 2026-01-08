@@ -7,11 +7,10 @@
         <flux:sidebar sticky stashable class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
-            <div class="me-5 flex items-center justify-between">
+            <div class="me-5">
                 <a href="{{ route('dashboard') }}" class="flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
                     <x-app-logo />
                 </a>
-                <livewire:components.notification-bell />
             </div>
 
             <flux:navlist variant="outline">
@@ -47,8 +46,6 @@
             </flux:navlist>
 
             <flux:spacer />
-
-
 
             <!-- Desktop User Menu -->
             <flux:dropdown class="hidden lg:block" position="bottom" align="start">
@@ -103,6 +100,9 @@
 
             <flux:spacer />
 
+            <!-- Notification Bell -->
+            <livewire:components.notification-bell />
+
             <flux:dropdown position="top" align="end">
                 <flux:profile
                     :initials="auth()->user()->initials()"
@@ -146,6 +146,13 @@
                 </flux:menu>
             </flux:dropdown>
         </flux:header>
+
+        <!-- Top Navbar for Desktop -->
+        <div class="hidden lg:block sticky top-0 z-40 border-b border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
+            <div class="flex items-center justify-end px-6 py-3">
+                <livewire:components.notification-bell />
+            </div>
+        </div>
 
         {{ $slot }}
 

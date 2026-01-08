@@ -105,8 +105,8 @@ class SendContractReminders extends Command
             $recipients = $recipients->unique('id');
 
             foreach ($recipients as $recipient) {
-                // Check if we already sent a reminder today
-                if (ReminderLog::wasSentToday($contract->id, $recipient->id, 'email')) {
+                // Check if we already sent a reminder today (only for registered users)
+                if ($recipient instanceof User && ReminderLog::wasSentToday($contract->id, $recipient->id, 'email')) {
                     continue;
                 }
 

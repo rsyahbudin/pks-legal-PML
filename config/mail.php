@@ -41,6 +41,7 @@ return [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
+            'encryption' => env('MAIL_ENCRYPTION'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
