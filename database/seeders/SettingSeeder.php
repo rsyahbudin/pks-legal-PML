@@ -88,6 +88,12 @@ class SettingSeeder extends Seeder
                 'type' => 'json',
                 'description' => 'Jenis dokumen yang dikecualikan dari reminder otomatis',
             ],
+            [
+                'key' => 'reminder_schedule_time',
+                'value' => '08:00',
+                'type' => 'string',
+                'description' => 'Waktu pengiriman reminder otomatis (format HH:MM, contoh: 12:00)',
+            ],
         ];
 
         foreach ($settings as $setting) {

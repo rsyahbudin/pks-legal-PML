@@ -114,6 +114,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Get all super admin and legal users for notifications.
+     */
+    public static function getAdminAndLegalUsers()
+    {
+        return static::whereHas('role', function ($q) {
+            $q->whereIn('slug', ['super-admin', 'legal']);
+        })->get();
+    }
+
+    /**
      * Check if user has a specific role.
      */
     public function hasRole(string $slug): bool

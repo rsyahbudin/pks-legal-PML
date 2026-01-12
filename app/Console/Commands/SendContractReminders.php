@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Mail\ContractExpiringMail;
+use App\Models\ActivityLog;
 use App\Models\Contract;
 use App\Models\Notification;
 use App\Models\ReminderLog;
@@ -131,11 +132,31 @@ class SendContractReminders extends Command
                         ReminderLog::logReminder($contract, $recipient, 'email', $daysRemaining);
                         // Create internal notification only for registered users
                         Notification::createContractReminder($recipient, $contract, $daysRemaining);
-                    } else {
-                         // Log for manual PIC (we don't have a user ID so we might need to adjust logReminder or just skip)
-                         // For now, let's skip logging to DB for manual PIC or log with null user_id if supported
-                         // Assuming ReminderLog requires a user_id, we might skip or use a system user
                     }
+
+                    // Notify super admin and legal users
+                    $adminUsers = User::getAdminAndLegalUsers();
+                    foreach ($adminUsers as $admin) {
+                        Notification::create([
+                            'user_id' => $admin->id,
+                            'title' => 'Reminder Email Sent',
+                            'message' => "Auto reminder sent for contract {$contract->contract_number} to {$recipient->email}",
+                            'type' => 'info',
+                            'data' => [
+                                'contract_id' => $contract->id,
+                                'recipient_email' => $recipient->email,
+                            ],
+                        ]);
+                    }
+
+                    // Log activity
+                    ActivityLog::create([
+                        'loggable_type' => Contract::class,
+                        'loggable_id' => $contract->id,
+                        'user_id' => null, // System action
+                        'action' => 'reminder_sent',
+                        'description' => "Auto reminder email sent to {$recipient->email} ({$daysRemaining} days remaining)",
+                    ]);
 
                     $sentCount++;
 
@@ -143,6 +164,31 @@ class SendContractReminders extends Command
                     $this->info("Sent reminder to {$recipient->email}{$ccInfo} for contract {$contract->contract_number}");
                 } catch (\Exception $e) {
                     $this->error("Failed to send to {$recipient->email}: {$e->getMessage()}");
+
+                    // Notify admins/legal about failure
+                    $adminUsers = User::getAdminAndLegalUsers();
+                    foreach ($adminUsers as $admin) {
+                        Notification::create([
+                            'user_id' => $admin->id,
+                            'title' => 'Reminder Email Failed',
+                            'message' => "Failed to send auto reminder for contract {$contract->contract_number} to {$recipient->email}",
+                            'type' => 'critical',
+                            'data' => [
+                                'contract_id' => $contract->id,
+                                'recipient_email' => $recipient->email,
+                                'error' => $e->getMessage(),
+                            ],
+                        ]);
+                    }
+
+                    // Log failure activity
+                    ActivityLog::create([
+                        'loggable_type' => Contract::class,
+                        'loggable_id' => $contract->id,
+                        'user_id' => null,
+                        'action' => 'reminder_failed',
+                        'description' => "Failed to send auto reminder to {$recipient->email}: {$e->getMessage()}",
+                    ]);
                 }
             }
 

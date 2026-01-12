@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Contract;
 use App\Models\Notification;
+use App\Models\User;
 use App\Mail\ContractExpiringMail;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
@@ -36,38 +38,91 @@ new #[Layout('components.layouts.app')] class extends Component {
         $picEmail = $this->contract->pic_email;
         $picName = $this->contract->pic_name;
 
-        if ($picEmail) {
-            $mail = Mail::to($picEmail);
-            
-            if (!empty($ccEmails)) {
-                $mail->cc($ccEmails);
+        try {
+            if ($picEmail) {
+                $mail = Mail::to($picEmail);
+                
+                if (!empty($ccEmails)) {
+                    $mail->cc($ccEmails);
+                }
+                
+                // Pass replyTo through Mailable constructor (for manual reminder)
+                $mail->send(new ContractExpiringMail(
+                    $this->contract, 
+                    $this->contract->days_remaining,
+                    $user->email,
+                    $user->name
+                ));
             }
-            
-            // Pass replyTo through Mailable constructor (for manual reminder)
-            $mail->send(new ContractExpiringMail(
-                $this->contract, 
-                $this->contract->days_remaining,
-                $user->email,
-                $user->name
-            ));
-        }
 
-        // Create internal notification only if PIC is a registered user
-        if ($this->contract->pic_id) {
-            Notification::create([
-                'user_id' => $this->contract->pic_id,
-                'title' => 'Reminder: ' . $this->contract->contract_number,
-                'message' => "Kontrak dengan {$this->contract->partner->display_name} akan berakhir dalam {$this->contract->days_remaining} hari.",
-                'type' => $this->contract->days_remaining <= 30 ? 'critical' : 'warning',
-                'data' => [
-                    'contract_id' => $this->contract->id,
-                    'sent_by' => $user->name,
-                ],
+            // Create internal notification only if PIC is a registered user
+            if ($this->contract->pic_id) {
+                Notification::create([
+                    'user_id' => $this->contract->pic_id,
+                    'title' => 'Reminder: ' . $this->contract->contract_number,
+                    'message' => "Kontrak dengan {$this->contract->partner->display_name} akan berakhir dalam {$this->contract->days_remaining} hari.",
+                    'type' => $this->contract->days_remaining <= 30 ? 'critical' : 'warning',
+                    'data' => [
+                        'contract_id' => $this->contract->id,
+                        'sent_by' => $user->name,
+                    ],
+                ]);
+            }
+
+            // Notify super admin and legal users
+            $adminUsers = User::getAdminAndLegalUsers();
+            foreach ($adminUsers as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'title' => 'Manual Reminder Sent',
+                    'message' => "Reminder manually sent for contract {$this->contract->contract_number} by {$user->name}",
+                    'type' => 'info',
+                    'data' => [
+                        'contract_id' => $this->contract->id,
+                        'sent_by_user_id' => $user->id,
+                    ],
+                ]);
+            }
+
+            // Log activity
+            ActivityLog::create([
+                'loggable_type' => Contract::class,
+                'loggable_id' => $this->contract->id,
+                'user_id' => $user->id,
+                'action' => 'reminder_sent',
+                'description' => "Manual reminder email sent to {$picEmail} by {$user->name}",
             ]);
-        }
 
-        $ccInfo = !empty($ccEmails) ? ' (CC: ' . implode(', ', $ccEmails) . ')' : '';
-        session()->flash('success', 'Reminder berhasil dikirim ke ' . $picName . $ccInfo);
+            $ccInfo = !empty($ccEmails) ? ' (CC: ' . implode(', ', $ccEmails) . ')' : '';
+            session()->flash('success', 'Reminder berhasil dikirim ke ' . $picName . $ccInfo);
+        } catch (\Exception $e) {
+            // Notify admins/legal about failure
+            $adminUsers = User::getAdminAndLegalUsers();
+            foreach ($adminUsers as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'title' => 'Manual Reminder Failed',
+                    'message' => "Failed to send manual reminder for contract {$this->contract->contract_number} by {$user->name}",
+                    'type' => 'critical',
+                    'data' => [
+                        'contract_id' => $this->contract->id,
+                        'sent_by_user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ],
+                ]);
+            }
+
+            // Log failure activity
+            ActivityLog::create([
+                'loggable_type' => Contract::class,
+                'loggable_id' => $this->contract->id,
+                'user_id' => $user->id,
+                'action' => 'reminder_failed',
+                'description' => "Failed to send manual reminder to {$picEmail}: {$e->getMessage()}",
+            ]);
+
+            session()->flash('error', 'Gagal mengirim reminder: ' . $e->getMessage());
+        }
     }
 }; ?>
 
