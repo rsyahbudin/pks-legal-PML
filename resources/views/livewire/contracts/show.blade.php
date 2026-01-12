@@ -1,304 +1,492 @@
 <?php
 
-use App\Models\ActivityLog;
+use App\Models\Ticket;
 use App\Models\Contract;
-use App\Models\Notification;
-use App\Models\User;
-use App\Mail\ContractExpiringMail;
+use App\Services\NotificationService;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
-use Illuminate\Support\Facades\Mail;
 
 new #[Layout('components.layouts.app')] class extends Component {
-    public Contract $contract;
+    public Ticket $ticket;
+    public bool $showRejectModal = false;
+    public bool $showTerminateModal = false;
+    public string $rejectionReason = '';
+    public string $terminationReason = '';
 
-    public function mount(Contract $contract): void
+    public function mount(int $contract): void
     {
-        $this->contract = $contract->load(['partner', 'division', 'department', 'pic', 'creator', 'activityLogs.user']);
+        // Note: route parameter is called 'contract' for backward compatibility
+        // but we're actually loading a ticket
+        $this->ticket = Ticket::with([
+            'division', 
+            'department', 
+            'creator', 
+            'reviewer',
+            'contract',
+            'activityLogs.user'
+        ])->findOrFail($contract);
     }
 
-    public function sendReminder(): void
+    public function moveToOnProcess(): void
     {
         $user = auth()->user();
         
-        if (!$user || !$user->hasPermission('contracts.send_reminder')) {
-            session()->flash('error', 'Anda tidak memiliki akses untuk mengirim reminder.');
+        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+            $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat memproses ticket.');
             return;
         }
 
-        // Get CC emails from sub-division or division
-        $ccEmails = [];
-        if ($this->contract->department && $this->contract->department->cc_emails) {
-            $ccEmails = array_filter(array_map('trim', explode(',', $this->contract->department->cc_emails)));
-        } elseif ($this->contract->division && $this->contract->division->cc_emails) {
-            $ccEmails = array_filter(array_map('trim', explode(',', $this->contract->division->cc_emails)));
+        if (!$this->ticket->canBeReviewed()) {
+            $this->dispatch('notify', type: 'error', message: 'Ticket tidak dapat diproses.');
+            return;
         }
 
-        // Send to PIC with CC, reply-to logged-in user's email
-        $picEmail = $this->contract->pic_email;
-        $picName = $this->contract->pic_name;
+        $oldStatus = $this->ticket->status;
+        $this->ticket->moveToOnProcess($user);
 
-        try {
-            if ($picEmail) {
-                $mail = Mail::to($picEmail);
-                
-                if (!empty($ccEmails)) {
-                    $mail->cc($ccEmails);
-                }
-                
-                // Pass replyTo through Mailable constructor (for manual reminder)
-                $mail->send(new ContractExpiringMail(
-                    $this->contract, 
-                    $this->contract->days_remaining,
-                    $user->email,
-                    $user->name
-                ));
-            }
+        // Send notification
+        $notificationService = app(NotificationService::class);
+        $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'on_process');
 
-            // Create internal notification only if PIC is a registered user
-            if ($this->contract->pic_id) {
-                Notification::create([
-                    'user_id' => $this->contract->pic_id,
-                    'title' => 'Reminder: ' . $this->contract->contract_number,
-                    'message' => "Kontrak dengan {$this->contract->partner->display_name} akan berakhir dalam {$this->contract->days_remaining} hari.",
-                    'type' => $this->contract->days_remaining <= 30 ? 'critical' : 'warning',
-                    'data' => [
-                        'contract_id' => $this->contract->id,
-                        'sent_by' => $user->name,
-                    ],
-                ]);
-            }
+        $this->dispatch('notify', type: 'success', message: 'Ticket berhasil dipindah ke status On Process.');
+    }
 
-            // Notify super admin and legal users
-            $adminUsers = User::getAdminAndLegalUsers();
-            foreach ($adminUsers as $admin) {
-                Notification::create([
-                    'user_id' => $admin->id,
-                    'title' => 'Manual Reminder Sent',
-                    'message' => "Reminder manually sent for contract {$this->contract->contract_number} by {$user->name}",
-                    'type' => 'info',
-                    'data' => [
-                        'contract_id' => $this->contract->id,
-                        'sent_by_user_id' => $user->id,
-                    ],
-                ]);
-            }
+    public function openRejectModal(): void
+    {
+        $this->showRejectModal = true;
+    }
 
-            // Log activity
-            ActivityLog::create([
-                'loggable_type' => Contract::class,
-                'loggable_id' => $this->contract->id,
-                'user_id' => $user->id,
-                'action' => 'reminder_sent',
-                'description' => "Manual reminder email sent to {$picEmail} by {$user->name}",
-            ]);
-
-            $ccInfo = !empty($ccEmails) ? ' (CC: ' . implode(', ', $ccEmails) . ')' : '';
-            session()->flash('success', 'Reminder berhasil dikirim ke ' . $picName . $ccInfo);
-        } catch (\Exception $e) {
-            // Notify admins/legal about failure
-            $adminUsers = User::getAdminAndLegalUsers();
-            foreach ($adminUsers as $admin) {
-                Notification::create([
-                    'user_id' => $admin->id,
-                    'title' => 'Manual Reminder Failed',
-                    'message' => "Failed to send manual reminder for contract {$this->contract->contract_number} by {$user->name}",
-                    'type' => 'critical',
-                    'data' => [
-                        'contract_id' => $this->contract->id,
-                        'sent_by_user_id' => $user->id,
-                        'error' => $e->getMessage(),
-                    ],
-                ]);
-            }
-
-            // Log failure activity
-            ActivityLog::create([
-                'loggable_type' => Contract::class,
-                'loggable_id' => $this->contract->id,
-                'user_id' => $user->id,
-                'action' => 'reminder_failed',
-                'description' => "Failed to send manual reminder to {$picEmail}: {$e->getMessage()}",
-            ]);
-
-            session()->flash('error', 'Gagal mengirim reminder: ' . $e->getMessage());
+    public function rejectTicket(): void
+    {
+        $user = auth()->user();
+        
+        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+            $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat reject ticket.');
+            return;
         }
+
+        $this->validate([
+            'rejectionReason' => ['required', 'string', 'min:10'],
+        ]);
+
+        $oldStatus = $this->ticket->status;
+        $this->ticket->reject($this->rejectionReason, $user);
+
+        // Send notification
+        $notificationService = app(NotificationService::class);
+        $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'rejected');
+
+        $this->showRejectModal = false;
+        $this->dispatch('notify', type: 'success', message: 'Ticket berhasil ditolak.');
+    }
+
+    public function moveToDone(): void
+    {
+        $user = auth()->user();
+        
+        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+            $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat menyelesaikan ticket.');
+            return;
+        }
+
+        if ($this->ticket->status !== 'on_process') {
+            $this->dispatch('notify', type: 'error', message: 'Hanya ticket dengan status On Process yang dapat diselesaikan.');
+            return;
+        }
+
+        $oldStatus = $this->ticket->status;
+        $this->ticket->moveToDone();
+
+        // Create contract from ticket
+        if (!$this->ticket->contract) {
+            $contract = $this->ticket->createContract();
+            $this->dispatch('notify', type: 'success', message: "Ticket selesai dan Contract #{$contract->contract_number} telah dibuat.");
+        } else {
+            $this->dispatch('notify', type: 'success', message: 'Ticket berhasil diselesaikan.');
+        }
+
+        // Send notification
+        $notificationService = app(NotificationService::class);
+        $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'done');
+
+        // Refresh data
+        $this->mount($this->ticket->id);
+    }
+
+    public function openTerminateModal(): void
+    {
+        $this->showTerminateModal = true;
+    }
+
+    public function terminateContract(): void
+    {
+        $user = auth()->user();
+        
+        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+            $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat terminate contract.');
+            return;
+        }
+
+        if (!$this->ticket->contract) {
+            $this->dispatch('notify', type: 'error', message: 'Ticket tidak memiliki contract.');
+            return;
+        }
+
+        $this->validate([
+            'terminationReason' => ['required', 'string', 'min:10'],
+        ]);
+
+        $oldStatus = $this->ticket->contract->status;
+        $this->ticket->contract->terminate($this->terminationReason);
+
+        // Send notification
+        $notificationService = app(NotificationService::class);
+        $notificationService->notifyContractStatusChanged($this->ticket->contract, $oldStatus, 'terminated');
+
+        $this->showTerminateModal = false;
+        $this->dispatch('notify', type: 'success', message: 'Contract berhasil diterminasi.');
+        
+        // Refresh data
+        $this->mount($this->ticket->id);
     }
 }; ?>
 
-<div class="mx-auto max-w-4xl">
-        <!-- Header -->
-        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+<div class="mx-auto max-w-5xl space-y-6">
+    <!-- Header with Back Button -->
+    <div class="mb-6">
+        <a href="{{ route('contracts.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
+            <flux:icon name="arrow-left" class="h-4 w-4" />
+            Kembali ke Daftar
+        </a>
+        <div class="flex items-start justify-between">
             <div>
-                <a href="{{ route('contracts.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
-                    <flux:icon name="arrow-left" class="h-4 w-4" />
-                    Kembali ke Daftar
-                </a>
-                <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $contract->contract_number }}</h1>
-                <p class="mt-1 text-neutral-500 dark:text-neutral-400">{{ $contract->partner->display_name }}</p>
+                <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $ticket->ticket_number }}</h1>
+                <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{{ $ticket->proposed_document_title }}</p>
             </div>
-            <div class="flex items-center gap-2">
-                @php
-                    $color = $contract->status_color;
-                    $badgeClass = match($color) {
-                        'green' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
-                        'yellow' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
-                        'red' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
-                        default => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700',
-                    };
-                @endphp
-                <span class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium {{ $badgeClass }}">
-                    <span class="h-2 w-2 rounded-full {{ $color === 'green' ? 'bg-green-500' : ($color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500') }}"></span>
-                    {{ $contract->status_label }}
-                    @if($contract->days_remaining > 0)
-                        ({{ $contract->days_remaining }} hari lagi)
-                    @elseif($contract->days_remaining == 0)
-                        (Hari ini)
-                    @else
-                        (Expired)
-                    @endif
-                </span>
-                @if(auth()->user()?->hasPermission('contracts.send_reminder'))
-                <flux:button variant="ghost" icon="envelope" wire:click="sendReminder" wire:confirm="Kirim email reminder ke PIC kontrak ini?">
-                    Kirim Reminder
-                </flux:button>
-                @endif
-                @if(auth()->user()?->hasPermission('contracts.edit'))
-                <a href="{{ route('contracts.edit', $contract) }}" wire:navigate>
-                    <flux:button variant="primary" icon="pencil">Edit</flux:button>
-                </a>
-                @endif
-            </div>
-        </div>
-
-        @if(session('success'))
-        <div class="mb-6 rounded-lg bg-green-50 p-4 text-green-800 dark:bg-green-900/30 dark:text-green-200">
-            {{ session('success') }}
-        </div>
-        @endif
-
-        @if(session('error'))
-        <div class="mb-6 rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900/30 dark:text-red-200">
-            {{ session('error') }}
-        </div>
-        @endif
-
-        <!-- Contract Details -->
-        <div class="grid gap-6 lg:grid-cols-3">
-            <div class="lg:col-span-2 space-y-6">
-                <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-                    <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Detail Kontrak</h2>
-                    <dl class="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Nomor Kontrak</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->contract_number }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Status</dt>
-                            <dd class="mt-1 font-medium capitalize text-neutral-900 dark:text-white">{{ $contract->status }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Mulai</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->start_date->format('d F Y') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">
-                                @if($contract->is_auto_renewal)
-                                <flux:badge color="blue">Auto Renewal</flux:badge>
-                                @elseif($contract->end_date)
-                                {{ $contract->end_date->format('d F Y') }}
-                                @else
-                                -
-                                @endif
-                            </dd>
-                        </div>
-                        @if($contract->description)
-                        <div class="sm:col-span-2">
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Deskripsi</dt>
-                            <dd class="mt-1 text-neutral-900 dark:text-white">{{ $contract->description }}</dd>
-                        </div>
-                        @endif
-                        @if($contract->document_path)
-                        <div class="sm:col-span-2">
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Dokumen</dt>
-                            <dd class="mt-1">
-                                <a href="{{ Storage::url($contract->document_path) }}" target="_blank" class="inline-flex items-center gap-2 text-blue-600 hover:underline dark:text-blue-400">
-                                    <flux:icon name="document-arrow-down" class="h-4 w-4" />
-                                    Download Dokumen
-                                </a>
-                            </dd>
-                        </div>
-                        @endif
-                    </dl>
-                </div>
-
-                <!-- Activity Log -->
-                @if($contract->activityLogs->isNotEmpty())
-                <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-                    <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Riwayat Aktivitas</h2>
-                    <div class="space-y-4">
-                        @foreach($contract->activityLogs->take(5) as $log)
-                        <div class="flex gap-3">
-                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
-                                <flux:icon name="{{ $log->action === 'created' ? 'plus' : ($log->action === 'updated' ? 'pencil' : 'trash') }}" class="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-                            </div>
-                            <div>
-                                <p class="text-sm text-neutral-900 dark:text-white">
-                                    <span class="font-medium">{{ $log->user?->name ?? 'System' }}</span>
-                                    {{ $log->action_label }} kontrak
-                                </p>
-                                @if($log->changes_description)
-                                <p class="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{{ $log->changes_description }}</p>
-                                @endif
-                                <p class="text-xs text-neutral-500 dark:text-neutral-400 {{ $log->changes_description ? 'mt-1' : '' }}">
-                                    {{ $log->created_at->diffForHumans() }}
-                                </p>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-            </div>
-
-            <!-- Sidebar -->
-            <div class="space-y-6">
-                <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-                    <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Informasi Terkait</h2>
-                    <dl class="space-y-4">
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Partner</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->partner->display_name }}</dd>
-                            @if($contract->partner->email)
-                            <dd class="text-sm text-neutral-500 dark:text-neutral-400">{{ $contract->partner->email }}</dd>
-                            @endif
-                        </div>
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Divisi</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->division->name }}</dd>
-                        </div>
-                        @if($contract->department)
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Departemen</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->department->name }}</dd>
-                        </div>
-                        @endif
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">PIC</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->pic_name }}</dd>
-                            <dd class="text-sm text-neutral-500 dark:text-neutral-400">{{ $contract->pic_email }}</dd>
-                        </div>
-                        @if($contract->creator)
-                        <div>
-                            <dt class="text-sm text-neutral-500 dark:text-neutral-400">Dibuat oleh</dt>
-                            <dd class="mt-1 font-medium text-neutral-900 dark:text-white">{{ $contract->creator->name }}</dd>
-                            <dd class="text-sm text-neutral-500 dark:text-neutral-400">{{ $contract->created_at->format('d M Y, H:i') }}</dd>
-                        </div>
-                        @endif
-                    </dl>
-                </div>
-            </div>
+            @php
+                $statusBadge = match($ticket->status_color) {
+                    'blue' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                    'yellow' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                    'green' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                    'red' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                    'gray' => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+                    default => 'bg-neutral-100 text-neutral-800',
+                };
+            @endphp
+            <span class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium {{ $statusBadge }}">
+                {{ $ticket->status_label }}
+            </span>
         </div>
     </div>
+
+    <!-- Action Buttons for Legal Team -->
+    @if(auth()->user()->hasAnyRole(['super-admin', 'legal']))
+    <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+        <h3 class="mb-3 font-semibold text-blue-900 dark:text-blue-300">Legal Team Actions</h3>
+        <div class="flex flex-wrap gap-2">
+            <!-- Edit Button (visible anytime for legal) -->
+            <a href="{{ route('contracts.edit', $ticket->id) }}" wire:navigate>
+                <flux:button variant="ghost" icon="pencil">
+                    Edit Ticket
+                </flux:button>
+            </a>
+
+            @if($ticket->status === 'open')
+                <flux:button wire:click="moveToOnProcess" variant="primary" icon="play">
+                    Process Ticket
+                </flux:button>
+                <flux:button wire:click="openRejectModal" variant="danger" icon="x-mark">
+                    Reject Ticket
+                </flux:button>
+            @elseif($ticket->status === 'on_process')
+                <flux:button wire:click="moveToDone" variant="primary" icon="check">
+                    Mark as Done (Create Contract)
+                </flux:button>
+            @endif
+
+            @if($ticket->contract && $ticket->contract->status === 'active')
+                <flux:button wire:click="openTerminateModal" variant="danger" icon="x-circle">
+                    Terminate Contract
+                </flux:button>
+            @endif
+        </div>
+    </div>
+    @endif
+
+    <!-- Ticket Information -->
+    <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+        <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Informasi Ticket</h2>
+        
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Nomor Ticket</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->ticket_number }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Jenis Dokumen</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->document_type_label }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Divisi</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->division->name }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Departemen</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->department?->name ?? '-' }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Dibuat Oleh</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->creator->name }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Dibuat</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->created_at->format('d M Y H:i') }}</p>
+            </div>
+            
+            @if($ticket->reviewed_by)
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Direview Oleh</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->reviewer->name }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Review</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->reviewed_at->format('d M Y H:i') }}</p>
+            </div>
+            @endif
+
+            @if($ticket->aging_duration)
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Durasi Processing (Aging)</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->aging_duration_display }}</p>
+            </div>
+            @endif
+
+            @if($ticket->rejection_reason)
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Alasan Penolakan</p>
+                <p class="font-medium text-red-600 dark:text-red-400">{{ $ticket->rejection_reason }}</p>
+            </div>
+            @endif
+
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Financial Impact</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->has_financial_impact ? 'Yes' : 'No' }}</p>
+            </div>
+
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">TAT Legal Compliance</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->tat_legal_compliance ? 'Ya' : 'Tidak' }}</p>
+            </div>
+        </div>
+
+        <!-- Document-specific details -->
+        @if(in_array($ticket->document_type, ['perjanjian', 'nda']) && $ticket->counterpart_name)
+        <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-700">
+            <h3 class="mb-3 font-semibold text-neutral-900 dark:text-white">Detail {{ $ticket->document_type === 'nda' ? 'NDA' : 'Perjanjian' }}</h3>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Counterpart</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->counterpart_name }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Mulai</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->agreement_start_date?->format('d M Y') ?? '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Jangka Waktu</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->agreement_duration }}</p>
+                </div>
+                @if(!$ticket->is_auto_renewal && $ticket->agreement_end_date)
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->agreement_end_date->format('d M Y') }}</p>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        @if($ticket->document_type === 'surat_kuasa' && $ticket->kuasa_pemberi)
+        <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-700">
+            <h3 class="mb-3 font-semibold text-neutral-900 dark:text-white">Detail Surat Kuasa</h3>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Pemberi Kuasa</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_pemberi }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Penerima Kuasa</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_penerima }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Mulai</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_start_date?->format('d M Y') ?? '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_end_date?->format('d M Y') ?? '-' }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+
+    <!-- Contract Information (if exists) -->
+    @if($ticket->contract)
+    <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+        <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Informasi Contract</h2>
+        
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Nomor Contract</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->contract_number }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Status Contract</p>
+                @php
+                    $contractBadge = match($ticket->contract->status) {
+                        'active' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                        'expired' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                        'terminated' => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+                        default => 'bg-neutral-100 text-neutral-800',
+                    };
+                @endphp
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $contractBadge }}">
+                    {{ ucfirst($ticket->contract->status) }}
+                </span>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Mulai</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->start_date?->format('d M Y') ?? '-' }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->end_date?->format('d M Y') ?? '-' }}</p>
+            </div>
+            
+            @if($ticket->contract->terminated_at)
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Diterminasi Pada</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->terminated_at->format('d M Y H:i') }}</p>
+            </div>
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Alasan Terminasi</p>
+                <p class="font-medium text-red-600 dark:text-red-400">{{ $ticket->contract->termination_reason }}</p>
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
+
+    <!-- Uploaded Documents -->
+    <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+        <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Dokumen Terupload</h2>
+        
+        <div class="space-y-4">
+            @if($ticket->draft_document_path)
+            <div>
+                <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Draft Dokumen</p>
+                <a href="{{ Storage::url($ticket->draft_document_path) }}" target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
+                    <flux:icon name="document-text" class="h-4 w-4" />
+                    <span>Download Draft</span>
+                    <flux:icon name="arrow-down-tray" class="h-4 w-4" />
+                </a>
+            </div>
+            @endif
+
+            @if($ticket->mandatory_documents_path && count($ticket->mandatory_documents_path) > 0)
+            <div>
+                <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Dokumen Wajib ({{ count($ticket->mandatory_documents_path) }} file)</p>
+                <div class="space-y-2">
+                    @foreach($ticket->mandatory_documents_path as $index => $doc)
+                    <a href="{{ Storage::url($doc['path']) }}" target="_blank" class="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50">
+                        <flux:icon name="document" class="h-4 w-4" />
+                        <span class="flex-1">{{ $doc['name'] }}</span>
+                        <flux:icon name="arrow-down-tray" class="h-4 w-4" />
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            @if($ticket->approval_document_path)
+            <div>
+                <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Dokumen Approval</p>
+                <a href="{{ Storage::url($ticket->approval_document_path) }}" target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50">
+                    <flux:icon name="document-check" class="h-4 w-4" />
+                    <span>Download Approval</span>
+                    <flux:icon name="arrow-down-tray" class="h-4 w-4" />
+                </a>
+            </div>
+            @endif
+
+            @if(!$ticket->draft_document_path && (!$ticket->mandatory_documents_path || count($ticket->mandatory_documents_path) == 0) && !$ticket->approval_document_path)
+            <p class="text-center text-sm text-neutral-500 dark:text-neutral-400">Tidak ada dokumen yang diupload</p>
+            @endif
+        </div>
+    </div>
+
+    <!-- Activity Log -->
+    @if($ticket->activityLogs->count() > 0)
+    <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+        <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Activity Log</h2>
+        
+        <div class="space-y-4">
+            @foreach($ticket->activityLogs->sortByDesc('created_at') as $log)
+            <div class="flex gap-3 border-l-2 border-neutral-200 pl-4 dark:border-neutral-700">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ $log->action }}</p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                        {{ $log->user?->name ?? 'System' }} • {{ $log->created_at->format('d M Y H:i') }}
+                    </p>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    <!-- Reject Modal -->
+    <flux:modal name="reject-modal" :open="$showRejectModal" wire:model="showRejectModal">
+        <form wire:submit="rejectTicket" class="space-y-6">
+            <div>
+                <flux:heading size="lg">Reject Ticket</flux:heading>
+                <flux:subheading>Berikan alasan penolakan ticket ini</flux:subheading>
+            </div>
+
+            <flux:field>
+                <flux:label>Alasan Penolakan *</flux:label>
+                <flux:textarea wire:model="rejectionReason" rows="4" placeholder="Jelaskan alasan penolakan..." required />
+                <flux:error name="rejectionReason" />
+            </flux:field>
+
+            <div class="flex gap-2">
+                <flux:spacer />
+                <flux:button variant="ghost" type="button" wire:click="$set('showRejectModal', false)">Batal</flux:button>
+                <flux:button type="submit" variant="danger">Reject Ticket</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    <!-- Terminate Contract Modal -->
+    <flux:modal name="terminate-modal" :open="$showTerminateModal" wire:model="showTerminateModal">
+        <form wire:submit="terminateContract" class="space-y-6">
+            <div>
+                <flux:heading size="lg">Terminate Contract</flux:heading>
+                <flux:subheading>Berikan alasan terminasi contract ini</flux:subheading>
+            </div>
+
+            <flux:field>
+                <flux:label>Alasan Terminasi *</flux:label>
+                <flux:textarea wire:model="terminationReason" rows="4" placeholder="Jelaskan alasan terminasi..." required />
+                <flux:error name="terminationReason" />
+            </flux:field>
+
+            <div class="flex gap-2">
+                <flux:spacer />
+                <flux:button variant="ghost" type="button" wire:click="$set('showTerminateModal', false)">Batal</flux:button>
+                <flux:button type="submit" variant="danger">Terminate Contract</flux:button>
+            </div>
+        </form>
+    </flux:modal>
 </div>

@@ -19,11 +19,8 @@
                 </flux:navlist.group>
 
                 @if(auth()->user()->hasPermission('contracts.view'))
-                <flux:navlist.group :heading="__('PKS Management')" class="grid">
-                    <flux:navlist.item icon="document-text" :href="route('contracts.index')" :current="request()->routeIs('contracts.*')" wire:navigate>{{ __('Kontrak') }}</flux:navlist.item>
-                    @if(auth()->user()->hasPermission('partners.view'))
-                    <flux:navlist.item icon="building-office" :href="route('partners.index')" :current="request()->routeIs('partners.*')" wire:navigate>{{ __('Partner/Vendor') }}</flux:navlist.item>
-                    @endif
+                <flux:navlist.group :heading="__('Ticketing System')" class="grid">
+                    <flux:navlist.item icon="ticket" :href="route('contracts.index')" :current="request()->routeIs('contracts.*')" wire:navigate>{{ __('Tickets') }}</flux:navlist.item>
                     @if(auth()->user()->hasPermission('divisions.view'))
                     <flux:navlist.item icon="rectangle-group" :href="route('divisions.index')" :current="request()->routeIs('divisions.*')" wire:navigate>{{ __('Divisi') }}</flux:navlist.item>
                     @endif

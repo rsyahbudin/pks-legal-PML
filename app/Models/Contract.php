@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,13 +14,13 @@ class Contract extends Model
     use HasFactory;
 
     protected $fillable = [
+        'ticket_id',
         'contract_number',
         'agreement_name',
         'proposed_document_title',
         'document_type',
         'financial_impact',
         'tat_legal_compliance',
-        'partner_id',
         'division_id',
         'department_id',
         'pic_id',
@@ -32,6 +31,8 @@ class Contract extends Model
         'is_auto_renewal',
         'description',
         'status',
+        'terminated_at',
+        'termination_reason',
         'document_path',
         'draft_document_path',
         'mandatory_documents_path',
@@ -47,15 +48,16 @@ class Contract extends Model
             'is_auto_renewal' => 'boolean',
             'tat_legal_compliance' => 'boolean',
             'mandatory_documents_path' => 'array',
+            'terminated_at' => 'datetime',
         ];
     }
 
     /**
-     * Get the partner for this contract.
+     * Get the ticket that created this contract.
      */
-    public function partner(): BelongsTo
+    public function ticket(): BelongsTo
     {
-        return $this->belongsTo(Partner::class);
+        return $this->belongsTo(Ticket::class);
     }
 
     /**
@@ -119,9 +121,10 @@ class Contract extends Model
      */
     public function getDaysRemainingAttribute(): int
     {
-        if ($this->is_auto_renewal || !$this->end_date) {
+        if ($this->is_auto_renewal || ! $this->end_date) {
             return 999; // Treat as far in the future or handle as needed
         }
+
         return (int) now()->startOfDay()->diffInDays($this->end_date, false);
     }
 
@@ -234,6 +237,7 @@ class Contract extends Model
         if ($this->pic_id && $this->pic) {
             return $this->pic->name;
         }
+
         return $this->attributes['pic_name'] ?? 'Unknown PIC';
     }
 
@@ -245,6 +249,7 @@ class Contract extends Model
         if ($this->pic_id && $this->pic) {
             return $this->pic->email;
         }
+
         return $this->attributes['pic_email'] ?? null;
     }
 
@@ -256,6 +261,7 @@ class Contract extends Model
         if ($this->is_auto_renewal) {
             return false;
         }
+
         return ($this->end_date && $this->end_date->isPast()) || $this->status === 'expired';
     }
 
@@ -279,13 +285,51 @@ class Contract extends Model
      */
     public function getFinancialImpactLabelAttribute(): ?string
     {
-        if (!$this->financial_impact) {
+        if (! $this->financial_impact) {
             return null;
         }
+
         return match ($this->financial_impact) {
             'income' => 'Income (Pemasukan)',
             'expenditure' => 'Expenditure (Pengeluaran)',
             default => $this->financial_impact,
         };
+    }
+
+    /**
+     * Check if contract is terminated.
+     */
+    public function isTerminated(): bool
+    {
+        return $this->status === 'terminated';
+    }
+
+    /**
+     * Scope for terminated contracts.
+     */
+    public function scopeTerminated(Builder $query): Builder
+    {
+        return $query->where('status', 'terminated');
+    }
+
+    /**
+     * Terminate contract before end date.
+     */
+    public function terminate(string $reason): void
+    {
+        $this->update([
+            'status' => 'terminated',
+            'terminated_at' => now(),
+            'termination_reason' => $reason,
+        ]);
+
+        $this->activityLogs()->create([
+            'user_id' => auth()->id(),
+            'action' => "Contract terminated: {$reason}",
+            'metadata' => [
+                'contract_number' => $this->contract_number,
+                'terminated_at' => $this->terminated_at->toDateTimeString(),
+            ],
+        ]);
     }
 }

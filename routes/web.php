@@ -46,7 +46,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Contracts Export
     Route::get('contracts-export', function (\Illuminate\Http\Request $request) {
-        if (!auth()->user()->hasPermission('reports.export')) {
+        if (! auth()->user()->hasPermission('reports.export')) {
             abort(403);
         }
         $export = new \App\Exports\ContractsExport(
@@ -54,17 +54,13 @@ Route::middleware(['auth'])->group(function () {
             $request->get('color'),
             $request->get('division') ? (int) $request->get('division') : null
         );
-        $filename = 'contracts_' . now()->format('Y-m-d_His') . '.csv';
+        $filename = 'contracts_'.now()->format('Y-m-d_His').'.csv';
+
         return response($export->toCsv(), 200, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     })->middleware('permission:reports.export')->name('contracts.export');
-
-    // Partners
-    Volt::route('partners', 'partners.index')
-        ->middleware('permission:partners.view')
-        ->name('partners.index');
 
     // Divisions
     Volt::route('divisions', 'divisions.index')

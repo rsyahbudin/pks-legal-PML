@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Department;
 use App\Models\Division;
 use App\Models\Role;
 use App\Models\User;
@@ -19,6 +20,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $password = '';
     public string $role_id = '';
     public string $division_id = '';
+    public string $department_id = '';
 
     public function updatedSearch(): void
     {
@@ -27,7 +29,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function getUsersProperty()
     {
-        return User::with(['role', 'division'])
+        return User::with(['role', 'division', 'department'])
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
                 ->orWhere('email', 'like', "%{$this->search}%"))
             ->orderBy('name')
@@ -44,9 +46,17 @@ new #[Layout('components.layouts.app')] class extends Component {
         return Division::active()->orderBy('name')->get();
     }
 
+    public function getDepartmentsProperty()
+    {
+        if (!$this->division_id) {
+            return collect();
+        }
+        return Department::where('division_id', $this->division_id)->orderBy('name')->get();
+    }
+
     public function create(): void
     {
-        $this->reset(['editingId', 'name', 'email', 'password', 'role_id', 'division_id']);
+        $this->reset(['editingId', 'name', 'email', 'password', 'role_id', 'division_id', 'department_id']);
         $this->showModal = true;
     }
 
@@ -59,6 +69,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->password = '';
         $this->role_id = (string) ($user->role_id ?? '');
         $this->division_id = (string) ($user->division_id ?? '');
+        $this->department_id = (string) ($user->department_id ?? '');
         $this->showModal = true;
     }
 
@@ -69,6 +80,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'email' => ['required', 'email', $this->editingId ? "unique:users,email,{$this->editingId}" : 'unique:users,email'],
             'role_id' => ['nullable', 'exists:roles,id'],
             'division_id' => ['nullable', 'exists:divisions,id'],
+            'department_id' => ['nullable', 'exists:departments,id'],
         ];
 
         if (!$this->editingId || $this->password) {
@@ -82,6 +94,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'email' => $validated['email'],
             'role_id' => $validated['role_id'] ?: null,
             'division_id' => $validated['division_id'] ?: null,
+            'department_id' => $validated['department_id'] ?: null,
         ];
 
         if (!empty($this->password)) {
@@ -135,6 +148,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <th class="px-4 py-3 text-left">Email</th>
                         <th class="px-4 py-3 text-left">Role</th>
                         <th class="px-4 py-3 text-left">Divisi</th>
+                        <th class="px-4 py-3 text-left">Departemen</th>
                         <th class="px-4 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -151,6 +165,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                             @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->division?->name ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->department?->name ?? '-' }}</td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
                                 @if(auth()->user()?->hasPermission('users.manage'))
@@ -164,7 +179,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-12 text-center text-neutral-500">Belum ada pengguna</td>
+                        <td colspan="6" class="px-4 py-12 text-center text-neutral-500">Belum ada pengguna</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -178,21 +193,25 @@ new #[Layout('components.layouts.app')] class extends Component {
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <form wire:submit="save" class="space-y-4">
             <flux:heading>{{ $editingId ? 'Edit Pengguna' : 'Tambah Pengguna' }}</flux:heading>
+            
             <flux:field>
                 <flux:label>Nama</flux:label>
                 <flux:input wire:model="name" required />
                 <flux:error name="name" />
             </flux:field>
+            
             <flux:field>
                 <flux:label>Email</flux:label>
                 <flux:input type="email" wire:model="email" required />
                 <flux:error name="email" />
             </flux:field>
+            
             <flux:field>
                 <flux:label>Password {{ $editingId ? '(kosongkan jika tidak diubah)' : '' }}</flux:label>
                 <flux:input type="password" wire:model="password" :required="!$editingId" />
                 <flux:error name="password" />
             </flux:field>
+            
             <flux:field>
                 <flux:label>Role</flux:label>
                 <flux:select wire:model="role_id">
@@ -201,16 +220,37 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <option value="{{ $role->id }}">{{ $role->name }}</option>
                     @endforeach
                 </flux:select>
+                <flux:error name="role_id" />
             </flux:field>
+            
             <flux:field>
                 <flux:label>Divisi</flux:label>
-                <flux:select wire:model="division_id">
+                <flux:select wire:model.live="division_id">
                     <option value="">Pilih Divisi</option>
                     @foreach($this->divisions as $division)
                     <option value="{{ $division->id }}">{{ $division->name }}</option>
                     @endforeach
                 </flux:select>
+                <flux:error name="division_id" />
             </flux:field>
+
+            @if($this->division_id)
+            <flux:field>
+                <flux:label>Departemen</flux:label>
+                <flux:select wire:model="department_id">
+                    <option value="">Pilih Departemen (Opsional)</option>
+                    @if($this->departments->isNotEmpty())
+                        @foreach($this->departments as $dept)
+                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    @else
+                        <option value="" disabled>Belum ada departemen</option>
+                    @endif
+                </flux:select>
+                <flux:error name="department_id" />
+            </flux:field>
+            @endif
+            
             <div class="flex justify-end gap-3 pt-4">
                 <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Batal</flux:button>
                 <flux:button type="submit" variant="primary">Simpan</flux:button>

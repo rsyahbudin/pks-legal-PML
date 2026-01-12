@@ -20,12 +20,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'Delete Contracts', 'slug' => 'contracts.delete', 'group' => 'contracts', 'description' => 'Menghapus kontrak'],
             ['name' => 'Send Contract Reminder', 'slug' => 'contracts.send_reminder', 'group' => 'contracts', 'description' => 'Mengirim email reminder kontrak secara manual'],
 
-            // Partners
-            ['name' => 'View Partners', 'slug' => 'partners.view', 'group' => 'partners', 'description' => 'Melihat daftar partner/vendor'],
-            ['name' => 'Create Partners', 'slug' => 'partners.create', 'group' => 'partners', 'description' => 'Menambah partner baru'],
-            ['name' => 'Edit Partners', 'slug' => 'partners.edit', 'group' => 'partners', 'description' => 'Mengedit partner'],
-            ['name' => 'Delete Partners', 'slug' => 'partners.delete', 'group' => 'partners', 'description' => 'Menghapus partner'],
-
             // Divisions
             ['name' => 'View Divisions', 'slug' => 'divisions.view', 'group' => 'divisions', 'description' => 'Melihat daftar divisi'],
             ['name' => 'Manage Divisions', 'slug' => 'divisions.manage', 'group' => 'divisions', 'description' => 'Mengelola divisi (tambah/edit/hapus)'],

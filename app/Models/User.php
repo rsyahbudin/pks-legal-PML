@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'role_id',
         'division_id',
+        'department_id',
     ];
 
     /**
@@ -79,6 +80,14 @@ class User extends Authenticatable
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);
+    }
+
+    /**
+     * Get the department for this user.
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
     }
 
     /**
