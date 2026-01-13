@@ -139,12 +139,17 @@ new #[Layout('components.layouts.app')] class extends Component {
         $oldStatus = $this->ticket->contract->status;
         $this->ticket->contract->terminate($this->terminationReason);
 
+        // Auto-close the ticket
+        if ($this->ticket->status !== 'closed') {
+            $this->ticket->update(['status' => 'closed']);
+        }
+
         // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyContractStatusChanged($this->ticket->contract, $oldStatus, 'terminated');
 
         $this->showTerminateModal = false;
-        $this->dispatch('notify', type: 'success', message: 'Contract berhasil diterminasi.');
+        $this->dispatch('notify', type: 'success', message: 'Contract berhasil diterminasi dan ticket ditutup.');
         
         // Refresh data
         $this->mount($this->ticket->id);

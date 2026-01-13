@@ -49,7 +49,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             return collect();
         }
 
-        $query = Contract::with(['partner', 'division', 'pic'])
+        $query = Contract::with(['division', 'pic', 'ticket'])
             ->orderBy('end_date', 'asc');
 
         if (method_exists($user, 'isPic') && $user->isPic()) {
@@ -68,7 +68,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
 
-        $query = Contract::with(['partner', 'division', 'pic'])
+        $query = Contract::with(['division', 'pic', 'ticket'])
             ->where('status', 'active')
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->orderBy('end_date', 'asc');
@@ -182,7 +182,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <thead class="bg-neutral-50 text-xs uppercase text-neutral-600 dark:bg-zinc-800 dark:text-neutral-400">
                         <tr>
                             <th class="px-4 py-3 text-left">No. Kontrak</th>
-                            <th class="px-4 py-3 text-left">Partner</th>
+                            <th class="px-4 py-3 text-left">Judul Kontrak</th>
                             <th class="px-4 py-3 text-left">End Date</th>
                             <th class="px-4 py-3 text-center">Status</th>
                         </tr>
@@ -194,10 +194,10 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 {{ $contract->contract_number }}
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                {{ $contract->partner->display_name }}
+                                {{ $contract->agreement_name ?? $contract->proposed_document_title ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                {{ $contract->end_date->format('d M Y') }}
+                                {{ $contract->end_date?->format('d M Y') ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-center">
                                 @php
@@ -243,7 +243,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                             {{ $contract->contract_number }}
                         </p>
                         <p class="truncate text-sm text-neutral-500 dark:text-neutral-400">
-                            {{ $contract->partner->display_name }} • {{ $contract->division->name }}
+                            {{ $contract->agreement_name ?? $contract->proposed_document_title ?? '-' }} • {{ $contract->division->name }}
                         </p>
                     </div>
                     <div class="text-right">
@@ -251,7 +251,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                             {{ $contract->status === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
                         </p>
                         <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                            {{ $contract->end_date->format('d M Y') }}
+                            {{ $contract->end_date?->format('d M Y') ?? '-' }}
                         </p>
                     </div>
                 </div>

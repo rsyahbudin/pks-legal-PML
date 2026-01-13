@@ -37,7 +37,7 @@ class SendContractReminders extends Command
 
         // Get contracts that are expiring within warning threshold
         // Exclude: configured document types, terminated contracts
-        $contracts = Contract::with(['partner', 'division', 'pic'])
+        $contracts = Contract::with(['division', 'pic', 'ticket'])
             ->where('status', 'active') // Only active contracts
             ->whereNotIn('document_type', $excludedTypes)
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))

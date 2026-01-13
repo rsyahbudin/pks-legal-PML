@@ -27,7 +27,7 @@ class ContractsExport
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
         $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
 
-        $query = Contract::with(['partner', 'division', 'pic'])
+        $query = Contract::with(['division', 'pic', 'ticket'])
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->divisionId, fn($q) => $q->where('division_id', $this->divisionId))
             ->when($this->colorFilter, function ($q) use ($warningThreshold, $criticalThreshold) {
@@ -52,7 +52,7 @@ class ContractsExport
         return $query->get()->map(function ($contract) {
             return [
                 'No. Kontrak' => $contract->contract_number,
-                'Partner' => $contract->partner->display_name,
+                'Counterpart/Judul' => $contract->ticket?->counterpart_name ?? $contract->proposed_document_title ?? '-',
                 'Divisi' => $contract->division->name,
                 'PIC' => $contract->pic->name,
                 'Tanggal Mulai' => $contract->start_date->format('d/m/Y'),
@@ -74,7 +74,7 @@ class ContractsExport
     {
         return [
             'No. Kontrak',
-            'Partner',
+            'Counterpart/Judul',
             'Divisi',
             'PIC',
             'Tanggal Mulai',

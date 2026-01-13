@@ -112,7 +112,6 @@ class ActivityLog extends Model
         $changes = [];
         $fieldLabels = [
             'contract_number' => 'Nomor Kontrak',
-            'partner_id' => 'Partner',
             'division_id' => 'Divisi',
             'department_id' => 'Departemen',
             'pic_id' => 'PIC',

@@ -120,6 +120,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <th class="px-4 py-3 text-center">Ticket Status</th>
                         <th class="px-4 py-3 text-center">Contract Status</th>
                         <th class="px-4 py-3 text-center">Dibuat</th>
+                        <th class="px-4 py-3 text-center">Updated</th>
                         <th class="px-4 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -181,7 +182,10 @@ new #[Layout('components.layouts.app')] class extends Component {
                             @endif
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
-                            {{ $ticket->created_at->format('d/m/Y') }}
+                            {{ $ticket->created_at->format('d/m/Y H:i') }}
+                        </td>
+                        <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
+                            {{ $ticket->updated_at->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">

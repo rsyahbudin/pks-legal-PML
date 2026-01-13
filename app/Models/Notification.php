@@ -109,7 +109,7 @@ class Notification extends Model
             'user_id' => $user->id,
             'type' => $type,
             'title' => $title,
-            'message' => "Kontrak {$contract->contract_number} dengan {$contract->partner->display_name} membutuhkan perhatian Anda.",
+            'message' => "Kontrak {$contract->contract_number} ({$contract->agreement_name}) membutuhkan perhatian Anda.",
             'notifiable_type' => Contract::class,
             'notifiable_id' => $contract->id,
         ]);
