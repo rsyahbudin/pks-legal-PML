@@ -307,7 +307,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     @foreach($this->ticketsNeedingAttention as $ticket)
                     <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
                         <td class="px-4 py-3 text-sm font-medium">
-                            <a href="{{ route('contracts.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                            <a href="{{ route('tickets.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
                                 {{ $ticket->ticket_number }}
                             </a>
                         </td>
@@ -390,7 +390,7 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
             <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
                 <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">My Recent Tickets</h3>
-                <a href="{{ route('contracts.index') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                <a href="{{ route('tickets.index') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
                     View All →
                 </a>
             </div>
@@ -408,7 +408,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         @forelse($this->myRecentTickets as $ticket)
                         <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
                             <td class="px-4 py-3 text-sm font-medium">
-                                <a href="{{ route('contracts.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                                <a href="{{ route('tickets.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
                                     {{ $ticket->ticket_number }}
                                 </a>
                             </td>
@@ -437,7 +437,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         @empty
                         <tr>
                             <td colspan="4" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
-                                Belum ada ticket. <a href="{{ route('contracts.create') }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>Buat ticket pertama</a>
+                                Belum ada ticket. <a href="{{ route('tickets.create') }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>Buat ticket pertama</a>
                             </td>
                         </tr>
                         @endforelse
@@ -540,7 +540,7 @@ new #[Layout('components.layouts.app')] class extends Component
             <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
                 <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Kontrak Terbaru</h2>
                 @if(auth()->user()?->hasPermission('contracts.view'))
-                <a href="{{ route('contracts.index') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                <a href="{{ route('tickets.index') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
                     Lihat Semua →
                 </a>
                 @endif

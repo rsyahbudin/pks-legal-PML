@@ -1,18 +1,23 @@
 <?php
 
-use App\Models\Ticket;
 use App\Models\Division;
+use App\Models\Ticket;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Layout;
-use Illuminate\Pagination\LengthAwarePaginator;
 
-new #[Layout('components.layouts.app')] class extends Component {
+new #[Layout('components.layouts.app')] class extends Component
+{
     use WithPagination;
 
     public string $search = '';
+
     public string $statusFilter = '';
+
     public string $divisionFilter = '';
+
+    public string $contractStatusFilter = '';
 
     public function updatedSearch(): void
     {
@@ -29,20 +34,34 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->resetPage();
     }
 
+    public function updatedContractStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function getTicketsProperty(): LengthAwarePaginator
     {
         $user = auth()->user();
 
         $query = Ticket::with(['division', 'department', 'creator', 'contract'])
-            ->when($this->search, fn($q) => $q->where(function ($q) {
+            ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('ticket_number', 'like', "%{$this->search}%")
                     ->orWhere('proposed_document_title', 'like', "%{$this->search}%");
             }))
-            ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
-            ->when($this->divisionFilter, fn($q) => $q->where('division_id', $this->divisionFilter));
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
+            ->when($this->contractStatusFilter, function ($q) {
+                if ($this->contractStatusFilter === 'no-contract') {
+                    $q->whereDoesntHave('contract');
+                } else {
+                    $q->whereHas('contract', function ($query) {
+                        $query->where('status', $this->contractStatusFilter);
+                    });
+                }
+            });
 
         // Role-based filtering
-        if ($user && !$user->hasAnyRole(['super-admin', 'legal'])) {
+        if ($user && ! $user->hasAnyRole(['super-admin', 'legal'])) {
             // Regular users: only see their own tickets
             $query->forUser($user->id);
         }
@@ -71,8 +90,8 @@ new #[Layout('components.layouts.app')] class extends Component {
             </p>
         </div>
         <div class="flex gap-2">
-            @if(auth()->user()?->hasPermission('contracts.create'))
-            <a href="{{ route('contracts.create') }}" wire:navigate>
+            @if(auth()->user()?->hasPermission('tickets.create'))
+            <a href="{{ route('tickets.create') }}" wire:navigate>
                 <flux:button variant="primary" icon="plus">
                     Buat Ticket Baru
                 </flux:button>
@@ -83,7 +102,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     <!-- Filters -->
     <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <flux:input 
                 wire:model.live.debounce.300ms="search" 
                 placeholder="Cari nomor ticket atau judul..." 
@@ -91,12 +110,20 @@ new #[Layout('components.layouts.app')] class extends Component {
             />
             
             <flux:select wire:model.live="statusFilter">
-                <option value="">Semua Status</option>
+                <option value="">Semua Status Ticket</option>
                 <option value="open">Menunggu Review</option>
                 <option value="on_process">Sedang Diproses</option>
                 <option value="done">Selesai</option>
                 <option value="rejected">Ditolak</option>
                 <option value="closed">Ditutup</option>
+            </flux:select>
+
+            <flux:select wire:model.live="contractStatusFilter">
+                <option value="">Semua Status Contract</option>
+                <option value="no-contract">Belum Ada Contract</option>
+                <option value="active">Contract Active</option>
+                <option value="expired">Contract Expired</option>
+                <option value="terminated">Contract Terminated</option>
             </flux:select>
 
             <flux:select wire:model.live="divisionFilter">
@@ -189,7 +216,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
-                                <a href="{{ route('contracts.show', $ticket->id) }}" wire:navigate>
+                                <a href="{{ route('tickets.show', $ticket->id) }}" wire:navigate>
                                     <flux:button size="sm" variant="ghost" icon="eye" />
                                 </a>
                             </div>
@@ -202,7 +229,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 <flux:icon name="ticket" class="h-12 w-12 text-neutral-300 dark:text-neutral-600" />
                                 <p class="mt-4 text-neutral-500 dark:text-neutral-400">Belum ada ticket</p>
                                 @if(auth()->user()?->hasPermission('contracts.create'))
-                                <a href="{{ route('contracts.create') }}" class="mt-2" wire:navigate>
+                                <a href="{{ route('tickets.create') }}" class="mt-2" wire:navigate>
                                     <flux:button variant="primary" size="sm">Buat Ticket Pertama</flux:button>
                                 </a>
                                 @endif

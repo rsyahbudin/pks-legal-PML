@@ -161,14 +161,14 @@ new #[Layout('components.layouts.app')] class extends Component {
         $notificationService->notifyTicketCreated($ticket);
 
         session()->flash('success', 'Ticket berhasil dibuat dan notifikasi telah dikirim ke tim legal.');
-        $this->redirect(route('contracts.index'), navigate: true);
+        $this->redirect(route('tickets.index'), navigate: true);
     }
 }; ?>
 
 <div class="mx-auto max-w-5xl">
     <!-- Header -->
     <div class="mb-6">
-        <a href="{{ route('contracts.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
+        <a href="{{ route('tickets.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
             <flux:icon name="arrow-left" class="h-4 w-4" />
             Kembali ke Daftar
         </a>
@@ -304,19 +304,21 @@ new #[Layout('components.layouts.app')] class extends Component {
                 @endif
 
                 @if(!$this->is_auto_renewal)
-                <flux:field class="sm:col-span-2">
+                <flux:field >
                     <flux:label>Tanggal Berakhirnya {{ $this->document_type === 'nda' ? 'NDA' : 'Perjanjian' }} *</flux:label>
                     <flux:input type="date" wire:model="agreement_end_date" required />
                     <flux:error name="agreement_end_date" />
                 </flux:field>
-                @endif
 
-                <flux:field class="sm:col-span-2">
+                <flux:field >
                     <flux:label>Jangka Waktu Notifikasi Sebelum Pengakhiran (Hari)</flux:label>
                     <flux:input type="number" wire:model="termination_notification_days" placeholder="Contoh: 60" />
-                    <flux:description>Opsional - sistem akan mengirim notifikasi sebelum tanggal berakhir</flux:description>
+                    <!-- <flux:description>Opsional - sistem akan mengirim notifikasi sebelum tanggal berakhir</flux:description> -->
                     <flux:error name="termination_notification_days" />
                 </flux:field>
+                @endif
+
+                
             </div>
         </div>
         @endif
@@ -394,7 +396,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3">
-            <a href="{{ route('contracts.index') }}" wire:navigate>
+            <a href="{{ route('tickets.index') }}" wire:navigate>
                 <flux:button variant="ghost">Batal</flux:button>
             </a>
             <flux:button type="submit" variant="primary">

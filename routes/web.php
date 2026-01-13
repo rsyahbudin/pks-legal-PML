@@ -30,19 +30,19 @@ Route::middleware(['auth'])->group(function () {
         )
         ->name('two-factor.show');
 
-    // Contracts
-    Volt::route('contracts', 'contracts.index')
-        ->middleware('permission:contracts.view')
-        ->name('contracts.index');
-    Volt::route('contracts/create', 'contracts.create')
-        ->middleware('permission:contracts.create')
-        ->name('contracts.create');
-    Volt::route('contracts/{contract}', 'contracts.show')
-        ->middleware('permission:contracts.view')
-        ->name('contracts.show');
-    Volt::route('contracts/{contract}/edit', 'contracts.edit')
-        ->middleware('permission:contracts.edit')
-        ->name('contracts.edit');
+    // Tickets Routes (main feature)
+    Volt::route('tickets', 'contracts.index')
+        ->middleware('permission:tickets.view')
+        ->name('tickets.index');
+    Volt::route('tickets/create', 'contracts.create')
+        ->middleware('permission:tickets.create')
+        ->name('tickets.create');
+    Volt::route('tickets/{contract}', 'contracts.show')
+        ->middleware('permission:tickets.view')
+        ->name('tickets.show');
+    Volt::route('tickets/{contract}/edit', 'contracts.edit')
+        ->middleware('permission:tickets.edit')
+        ->name('tickets.edit');
 
     // Contracts Export
     Route::get('contracts-export', function (\Illuminate\Http\Request $request) {

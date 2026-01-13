@@ -178,14 +178,14 @@ new #[Layout('components.layouts.app')] class extends Component {
         }
 
         session()->flash('success', 'Ticket berhasil diupdate.');
-        $this->redirect(route('contracts.show', $this->ticket->id), navigate: true);
+        $this->redirect(route('tickets.show', $this->ticket->id), navigate: true);
     }
 }; ?>
 
 <div class="mx-auto max-w-5xl">
     <!-- Header -->
     <div class="mb-6">
-        <a href="{{ route('contracts.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
+        <a href="{{ route('tickets.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
             <flux:icon name="arrow-left" class="h-4 w-4" />
             Kembali ke Daftar
         </a>
@@ -411,7 +411,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3">
-            <a href="{{ route('contracts.index') }}" wire:navigate>
+            <a href="{{ route('tickets.index') }}" wire:navigate>
                 <flux:button variant="ghost">Batal</flux:button>
             </a>
             <flux:button type="submit" variant="primary">

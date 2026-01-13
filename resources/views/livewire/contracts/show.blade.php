@@ -159,7 +159,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 <div class="mx-auto max-w-5xl space-y-6">
     <!-- Header with Back Button -->
     <div class="mb-6">
-        <a href="{{ route('contracts.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
+        <a href="{{ route('tickets.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
             <flux:icon name="arrow-left" class="h-4 w-4" />
             Kembali ke Daftar
         </a>
@@ -190,7 +190,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         <h3 class="mb-3 font-semibold text-blue-900 dark:text-blue-300">Legal Team Actions</h3>
         <div class="flex flex-wrap gap-2">
             <!-- Edit Button (visible anytime for legal) -->
-            <a href="{{ route('contracts.edit', $ticket->id) }}" wire:navigate>
+            <a href="{{ route('tickets.edit', $ticket->id) }}" wire:navigate>
                 <flux:button variant="ghost" icon="pencil">
                     Edit Ticket
                 </flux:button>
