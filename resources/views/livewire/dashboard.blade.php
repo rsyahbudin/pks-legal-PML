@@ -2,21 +2,145 @@
 
 use App\Models\Contract;
 use App\Models\Setting;
-use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
+use App\Models\Ticket;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app')] class extends Component {
+new #[Layout('components.layouts.app')] class extends Component
+{
+    // Filter properties
+    public $contractStatusFilter = 'all';
+
+    public function isLegalUser(): bool
+    {
+        $user = auth()->user();
+
+        return $user && $user->hasAnyRole(['super-admin', 'legal']);
+    }
+
+    // TICKET STATISTICS (for Legal Dashboard)
+    public function getTicketStatisticsProperty(): array
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasPermission('dashboard.tickets.view')) {
+            return [];
+        }
+
+        return [
+            'total' => Ticket::count(),
+            'open' => Ticket::where('status', 'open')->count(),
+            'on_process' => Ticket::where('status', 'on_process')->count(),
+            'done' => Ticket::where('status', 'done')->count(),
+            'rejected' => Ticket::where('status', 'rejected')->count(),
+            'closed' => Ticket::where('status', 'closed')->count(),
+        ];
+    }
+
+    public function getAgingOverviewProperty(): array
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasPermission('dashboard.aging.view')) {
+            return [];
+        }
+
+        $onProcessTickets = Ticket::where('status', 'on_process')
+            ->whereNotNull('aging_start_at')
+            ->get();
+
+        $doneTickets = Ticket::where('status', 'done')
+            ->whereNotNull('aging_duration')
+            ->get();
+
+        $avgOngoing = $onProcessTickets->avg(function ($ticket) {
+            return $ticket->aging_start_at
+                ? now()->diffInMinutes($ticket->aging_start_at)
+                : 0;
+        });
+
+        $avgCompleted = $doneTickets->avg('aging_duration') ?? 0;
+
+        $longest = $onProcessTickets->sortByDesc(function ($ticket) {
+            return $ticket->aging_start_at
+                ? now()->diffInMinutes($ticket->aging_start_at)
+                : 0;
+        })->first();
+
+        return [
+            'avg_ongoing_minutes' => round($avgOngoing),
+            'avg_completed_minutes' => round($avgCompleted),
+            'longest_ticket' => $longest,
+        ];
+    }
+
+    public function getTicketsNeedingAttentionProperty(): Collection
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasPermission('dashboard.tickets.view')) {
+            return collect();
+        }
+
+        $query = Ticket::with(['creator', 'division', 'contract'])
+            ->whereIn('status', ['open', 'on_process']);
+
+        // Filter by contract status if filter is set
+        if ($this->contractStatusFilter !== 'all') {
+            if ($this->contractStatusFilter === 'no-contract') {
+                $query->whereDoesntHave('contract');
+            } else {
+                $query->whereHas('contract', function ($q) {
+                    $q->where('status', $this->contractStatusFilter);
+                });
+            }
+        }
+
+        return $query->orderBy('created_at', 'asc')
+            ->limit(10)
+            ->get();
+    }
+
+    // USER TICKET STATISTICS (for Regular User Dashboard)
+    public function getMyTicketStatisticsProperty(): array
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasPermission('dashboard.my-tickets.view')) {
+            return [];
+        }
+
+        return [
+            'total' => Ticket::where('created_by', $user->id)->count(),
+            'open' => Ticket::where('created_by', $user->id)->where('status', 'open')->count(),
+            'on_process' => Ticket::where('created_by', $user->id)->where('status', 'on_process')->count(),
+            'done' => Ticket::where('created_by', $user->id)->where('status', 'done')->count(),
+            'rejected' => Ticket::where('created_by', $user->id)->where('status', 'rejected')->count(),
+            'closed' => Ticket::where('created_by', $user->id)->where('status', 'closed')->count(),
+        ];
+    }
+
+    public function getMyRecentTicketsProperty(): Collection
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->hasPermission('dashboard.my-tickets.view')) {
+            return collect();
+        }
+
+        return Ticket::with(['division', 'department', 'contract'])
+            ->where('created_by', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+    }
+
+    // CONTRACT STATISTICS (existing, for Legal Dashboard)
     public function getStatisticsProperty(): array
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return ['total' => 0, 'active' => 0, 'expiring_soon' => 0, 'critical' => 0, 'expired' => 0];
         }
 
         $query = Contract::query();
 
-        // PIC only sees their own contracts
         if (method_exists($user, 'isPic') && $user->isPic()) {
             $query->forPic($user->id);
         }
@@ -45,7 +169,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function getRecentContractsProperty(): Collection
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return collect();
         }
 
@@ -62,7 +186,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function getExpiringContractsProperty(): Collection
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return collect();
         }
 
@@ -82,7 +206,251 @@ new #[Layout('components.layouts.app')] class extends Component {
 }; ?>
 
 <div class="space-y-6">
-    <!-- Statistics Cards -->
+    @if(auth()->user()->hasPermission('dashboard.tickets.view'))
+    {{-- LEGAL DASHBOARD --}}
+    
+    <!-- Ticket Statistics Cards -->
+    <div>
+        <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-white">Ticket Overview</h2>
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">Total</p>
+                <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $this->ticketStatistics['total'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+                <p class="text-xs text-blue-700 dark:text-blue-400">Open</p>
+                <p class="text-2xl font-bold text-blue-700 dark:text-blue-400">{{ $this->ticketStatistics['open'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950/30">
+                <p class="text-xs text-yellow-700 dark:text-yellow-400">On Process</p>
+                <p class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{{ $this->ticketStatistics['on_process'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
+                <p class="text-xs text-green-700 dark:text-green-400">Done</p>
+                <p class="text-2xl font-bold text-green-700 dark:text-green-400">{{ $this->ticketStatistics['done'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+                <p class="text-xs text-red-700 dark:text-red-400">Rejected</p>
+                <p class="text-2xl font-bold text-red-700 dark:text-red-400">{{ $this->ticketStatistics['rejected'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <p class="text-xs text-neutral-600 dark:text-neutral-400">Closed</p>
+                <p class="text-2xl font-bold text-neutral-600 dark:text-neutral-400">{{ $this->ticketStatistics['closed'] ?? 0 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aging Overview -->
+    @if($this->agingOverview['avg_ongoing_minutes'] > 0 || $this->agingOverview['avg_completed_minutes'] > 0)
+    <div class="rounded-xl border border-neutral-200 bg-gradient-to-r from-blue-50 to-purple-50 p-6 dark:border-neutral-700 dark:from-blue-950/30 dark:to-purple-950/30">
+        <h3 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Aging Overview</h3>
+        <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+                <p class="text-sm text-neutral-600 dark:text-neutral-400">Avg Ongoing (On Process)</p>
+                <p class="text-xl font-bold text-blue-700 dark:text-blue-400">
+                    {{ floor($this->agingOverview['avg_ongoing_minutes'] / 1440) }} hari {{ floor(($this->agingOverview['avg_ongoing_minutes'] % 1440) / 60) }} jam
+                </p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-600 dark:text-neutral-400">Avg Completed</p>
+                <p class="text-xl font-bold text-green-700 dark:text-green-400">
+                    {{ floor($this->agingOverview['avg_completed_minutes'] / 1440) }} hari {{ floor(($this->agingOverview['avg_completed_minutes'] % 1440) / 60) }} jam
+                </p>
+            </div>
+            @if($this->agingOverview['longest_ticket'])
+            <div>
+                <p class="text-sm text-neutral-600 dark:text-neutral-400">Longest Ongoing</p>
+                <p class="text-lg font-bold text-red-700 dark:text-red-400">
+                    {{ $this->agingOverview['longest_ticket']->ticket_number }}
+                </p>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                    {{ floor(now()->diffInMinutes($this->agingOverview['longest_ticket']->aging_start_at) / 1440) }} hari
+                </p>
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
+
+    <!-- Tickets Needing Attention -->
+    @if($this->ticketsNeedingAttention->isNotEmpty() || $this->contractStatusFilter !== 'all')
+    <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
+        <div class="border-b border-neutral-200 p-4 dark:border-neutral-700">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">Tickets Needing Attention</h3>
+                
+                <!-- Filter Dropdown -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400">Filter Contract:</label>
+                    <select wire:model.live="contractStatusFilter" class="rounded-lg border-neutral-300 text-sm dark:border-neutral-600 dark:bg-zinc-800">
+                        <option value="all">Semua</option>
+                        <option value="no-contract">Belum Ada Contract</option>
+                        <option value="active">Active</option>
+                        <option value="expired">Expired</option>
+                        <option value="terminated">Terminated</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-neutral-50 text-xs uppercase text-neutral-600 dark:bg-zinc-800 dark:text-neutral-400">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Ticket #</th>
+                        <th class="px-4 py-3 text-left">Title</th>
+                        <th class="px-4 py-3 text-left">Created By</th>
+                        <th class="px-4 py-3 text-center">Status</th>
+                        <th class="px-4 py-3 text-center">Aging</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
+                    @foreach($this->ticketsNeedingAttention as $ticket)
+                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
+                        <td class="px-4 py-3 text-sm font-medium">
+                            <a href="{{ route('contracts.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                                {{ $ticket->ticket_number }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                            {{ Str::limit($ticket->proposed_document_title, 40) }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                            {{ $ticket->creator->name }}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            @php
+                                $statusConfig = [
+                                    'open' => ['class' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', 'label' => 'Open'],
+                                    'on_process' => ['class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', 'label' => 'On Process'],
+                                ];
+                                $config = $statusConfig[$ticket->status] ?? ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => ucfirst($ticket->status)];
+                            @endphp
+                            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $config['class'] }}">
+                                {{ $config['label'] }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center text-sm font-medium text-neutral-900 dark:text-white">
+                            @if($ticket->status === 'on_process' && $ticket->aging_start_at)
+                                {{ floor(now()->diffInMinutes($ticket->aging_start_at) / 1440) }}d {{ floor((now()->diffInMinutes($ticket->aging_start_at) % 1440) / 60) }}h
+                            @else
+                                -
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                    @if($this->ticketsNeedingAttention->isEmpty())
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                            Tidak ada ticket yang sesuai dengan filter.
+                        </td>
+                    </tr>
+                    @endif
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    <h2 class="text-xl font-bold text-neutral-900 dark:text-white">Contract Overview</h2>
+
+    @else
+    {{-- USER DASHBOARD --}}
+    <div>
+        <h2 class="mb-4 text-xl font-bold text-neutral-900 dark:text-white">My Tickets</h2>
+        
+        <!-- My Ticket Statistics -->
+        <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
+                <p class="text-xs text-neutral-500 dark:text-neutral-400">Total</p>
+                <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $this->myTicketStatistics['total'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+                <p class="text-xs text-blue-700 dark:text-blue-400">Open</p>
+                <p class="text-2xl font-bold text-blue-700 dark:text-blue-400">{{ $this->myTicketStatistics['open'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950/30">
+                <p class="text-xs text-yellow-700 dark:text-yellow-400">On Process</p>
+                <p class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{{ $this->myTicketStatistics['on_process'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
+                <p class="text-xs text-green-700 dark:text-green-400">Done</p>
+                <p class="text-2xl font-bold text-green-700 dark:text-green-400">{{ $this->myTicketStatistics['done'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+                <p class="text-xs text-red-700 dark:text-red-400">Rejected</p>
+                <p class="text-2xl font-bold text-red-700 dark:text-red-400">{{ $this->myTicketStatistics['rejected'] ?? 0 }}</p>
+            </div>
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-900">
+                <p class="text-xs text-neutral-600 dark:text-neutral-400">Closed</p>
+                <p class="text-2xl font-bold text-neutral-600 dark:text-neutral-400">{{ $this->myTicketStatistics['closed'] ?? 0 }}</p>
+            </div>
+        </div>
+
+        <!-- My Recent Tickets -->
+        <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
+            <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
+                <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">My Recent Tickets</h3>
+                <a href="{{ route('contracts.index') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                    View All →
+                </a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-neutral-50 text-xs uppercase text-neutral-600 dark:bg-zinc-800 dark:text-neutral-400">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Ticket #</th>
+                            <th class="px-4 py-3 text-left">Title</th>
+                            <th class="px-4 py-3 text-center">Status</th>
+                            <th class="px-4 py-3 text-left">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
+                        @forelse($this->myRecentTickets as $ticket)
+                        <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
+                            <td class="px-4 py-3 text-sm font-medium">
+                                <a href="{{ route('contracts.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                                    {{ $ticket->ticket_number }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                                {{ Str::limit($ticket->proposed_document_title, 50) }}
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                @php
+                                    $statusConfig = [
+                                        'open' => ['class' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', 'label' => 'Open'],
+                                        'on_process' => ['class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', 'label' => 'On Process'],
+                                        'done' => ['class' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', 'label' => 'Done'],
+                                        'rejected' => ['class' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', 'label' => 'Rejected'],
+                                        'closed' => ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => 'Closed'],
+                                    ];
+                                    $config = $statusConfig[$ticket->status] ?? ['class' => 'bg-neutral-100 text-neutral-800', 'label' => ucfirst($ticket->status)];
+                                @endphp
+                                <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $config['class'] }}">
+                                    {{ $config['label'] }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                                {{ $ticket->created_at->format('d M Y') }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                                Belum ada ticket. <a href="{{ route('contracts.create') }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>Buat ticket pertama</a>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="mt-6 text-xl font-bold text-neutral-900 dark:text-white">Contract Overview</h2>
+    @endif
+
+    <!-- Contract Statistics Cards (shown for both legal and regular users) -->
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <!-- Total Contracts -->
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
