@@ -21,10 +21,6 @@
                 <td style="padding: 8px 0; font-weight: bold;">{{ $contract->contract_number }}</td>
             </tr>
             <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Partner</td>
-                <td style="padding: 8px 0;">{{ $contract->partner->display_name }}</td>
-            </tr>
-            <tr>
                 <td style="padding: 8px 0; color: #6b7280;">Divisi</td>
                 <td style="padding: 8px 0;">{{ $contract->division->name }}</td>
             </tr>

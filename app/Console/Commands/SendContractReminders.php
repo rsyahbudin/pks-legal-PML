@@ -26,23 +26,29 @@ class SendContractReminders extends Command
             return self::SUCCESS;
         }
 
-        $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
-        $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
-
-        // Get excluded document types from settings
-        $excludedTypes = Setting::get('reminder_excluded_document_types', ['nda']);
-        if (is_string($excludedTypes)) {
-            $excludedTypes = json_decode($excludedTypes, true) ?? ['nda'];
+        // Get reminder days configuration (default: 60, 30, 7 days before expiry)
+        $reminderDays = Setting::get('reminder_days', [60, 30, 7]);
+        if (is_string($reminderDays)) {
+            $reminderDays = json_decode($reminderDays, true) ?? [60, 30, 7];
         }
 
-        // Get contracts that are expiring within warning threshold
-        // Exclude: configured document types, terminated contracts
-        $contracts = Contract::with(['division', 'pic', 'ticket'])
+        // Only process these document types
+        $includedTypes = ['perjanjian', 'adendum', 'amandemen'];
+
+        // Get all active contracts with these document types
+        $maxDays = max($reminderDays);
+        $contracts = Contract::with(['division', 'pic', 'ticket', 'ticket.creator'])
             ->where('status', 'active') // Only active contracts
-            ->whereNotIn('document_type', $excludedTypes)
-            ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
-            ->whereDate('end_date', '>=', now()->subDays(7)) // Include recently expired (up to 7 days)
+            ->whereIn('document_type', $includedTypes)
+            ->whereDate('end_date', '>=', now()) // Not expired
+            ->whereDate('end_date', '<=', now()->addDays($maxDays)) // Within max reminder range
             ->get();
+
+        // Filter to only contracts with exact match on reminder days
+        $contracts = $contracts->filter(function($contract) use ($reminderDays) {
+            $daysRemaining = $contract->days_remaining;
+            return in_array($daysRemaining, $reminderDays);
+        });
 
         if ($contracts->isEmpty()) {
             $this->info('No contracts needing reminders.');
@@ -59,54 +65,18 @@ class SendContractReminders extends Command
         $sentCount = 0;
 
         foreach ($contracts as $contract) {
-            $daysRemaining = $contract->days_remaining;
             $recipients = collect();
 
-            // Add PIC (User or Manual)
-            $picEmail = $contract->pic_email;
-            if ($sendToPic && $picEmail) {
-                // For manual PIC, we create a temporary object or struct
-                // For User PIC, we already have the object, but we need consistency
-                if ($contract->pic) {
-                    $recipients->push($contract->pic);
-                } else {
-                    // Manual PIC - we'll handle this in the loop below or create a dummy object
-                    // Let's create a simple object for manual PIC
-                    $manualPic = new \stdClass();
-                    $manualPic->id = 'manual_' . $contract->id; // Unique ID for deduplication
-                    $manualPic->email = $picEmail;
-                    $manualPic->name = $contract->pic_name;
-                    $recipients->push($manualPic);
-                }
+            // ALWAYS add ticket creator (if exists)
+            if ($contract->ticket && $contract->ticket->creator) {
+                $recipients->push($contract->ticket->creator);
             }
 
-            // Add Legal team users
-            if ($sendToLegal) {
-                $legalRole = Role::where('slug', 'legal')->first();
-                if ($legalRole) {
-                    $legalUsers = User::where('role_id', $legalRole->id)->get();
-                    $recipients = $recipients->merge($legalUsers);
-                }
-                // Also send to configured legal email
-                if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
-                    // We'll handle this separately
-                }
-            }
-
-            // Add Management
-            if ($sendToManagers) {
-                $managementRole = Role::where('slug', 'management')->first();
-                if ($managementRole) {
-                    $managers = User::where('role_id', $managementRole->id)->get();
-                    $recipients = $recipients->merge($managers);
-                }
-            }
-
-            // Deduplicate recipients
-            $recipients = $recipients->unique('id');
+            // No deduplication here - ReminderLog::wasSentToday() will handle this per-contract
+            $daysRemaining = $contract->days_remaining;
 
             foreach ($recipients as $recipient) {
-                // Check if we already sent a reminder today (only for registered users)
+                // Check if we already sent a reminder today for THIS contract to THIS user
                 if ($recipient instanceof User && ReminderLog::wasSentToday($contract->id, $recipient->id, 'email')) {
                     continue;
                 }
@@ -154,8 +124,8 @@ class SendContractReminders extends Command
                         'loggable_type' => Contract::class,
                         'loggable_id' => $contract->id,
                         'user_id' => null, // System action
-                        'action' => 'reminder_sent',
-                        'description' => "Auto reminder email sent to {$recipient->email} ({$daysRemaining} days remaining)",
+                        'action' => "Email reminder dikirim ke {$recipient->email}",
+                        'description' => "Email pengingat otomatis berhasil dikirim ({$daysRemaining} hari lagi sebelum berakhir)",
                     ]);
 
                     $sentCount++;
@@ -186,8 +156,8 @@ class SendContractReminders extends Command
                         'loggable_type' => Contract::class,
                         'loggable_id' => $contract->id,
                         'user_id' => null,
-                        'action' => 'reminder_failed',
-                        'description' => "Failed to send auto reminder to {$recipient->email}: {$e->getMessage()}",
+                        'action' => "Gagal mengirim email reminder ke {$recipient->email}",
+                        'description' => "Email pengingat gagal dikirim: {$e->getMessage()}",
                     ]);
                 }
             }

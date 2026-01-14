@@ -49,7 +49,6 @@ class ContractExpiringMail extends Mailable
             '[agreement name]' => $this->contract->agreement_name ?? '',
             '[contract number]' => $this->contract->contract_number,
             '[expiration date]' => $expirationDate,
-            '[partner name]' => $this->contract->partner->display_name ?? '',
             '[days remaining]' => $this->daysRemaining,
         ];
         

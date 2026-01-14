@@ -15,6 +15,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $reminder_send_time = '08:00';
     public string $app_name = '';
     public string $company_name = '';
+    public array $reminder_days = [60, 30, 7];
 
 
     public function mount(): void
@@ -29,12 +30,15 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->reminder_send_time = Setting::get('reminder_send_time', '08:00');
         $this->app_name = Setting::get('app_name', 'PKS Tracking System');
         $this->company_name = Setting::get('company_name', '');
+        
+        $reminderDays = Setting::get('reminder_days', [60, 30, 7]);
+        $this->reminder_days = is_array($reminderDays) ? $reminderDays : json_decode($reminderDays, true) ?? [60, 30, 7];
 
     }
 
     public function save(): void
     {
-        if (!auth()->user()?->hasPermission('settings.manage')) {
+        if (!auth()->user()?->hasPermission('settings.edit')) {
             session()->flash('error', 'Anda tidak memiliki akses untuk mengubah pengaturan.');
             return;
         }
@@ -46,6 +50,8 @@ new #[Layout('components.layouts.app')] class extends Component {
             'reminder_send_time' => ['required', 'date_format:H:i'],
             'app_name' => ['required', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:100'],
+            'reminder_days' => ['required', 'array', 'min:1'],
+            'reminder_days.*' => ['required', 'integer', 'min:1', 'max:365'],
 
         ]);
 
@@ -59,9 +65,21 @@ new #[Layout('components.layouts.app')] class extends Component {
         Setting::set('reminder_send_time', $this->reminder_send_time, 'string');
         Setting::set('app_name', $this->app_name, 'string');
         Setting::set('company_name', $this->company_name, 'string');
+        Setting::set('reminder_days', json_encode(array_values($this->reminder_days)), 'string');
 
 
         session()->flash('success', 'Pengaturan berhasil disimpan.');
+    }
+
+    public function addReminderDay(): void
+    {
+        $this->reminder_days[] = 15; // Default new day
+    }
+
+    public function removeReminderDay(int $index): void
+    {
+        unset($this->reminder_days[$index]);
+        $this->reminder_days = array_values($this->reminder_days); // Re-index
     }
 }; ?>
 
@@ -135,6 +153,31 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <flux:input type="time" wire:model="reminder_send_time" />
                     </flux:field>
                 </div>
+
+                <flux:field class="pt-4">
+                    <flux:label>Reminder Days (H- hari sebelum berakhir)</flux:label>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($reminder_days as $index => $day)
+                            <div class="flex items-center gap-1">
+                                <flux:input 
+                                    type="number" 
+                                    wire:model="reminder_days.{{ $index }}" 
+                                    min="1" 
+                                    max="365"
+                                    class="w-20"
+                                />
+                                @if(count($reminder_days) > 1)
+                                    <flux:button type="button" wire:click="removeReminderDay({{ $index }})" variant="danger" size="sm">×</flux:button>
+                                @endif
+                            </div>
+                        @endforeach
+                        <flux:button type="button" wire:click="addReminderDay" variant="ghost" size="sm">+ Tambah</flux:button>
+                    </div>
+                    <flux:description>
+                        Email reminder otomatis akan dikirim tepat pada H- hari ini. Default: 60, 30, 7 hari sebelum contract berakhir.
+                    </flux:description>
+                    <flux:error name="reminder_days" />
+                </flux:field>
             </div>
         </div>
 
