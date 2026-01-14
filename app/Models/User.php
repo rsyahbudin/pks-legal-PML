@@ -210,6 +210,6 @@ class User extends Authenticatable
      */
     public function canManageContracts(): bool
     {
-        return $this->hasPermission('contracts.create') || $this->hasPermission('contracts.edit');
+        return $this->hasPermission('contracts.edit');
     }
 }

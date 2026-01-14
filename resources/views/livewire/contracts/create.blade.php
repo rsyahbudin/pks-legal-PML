@@ -8,6 +8,7 @@ use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Layout;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 new #[Layout('components.layouts.app')] class extends Component {
     use WithFileUploads;
@@ -64,104 +65,168 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function save(): void
     {
-        $user = auth()->user();
-
-        if (!$user->hasPermission('contracts.create')) {
-            $this->dispatch('notify', type: 'error', message: 'Anda tidak memiliki akses untuk membuat ticket.');
-            return;
-        }
-
-        // Base validation rules
-        $rules = [
-            'has_financial_impact' => ['required', 'boolean'],
-            'proposed_document_title' => ['required', 'string', 'max:255'],
-            'draft_document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'document_type' => ['required', Rule::in(['perjanjian', 'nda', 'surat_kuasa', 'pendapat_hukum', 'surat_pernyataan', 'surat_lainnya'])],
-            'tat_legal_compliance' => ['required', 'boolean'],
-            'mandatory_documents.*' => ['nullable', 'file', 'max:10240'],
-            'approval_document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-        ];
-
-        // Conditional validation based on document_type
-        if (in_array($this->document_type, ['perjanjian', 'nda'])) {
-            $rules['counterpart_name'] = ['required', 'string', 'max:255'];
-            $rules['agreement_start_date'] = ['required', 'date'];
-            $rules['agreement_duration'] = ['required', 'string', 'max:100'];
-            $rules['is_auto_renewal'] = ['required', 'boolean'];
-            
-            if ($this->is_auto_renewal) {
-                $rules['renewal_period'] = ['required', Rule::in(['yearly', 'monthly', 'weekly'])];
-                $rules['renewal_notification_days'] = ['required', 'integer', 'min:1'];
-            } else {
-                $rules['agreement_end_date'] = ['required', 'date', 'after:agreement_start_date'];
-            }
-            
-            $rules['termination_notification_days'] = ['nullable', 'integer', 'min:1'];
-        } elseif ($this->document_type === 'surat_kuasa') {
-            $rules['kuasa_pemberi'] = ['required', 'string', 'max:255'];
-            $rules['kuasa_penerima'] = ['required', 'string', 'max:255'];
-            $rules['kuasa_start_date'] = ['required', 'date'];
-            $rules['kuasa_end_date'] = ['required', 'date', 'after:kuasa_start_date'];
-        }
-
-        $validated = $this->validate($rules);
-
-        // Create ticket
-        $ticket = Ticket::create([
+        \Log::info('=== TICKET CREATE: START ===', [
+            'user_email' => auth()->user()->email,
             'division_id' => $this->division_id,
             'department_id' => $this->department_id,
-            'has_financial_impact' => $validated['has_financial_impact'],
-            'proposed_document_title' => $validated['proposed_document_title'],
-            'document_type' => $validated['document_type'],
-            // Conditional fields
-            'counterpart_name' => $this->counterpart_name ?: null,
-            'agreement_start_date' => $this->agreement_start_date ?: null,
-            'agreement_duration' => $this->agreement_duration ?: null,
-            'is_auto_renewal' => $this->is_auto_renewal,
-            'renewal_period' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
-            'renewal_notification_days' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
-            'agreement_end_date' => (!$this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
-            'termination_notification_days' => $this->termination_notification_days ?: null,
-            'kuasa_pemberi' => $this->kuasa_pemberi ?: null,
-            'kuasa_penerima' => $this->kuasa_penerima ?: null,
-            'kuasa_start_date' => $this->kuasa_start_date ?: null,
-            'kuasa_end_date' => $this->kuasa_end_date ?: null,
-            'tat_legal_compliance' => $validated['tat_legal_compliance'],
-            'status' => 'open',
-            'created_by' => $user->id,
+            'document_type' => $this->document_type,
         ]);
 
-        // Handle file uploads
-        $ticketId = $ticket->id;
-        
-        if ($this->draft_document) {
-            $draftPath = $this->draft_document->store("tickets/{$ticketId}/draft", 'public');
-            $ticket->update(['draft_document_path' => $draftPath]);
-        }
-        
-        if ($this->mandatory_documents && count($this->mandatory_documents) > 0) {
-            $mandatoryPaths = [];
-            foreach ($this->mandatory_documents as $file) {
-                $path = $file->store("tickets/{$ticketId}/mandatory", 'public');
-                $mandatoryPaths[] = [
-                    'name' => $file->getClientOriginalName(),
-                    'path' => $path,
-                ];
+        try {
+            $user = auth()->user();
+
+            if (!$user->hasPermission('tickets.create')) {
+                \Log::warning('TICKET CREATE: Permission denied', ['user_id' => $user->id]);
+                $this->dispatch('notify', type: 'error', message: 'Anda tidak memiliki akses untuk membuat ticket.');
+                return;
             }
-            $ticket->update(['mandatory_documents_path' => $mandatoryPaths]);
-        }
-        
-        if ($this->approval_document) {
-            $approvalPath = $this->approval_document->store("tickets/{$ticketId}/approval", 'public');
-            $ticket->update(['approval_document_path' => $approvalPath]);
-        }
 
-        // Send email notification to legal team
-        $notificationService = app(NotificationService::class);
-        $notificationService->notifyTicketCreated($ticket);
+            \Log::info('TICKET CREATE: Building validation rules');
 
-        session()->flash('success', 'Ticket berhasil dibuat dan notifikasi telah dikirim ke tim legal.');
-        $this->redirect(route('tickets.index'), navigate: true);
+            // Base validation rules
+            $rules = [
+                'division_id' => ['required', 'exists:divisions,id'],
+                'department_id' => ['required', 'exists:departments,id'],
+                'has_financial_impact' => ['required', 'boolean'],
+                'proposed_document_title' => ['required', 'string', 'max:255'],
+                'draft_document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+                'document_type' => ['required', Rule::in(['perjanjian', 'nda', 'surat_kuasa', 'pendapat_hukum', 'surat_pernyataan', 'surat_lainnya'])],
+                'tat_legal_compliance' => ['required', 'boolean'],
+                'mandatory_documents.*' => ['nullable', 'file', 'max:10240'],
+                'approval_document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            ];
+
+            // Conditional validation based on document_type
+            if (in_array($this->document_type, ['perjanjian', 'nda'])) {
+                $rules['counterpart_name'] = ['required', 'string', 'max:255'];
+                $rules['agreement_start_date'] = ['required', 'date'];
+                $rules['agreement_duration'] = ['required', 'string', 'max:100'];
+                $rules['is_auto_renewal'] = ['required', 'boolean'];
+                
+                if ($this->is_auto_renewal) {
+                    $rules['renewal_period'] = ['required', 'string', 'max:100'];
+                    $rules['renewal_notification_days'] = ['required', 'integer', 'min:1'];
+                } else {
+                    $rules['agreement_end_date'] = ['required', 'date', 'after:agreement_start_date'];
+                }
+                
+                $rules['termination_notification_days'] = ['nullable', 'integer', 'min:1'];
+            } elseif ($this->document_type === 'surat_kuasa') {
+                $rules['kuasa_pemberi'] = ['required', 'string', 'max:255'];
+                $rules['kuasa_penerima'] = ['required', 'string', 'max:255'];
+                $rules['kuasa_start_date'] = ['required', 'date'];
+                $rules['kuasa_end_date'] = ['required', 'date', 'after:kuasa_start_date'];
+            }
+
+            \Log::info('TICKET CREATE: Validating input', ['rules_count' => count($rules)]);
+
+            try {
+                $validated = $this->validate($rules);
+                \Log::info('TICKET CREATE: Validation passed');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                \Log::error('TICKET CREATE: Validation failed', [
+                    'errors' => $e->errors(),
+                    'form_data' => [
+                        'division_id' => $this->division_id,
+                        'department_id' => $this->department_id,
+                        'document_type' => $this->document_type,
+                        'proposed_document_title' => $this->proposed_document_title,
+                        'has_financial_impact' => $this->has_financial_impact,
+                        'tat_legal_compliance' => $this->tat_legal_compliance,
+                    ]
+                ]);
+                throw $e;
+            }
+
+            \Log::info('TICKET CREATE: Creating ticket record');
+
+            // Create ticket
+            $ticket = Ticket::create([
+                'division_id' => $this->division_id,
+                'department_id' => $this->department_id,
+                'has_financial_impact' => $validated['has_financial_impact'],
+                'proposed_document_title' => $validated['proposed_document_title'],
+                'document_type' => $validated['document_type'],
+                // Conditional fields
+                'counterpart_name' => $this->counterpart_name ?: null,
+                'agreement_start_date' => $this->agreement_start_date ?: null,
+                'agreement_duration' => $this->agreement_duration ?: null,
+                'is_auto_renewal' => $this->is_auto_renewal,
+                'renewal_period' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
+                'renewal_notification_days' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
+                'agreement_end_date' => (!$this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
+                'termination_notification_days' => $this->termination_notification_days ?: null,
+                'kuasa_pemberi' => $this->kuasa_pemberi ?: null,
+                'kuasa_penerima' => $this->kuasa_penerima ?: null,
+                'kuasa_start_date' => $this->kuasa_start_date ?: null,
+                'kuasa_end_date' => $this->kuasa_end_date ?: null,
+                'tat_legal_compliance' => $validated['tat_legal_compliance'],
+                'status' => 'open',
+                'created_by' => $user->id,
+            ]);
+
+            \Log::info('TICKET CREATE: Ticket created', [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number
+            ]);
+
+            // Handle file uploads
+            $ticketId = $ticket->id;
+            
+            if ($this->draft_document) {
+                \Log::info('TICKET CREATE: Uploading draft document');
+                $draftPath = $this->draft_document->store("tickets/{$ticketId}/draft", 'public');
+                $ticket->update(['draft_document_path' => $draftPath]);
+                \Log::info('TICKET CREATE: Draft uploaded', ['path' => $draftPath]);
+            }
+            
+            if ($this->mandatory_documents && count($this->mandatory_documents) > 0) {
+                \Log::info('TICKET CREATE: Uploading mandatory documents', ['count' => count($this->mandatory_documents)]);
+                $mandatoryPaths = [];
+                foreach ($this->mandatory_documents as $file) {
+                    $path = $file->store("tickets/{$ticketId}/mandatory", 'public');
+                    $mandatoryPaths[] = [
+                        'name' => $file->getClientOriginalName(),
+                        'path' => $path,
+                    ];
+                }
+                $ticket->update(['mandatory_documents_path' => $mandatoryPaths]);
+                \Log::info('TICKET CREATE: Mandatory documents uploaded', ['count' => count($mandatoryPaths)]);
+            }
+            
+            if ($this->approval_document) {
+                \Log::info('TICKET CREATE: Uploading approval document');
+                $approvalPath = $this->approval_document->store("tickets/{$ticketId}/approval", 'public');
+                $ticket->update(['approval_document_path' => $approvalPath]);
+                \Log::info('TICKET CREATE: Approval document uploaded', ['path' => $approvalPath]);
+            }
+
+            \Log::info('TICKET CREATE: Sending email notification');
+            // Send email notification to legal team
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyTicketCreated($ticket);
+
+            \Log::info('=== TICKET CREATE: SUCCESS ===', ['ticket_id' => $ticket->id]);
+
+            session()->flash('success', 'Ticket berhasil dibuat dan notifikasi telah dikirim ke tim legal.');
+            $this->redirect(route('tickets.index'), navigate: true);
+
+        } catch (\Exception $e) {
+            \Log::error('=== TICKET CREATE: FAILED ===', [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'error_trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'form_data' => [
+                    'division_id' => $this->division_id,
+                    'department_id' => $this->department_id,
+                    'document_type' => $this->document_type,
+                ]
+            ]);
+
+            $this->dispatch('notify', type: 'error', message: 'Error: ' . $e->getMessage());
+        }
     }
 }; ?>
 
@@ -185,25 +250,27 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div class="grid gap-4 sm:grid-cols-2">
                 <!-- Division (readonly, auto-filled) -->
                 <flux:field>
-                    <flux:label>User Directorate (Divisi)</flux:label>
-                    <flux:select wire:model="division_id" disabled>
+                    <flux:label>Directorate/Divisi User *</flux:label>
+                    <flux:select wire:model="division_id" readonly>
+                        <option value="">-</option>
                         @foreach($this->divisions as $division)
                         <option value="{{ $division->id }}" {{ $division->id == $this->division_id ? 'selected' : '' }}>{{ $division->name }}</option>
                         @endforeach
                     </flux:select>
                     <flux:description>Auto-filled dari akun Anda</flux:description>
+                    <flux:error name="division_id" />
                 </flux:field>
 
-                <!-- Department (readonly, auto-filled) -->
                 <flux:field>
-                    <flux:label>Departement</flux:label>
-                    <flux:select wire:model="department_id" disabled>
+                    <flux:label>Departemen User *</flux:label>
+                    <flux:select wire:model="department_id" readonly>
                         <option value="">-</option>
                         @foreach($this->departments as $dept)
                         <option value="{{ $dept->id }}" {{ $dept->id == $this->department_id ? 'selected' : '' }}>{{ $dept->name }}</option>
                         @endforeach
                     </flux:select>
                     <flux:description>Auto-filled dari akun Anda</flux:description>
+                    <flux:error name="department_id" />
                 </flux:field>
 
                 <!-- Financial Impact -->
@@ -287,18 +354,15 @@ new #[Layout('components.layouts.app')] class extends Component {
                 @if($this->is_auto_renewal)
                 <flux:field>
                     <flux:label>Periode Pembaruan Otomatis *</flux:label>
-                    <flux:select wire:model="renewal_period" required>
-                        <option value="">Pilih Periode</option>
-                        <option value="yearly">Per Tahun</option>
-                        <option value="monthly">Per Bulan</option>
-                        <option value="weekly">Per Minggu</option>
-                    </flux:select>
+                    <flux:input type="text" wire:model="renewal_period" placeholder="Contoh: 1 tahun, 6 bulan" required />
+                    <flux:description>Masukkan periode pembaruan (contoh: 1 tahun, 6 bulan, 90 hari)</flux:description>
                     <flux:error name="renewal_period" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Jangka Waktu Notifikasi Sebelum Pembaruan Otomatis (Hari) *</flux:label>
+                    <flux:label>Jangka Waktu Notifikasi Sebelum Pembaruan (Hari) *</flux:label>
                     <flux:input type="number" wire:model="renewal_notification_days" placeholder="Contoh: 30" required />
+                    <flux:description>Sistem akan mengirim notifikasi sebelum tanggal pembaruan</flux:description>
                     <flux:error name="renewal_notification_days" />
                 </flux:field>
                 @endif
@@ -373,7 +437,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
                 <flux:field>
                     <flux:label>Dokumen Wajib *</flux:label>
-                    <input type="file" wire:model="mandatory_documents" multiple class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100 dark:text-neutral-400 dark:file:bg-purple-900/30 dark:file:text-purple-400" />
+                    <input type="file" wire:model="mandatory_documents" multiple class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100 dark:text-neutral-400 dark:file:bg-purple-900/30 dark:file:text-purple-400" required/>
                     <flux:description>Akta Pendirian, Akta Susunan Direktur Komisaris, Akta Perubahan Terakhir, KTP, dll. (Maksimal 10MB per file, bisa upload multiple)</flux:description>
                     <flux:error name="mandatory_documents" />
                     <div wire:loading wire:target="mandatory_documents" class="mt-2 text-sm text-purple-600">
@@ -383,7 +447,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
                 <flux:field>
                     <flux:label>Legal Request Permit/Approval dari Head atau Leader Terkait *</flux:label>
-                    <input type="file" wire:model="approval_document" accept=".pdf,.jpg,.jpeg,.png" class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-orange-700 hover:file:bg-orange-100 dark:text-neutral-400 dark:file:bg-orange-900/30 dark:file:text-orange-400" />
+                    <input type="file" wire:model="approval_document" accept=".pdf,.jpg,.jpeg,.png" class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-orange-700 hover:file:bg-orange-100 dark:text-neutral-400 dark:file:bg-orange-900/30 dark:file:text-orange-400" required/>
                     <flux:description>Screenshot email/korespondensi approval (PDF atau gambar, maksimal 5MB)</flux:description>
                     <flux:error name="approval_document" />
                     <div wire:loading wire:target="approval_document" class="mt-2 text-sm text-orange-600">

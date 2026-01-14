@@ -98,9 +98,8 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->ticket->moveToDone();
 
         // Create contract from ticket
-        if (!$this->ticket->contract) {
-            $contract = $this->ticket->createContract();
-            $this->dispatch('notify', type: 'success', message: "Ticket selesai dan Contract #{$contract->contract_number} telah dibuat.");
+        if (!$this->ticket->contract && $this->canCreateContract()) {
+            $this->generateContract();
         } else {
             $this->dispatch('notify', type: 'success', message: 'Ticket berhasil diselesaikan.');
         }
@@ -111,6 +110,43 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         // Refresh data
         $this->mount($this->ticket->id);
+    }
+
+    public function generateContract()
+    {
+        // Only allow contract creation for specific document types
+        $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
+        
+        if (!in_array($this->ticket->document_type, $contractableTypes)) {
+            $this->dispatch('notify', type: 'error', message: 'Tipe dokumen ini tidak memerlukan contract.');
+            return;
+        }
+
+        if ($this->ticket->status !== 'done') {
+            $this->dispatch('notify', type: 'error', message: 'Ticket harus berstatus Done untuk membuat contract.');
+            return;
+        }
+
+        if ($this->ticket->contract) {
+            $this->dispatch('notify', type: 'error', message: 'Contract sudah dibuat untuk ticket ini.');
+            return;
+        }
+
+        try {
+            $contract = $this->ticket->createContract();
+            $this->dispatch('notify', type: 'success', message: "Contract #{$contract->contract_number} berhasil dibuat.");
+        } catch (\Exception $e) {
+            $this->dispatch('notify', type: 'error', message: 'Gagal membuat contract: ' . $e->getMessage());
+        }
+    }
+    
+    public function canCreateContract(): bool
+    {
+        $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
+        
+        return $this->ticket->status === 'done' 
+            && !$this->ticket->contract
+            && in_array($this->ticket->document_type, $contractableTypes);
     }
 
     public function openTerminateModal(): void

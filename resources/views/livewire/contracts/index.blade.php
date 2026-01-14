@@ -228,7 +228,7 @@ new #[Layout('components.layouts.app')] class extends Component
                             <div class="flex flex-col items-center">
                                 <flux:icon name="ticket" class="h-12 w-12 text-neutral-300 dark:text-neutral-600" />
                                 <p class="mt-4 text-neutral-500 dark:text-neutral-400">Belum ada ticket</p>
-                                @if(auth()->user()?->hasPermission('contracts.create'))
+                                @if(auth()->user()?->hasPermission('tickets.create'))
                                 <a href="{{ route('tickets.create') }}" class="mt-2" wire:navigate>
                                     <flux:button variant="primary" size="sm">Buat Ticket Pertama</flux:button>
                                 </a>

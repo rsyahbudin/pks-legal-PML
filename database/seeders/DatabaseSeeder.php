@@ -2,11 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Department;
-use App\Models\Role;
-use App\Models\User;
-use App\Models\Division;
+use App\Models\{Department, Division, Role, User};
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -24,28 +22,34 @@ class DatabaseSeeder extends Seeder
             
         ]);
 
-        // Create admin user
-        $superAdminRole = Role::where('slug', 'super-admin')->first();
+        // Create users
+        $adminRole = Role::where('slug', 'super-admin')->first();
         $legalRole = Role::where('slug', 'legal')->first();
+        $userRole = Role::where('slug', 'user')->first();
+
+        // Get Legal division and department for default assignment
         $legalDivision = Division::where('code', 'LEGAL')->first();
         $legalDepartment = Department::where('code', 'LEGAL')->first();
 
-        User::firstOrCreate(
+        // Admin user - assign to Legal division/dept
+        $admin = User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin User',
-                'password' => 'password',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
-                'role_id' => $superAdminRole?->id,
+                'role_id' => $adminRole->id,
+                'division_id' => $legalDivision->id,
+                'department_id' => $legalDepartment->id,
             ]
         );
 
         // Create test user for legacy compatibility
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'legal@example.com'],
             [
                 'name' => 'Legal User',
-                'password' => 'password',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'role_id' => $legalRole?->id,
                 'division_id' => $legalDivision?->id,
