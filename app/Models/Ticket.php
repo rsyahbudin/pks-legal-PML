@@ -266,6 +266,35 @@ class Ticket extends Model
     }
 
     /**
+     * Move ticket directly to "closed" status for non-contractable documents.
+     */
+    public function moveToClosedDirectly(): void
+    {
+        $agingEnd = now();
+        $agingDuration = null;
+
+        if ($this->aging_start_at) {
+            $agingDuration = $this->aging_start_at->diffInHours($agingEnd);
+        }
+
+        $this->update([
+            'status' => 'closed',
+            'aging_end_at' => $agingEnd,
+            'aging_duration' => $agingDuration,
+        ]);
+
+        $this->logActivity('Ticket ditutup (tidak memerlukan contract)');
+    }
+
+    /**
+     * Check if document type requires contract.
+     */
+    public function isContractable(): bool
+    {
+        return in_array($this->document_type, ['perjanjian', 'nda', 'surat_kuasa']);
+    }
+
+    /**
      * Create contract from this ticket data.
      */
     public function createContract(): Contract
@@ -436,11 +465,11 @@ class Ticket extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'open' => 'Menunggu Review',
-            'on_process' => 'Sedang Diproses',
-            'done' => 'Selesai',
-            'rejected' => 'Ditolak',
-            'closed' => 'Ditutup',
+            'open' => 'Open',
+            'on_process' => 'On Process',
+            'done' => 'Done',
+            'rejected' => 'Rejected',
+            'closed' => 'Closed',
             default => $this->status,
         };
     }
@@ -463,7 +492,7 @@ class Ticket extends Model
     /**
      * Log activity for this ticket.
      */
-    private function logActivity(string $message, ?User $user = null): void
+    public function logActivity(string $message, ?User $user = null): void
     {
         $this->activityLogs()->create([
             'user_id' => $user?->id ?? auth()->id(),

@@ -323,6 +323,12 @@ class Contract extends Model
             'termination_reason' => $reason,
         ]);
 
+        // Auto-close associated ticket
+        if ($this->ticket && $this->ticket->status !== 'closed') {
+            $this->ticket->update(['status' => 'closed']);
+            $this->ticket->logActivity('Ticket ditutup otomatis karena contract terminated');
+        }
+
         $this->activityLogs()->create([
             'user_id' => auth()->id(),
             'action' => "Contract terminated: {$reason}",

@@ -145,8 +145,20 @@ new #[Layout('components.layouts.app')] class extends Component {
         try {
             \Log::info('Calling ticket->createContract()');
             $contract = $this->ticket->createContract();
-            \Log::info('Contract created successfully', ['contract_id' => $contract->id, 'contract_number' => $contract->contract_number]);
-            $this->dispatch('notify', type: 'success', message: "Contract #{$contract->contract_number} berhasil dibuat.");
+            \Log::info('Contract created successfully', [
+                'contract_id' => $contract->id,
+                'contract_number' => $contract->contract_number,
+                'contract_status' => $contract->status,
+            ]);
+            
+            // Auto-close ticket if contract is created with expired status
+            if ($contract->status === 'expired') {
+                $this->ticket->update(['status' => 'closed']);
+                $this->ticket->logActivity('Ticket ditutup otomatis karena contract sudah expired');
+                $this->dispatch('notify', type: 'warning', message: "Contract #{$contract->contract_number} dibuat dengan status Expired. Ticket ditutup otomatis.");
+            } else {
+                $this->dispatch('notify', type: 'success', message: "Contract #{$contract->contract_number} berhasil dibuat.");
+            }
         } catch (\Exception $e) {
             \Log::error('Contract creation failed', [
                 'error' => $e->getMessage(),
@@ -191,17 +203,39 @@ new #[Layout('components.layouts.app')] class extends Component {
         $oldStatus = $this->ticket->contract->status;
         $this->ticket->contract->terminate($this->terminationReason);
 
-        // Auto-close the ticket
-        if ($this->ticket->status !== 'closed') {
-            $this->ticket->update(['status' => 'closed']);
-        }
-
         // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyContractStatusChanged($this->ticket->contract, $oldStatus, 'terminated');
 
         $this->showTerminateModal = false;
         $this->dispatch('notify', type: 'success', message: 'Contract berhasil diterminasi dan ticket ditutup.');
+        
+        // Refresh data
+        $this->mount($this->ticket->id);
+    }
+
+    public function moveToClosedDirectly(): void
+    {
+        $user = auth()->user();
+        
+        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+            $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat menutup ticket.');
+            return;
+        }
+
+        if ($this->ticket->status !== 'on_process') {
+            $this->dispatch('notify', type: 'error', message: 'Hanya ticket dengan status On Process yang dapat ditutup.');
+            return;
+        }
+
+        $oldStatus = $this->ticket->status;
+        $this->ticket->moveToClosedDirectly();
+
+        // Send notification
+        $notificationService = app(NotificationService::class);
+        $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'closed');
+
+        $this->dispatch('notify', type: 'success', message: 'Ticket berhasil ditutup.');
         
         // Refresh data
         $this->mount($this->ticket->id);
@@ -256,9 +290,19 @@ new #[Layout('components.layouts.app')] class extends Component {
                     Reject Ticket
                 </flux:button>
             @elseif($ticket->status === 'on_process')
-                <flux:button wire:click="moveToDone" variant="primary" icon="check">
-                    Mark as Done (Create Contract)
-                </flux:button>
+                @php
+                    $isContractable = in_array($ticket->document_type, ['perjanjian', 'nda', 'surat_kuasa']);
+                @endphp
+                
+                @if($isContractable)
+                    <flux:button wire:click="moveToDone" variant="primary" icon="check">
+                        Mark as Done (Create Contract)
+                    </flux:button>
+                @else
+                    <flux:button wire:click="moveToClosedDirectly" variant="primary" icon="check-circle">
+                        Close Ticket
+                    </flux:button>
+                @endif
             @endif
 
             @if($ticket->contract && $ticket->contract->status === 'active')
@@ -484,12 +528,21 @@ new #[Layout('components.layouts.app')] class extends Component {
     </div>
 
     <!-- Activity Log -->
-    @if($ticket->activityLogs->count() > 0)
+    @php
+        // Merge ticket and contract activity logs
+        $allLogs = $ticket->activityLogs;
+        if ($ticket->contract && $ticket->contract->activityLogs) {
+            $allLogs = $allLogs->merge($ticket->contract->activityLogs);
+        }
+        $allLogs = $allLogs->sortByDesc('created_at');
+    @endphp
+    
+    @if($allLogs->count() > 0)
     <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
         <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Activity Log</h2>
         
         <div class="space-y-4">
-            @foreach($ticket->activityLogs->sortByDesc('created_at') as $log)
+            @foreach($allLogs as $log)
             <div class="flex gap-3 border-l-2 border-neutral-200 pl-4 dark:border-neutral-700">
                 <div class="flex-1">
                     <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ $log->action }}</p>
