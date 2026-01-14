@@ -10,6 +10,7 @@ use Livewire\WithPagination;
 new #[Layout('components.layouts.app')] class extends Component
 {
     use WithPagination;
+    
 
     public string $search = '';
 
@@ -19,6 +20,9 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public string $dateFilter = '';
 
+    public string $typeFilter = '';
+
+
     public int $perPage = 10;
 
     public function updatedSearch(): void
@@ -27,6 +31,11 @@ new #[Layout('components.layouts.app')] class extends Component
     }
 
     public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTypeFilter(): void
     {
         $this->resetPage();
     }
@@ -57,6 +66,7 @@ new #[Layout('components.layouts.app')] class extends Component
             }))
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
+            ->when($this->typeFilter, fn ($q) => $q->where('document_type', $this->typeFilter))
             ->when($this->dateFilter, fn ($q) => $q->whereDate('created_at', $this->dateFilter));
 
         // Role-based filtering
@@ -101,7 +111,7 @@ new #[Layout('components.layouts.app')] class extends Component
 
     <!-- Filters -->
     <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <flux:input 
                 wire:model.live.debounce.300ms="search" 
                 placeholder="Cari nomor ticket..." 
@@ -121,6 +131,16 @@ new #[Layout('components.layouts.app')] class extends Component
                 <option value="done">Selesai</option>
                 <option value="rejected">Ditolak</option>
                 <option value="closed">Ditutup</option>
+            </flux:select>
+
+            <flux:select wire:model.live="typeFilter" placeholder="Jenis Dokumen">
+                <flux:select.option value="">Semua Jenis</flux:select.option>
+                <flux:select.option value="perjanjian">Perjanjian</flux:select.option>
+                <flux:select.option value="nda">NDA</flux:select.option>
+                <flux:select.option value="surat_kuasa">Surat Kuasa</flux:select.option>
+                <flux:select.option value="pendapat_hukum">Pendapat Hukum</flux:select.option>
+                <flux:select.option value="surat_pernyataan">Surat Pernyataan</flux:select.option>
+                <flux:select.option value="surat_lainnya">Surat Lainnya</flux:select.option>
             </flux:select>
 
             <flux:select wire:model.live="divisionFilter">
