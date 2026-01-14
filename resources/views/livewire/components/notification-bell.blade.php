@@ -74,20 +74,60 @@ new class extends Component {
 
         <div class="max-h-80 divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800">
             @forelse($this->notifications as $notification)
+            @php
+                $icon = 'bell';
+                $colorClass = 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400';
+                $iconColor = 'text-neutral-600 dark:text-neutral-400';
+                $url = '#';
+
+                // Determine Icon & Color
+                if (in_array($notification->type, ['contract_expiring', 'warning'])) {
+                    $icon = 'clock';
+                    $colorClass = 'bg-yellow-100 dark:bg-yellow-900/30';
+                    $iconColor = 'text-yellow-600 dark:text-yellow-400';
+                } elseif (in_array($notification->type, ['contract_expired', 'critical', 'error'])) {
+                    $icon = 'exclamation-circle';
+                    $colorClass = 'bg-red-100 dark:bg-red-900/30';
+                    $iconColor = 'text-red-600 dark:text-red-400';
+                } elseif ($notification->type === 'info') {
+                    $icon = 'information-circle';
+                    $colorClass = 'bg-blue-100 dark:bg-blue-900/30';
+                    $iconColor = 'text-blue-600 dark:text-blue-400';
+                } elseif ($notification->type === 'success') {
+                    $icon = 'check-circle';
+                    $colorClass = 'bg-green-100 dark:bg-green-900/30';
+                    $iconColor = 'text-green-600 dark:text-green-400';
+                }
+
+                // Determine URL
+                if ($notification->notifiable_type === 'App\Models\Contract') {
+                    $url = route('tickets.show', $notification->notifiable_id);
+                } elseif (isset($notification->data['contract_id'])) {
+                    $url = route('tickets.show', $notification->data['contract_id']);
+                }
+            @endphp
+
             <div 
                 wire:key="notif-{{ $notification->id }}"
-                class="flex gap-3 p-4 {{ !$notification->isRead() ? 'bg-blue-50 dark:bg-blue-900/10' : '' }}"
+                class="group relative flex gap-3 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 {{ !$notification->isRead() ? 'bg-blue-50/50 dark:bg-blue-900/10' : '' }}"
             >
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {{ $notification->type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-red-100 dark:bg-red-900/30' }}">
-                    <flux:icon name="exclamation-triangle" class="h-4 w-4 {{ $notification->type === 'warning' ? 'text-yellow-600' : 'text-red-600' }}" />
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {{ $colorClass }}">
+                    <flux:icon :name="$icon" class="h-4 w-4 {{ $iconColor }}" />
                 </div>
-                <div class="flex-1 min-w-0">
+                
+                <a href="{{ $url }}" class="flex-1 min-w-0 focus:outline-none">
+                    <span class="absolute inset-0" aria-hidden="true"></span>
                     <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ $notification->title }}</p>
-                    <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $notification->message }}</p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 md:line-clamp-none">{{ $notification->message }}</p>
                     <p class="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{{ $notification->created_at->diffForHumans() }}</p>
-                </div>
+                </a>
+
                 @if(!$notification->isRead())
-                <button wire:click="markAsRead({{ $notification->id }})" class="shrink-0 text-neutral-400 hover:text-neutral-600">
+                <button 
+                    wire:click="markAsRead({{ $notification->id }})" 
+                    class="relative z-10 shrink-0 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400"
+                    title="Tandai sudah dibaca"
+                >
                     <flux:icon name="check" class="h-4 w-4" />
                 </button>
                 @endif
