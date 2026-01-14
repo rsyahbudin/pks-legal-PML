@@ -180,7 +180,7 @@ new #[Layout('components.layouts.app')] class extends Component
             $query->forPic($user->id);
         }
 
-        return $query->limit(10)->get();
+        return $query->limit(5)->get();
     }
 
     public function getExpiringContractsProperty(): Collection

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config('app.name') }}</title>
+    <title>{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}</title>
     <style>
         body {
            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -59,9 +59,9 @@
             @endphp
             
             @if($logoUrl)
-                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}" class="email-logo">
+                <img src="{{ $logoUrl }}" alt="{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}" class="email-logo">
             @else
-                <h2 style="margin: 0; color: #333333;">{{ config('app.name') }}</h2>
+                <h2 style="margin: 0; color: #333333;">{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}</h2>
             @endif
         </div>
         
@@ -71,7 +71,7 @@
         
         <div class="email-footer">
             <p>Email ini dikirim secara otomatis oleh sistem.</p>
-            <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} {{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}. All rights reserved.</p>
         </div>
     </div>
 </body>
