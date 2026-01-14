@@ -96,12 +96,13 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         $oldStatus = $this->ticket->status;
         $this->ticket->moveToDone();
+        
+        // Refresh ticket to get updated status from database
+        $this->ticket->refresh();
 
         // Create contract from ticket
         if (!$this->ticket->contract && $this->canCreateContract()) {
             $this->generateContract();
-        } else {
-            $this->dispatch('notify', type: 'success', message: 'Ticket berhasil diselesaikan.');
         }
 
         // Send notification
@@ -114,28 +115,43 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function generateContract()
     {
+        \Log::info('=== GENERATE CONTRACT: START ===', [
+            'ticket_id' => $this->ticket->id,
+            'document_type' => $this->ticket->document_type,
+            'status' => $this->ticket->status,
+        ]);
+        
         // Only allow contract creation for specific document types
         $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
         
         if (!in_array($this->ticket->document_type, $contractableTypes)) {
+            \Log::warning('Document type not contractable', ['type' => $this->ticket->document_type]);
             $this->dispatch('notify', type: 'error', message: 'Tipe dokumen ini tidak memerlukan contract.');
             return;
         }
 
         if ($this->ticket->status !== 'done') {
+            \Log::warning('Ticket status not done', ['status' => $this->ticket->status]);
             $this->dispatch('notify', type: 'error', message: 'Ticket harus berstatus Done untuk membuat contract.');
             return;
         }
 
         if ($this->ticket->contract) {
+            \Log::warning('Contract already exists');
             $this->dispatch('notify', type: 'error', message: 'Contract sudah dibuat untuk ticket ini.');
             return;
         }
 
         try {
+            \Log::info('Calling ticket->createContract()');
             $contract = $this->ticket->createContract();
+            \Log::info('Contract created successfully', ['contract_id' => $contract->id, 'contract_number' => $contract->contract_number]);
             $this->dispatch('notify', type: 'success', message: "Contract #{$contract->contract_number} berhasil dibuat.");
         } catch (\Exception $e) {
+            \Log::error('Contract creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             $this->dispatch('notify', type: 'error', message: 'Gagal membuat contract: ' . $e->getMessage());
         }
     }

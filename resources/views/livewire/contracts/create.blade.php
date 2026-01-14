@@ -65,25 +65,15 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function save(): void
     {
-        \Log::info('=== TICKET CREATE: START ===', [
-            'user_email' => auth()->user()->email,
-            'division_id' => $this->division_id,
-            'department_id' => $this->department_id,
-            'document_type' => $this->document_type,
-        ]);
-
         try {
             $user = auth()->user();
 
             if (!$user->hasPermission('tickets.create')) {
-                \Log::warning('TICKET CREATE: Permission denied', ['user_id' => $user->id]);
                 $this->dispatch('notify', type: 'error', message: 'Anda tidak memiliki akses untuk membuat ticket.');
                 return;
             }
 
-            \Log::info('TICKET CREATE: Building validation rules');
-
-            // Base validation rules
+            // Build validation rules
             $rules = [
                 'division_id' => ['required', 'exists:divisions,id'],
                 'department_id' => ['required', 'exists:departments,id'],
@@ -96,7 +86,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'approval_document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             ];
 
-            // Conditional validation based on document_type
+            // Add conditional validation
             if (in_array($this->document_type, ['perjanjian', 'nda'])) {
                 $rules['counterpart_name'] = ['required', 'string', 'max:255'];
                 $rules['agreement_start_date'] = ['required', 'date'];
@@ -118,27 +108,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 $rules['kuasa_end_date'] = ['required', 'date', 'after:kuasa_start_date'];
             }
 
-            \Log::info('TICKET CREATE: Validating input', ['rules_count' => count($rules)]);
-
-            try {
-                $validated = $this->validate($rules);
-                \Log::info('TICKET CREATE: Validation passed');
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                \Log::error('TICKET CREATE: Validation failed', [
-                    'errors' => $e->errors(),
-                    'form_data' => [
-                        'division_id' => $this->division_id,
-                        'department_id' => $this->department_id,
-                        'document_type' => $this->document_type,
-                        'proposed_document_title' => $this->proposed_document_title,
-                        'has_financial_impact' => $this->has_financial_impact,
-                        'tat_legal_compliance' => $this->tat_legal_compliance,
-                    ]
-                ]);
-                throw $e;
-            }
-
-            \Log::info('TICKET CREATE: Creating ticket record');
+            $validated = $this->validate($rules);
 
             // Create ticket
             $ticket = Ticket::create([
@@ -147,7 +117,6 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'has_financial_impact' => $validated['has_financial_impact'],
                 'proposed_document_title' => $validated['proposed_document_title'],
                 'document_type' => $validated['document_type'],
-                // Conditional fields
                 'counterpart_name' => $this->counterpart_name ?: null,
                 'agreement_start_date' => $this->agreement_start_date ?: null,
                 'agreement_duration' => $this->agreement_duration ?: null,
@@ -165,67 +134,42 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'created_by' => $user->id,
             ]);
 
-            \Log::info('TICKET CREATE: Ticket created', [
-                'ticket_id' => $ticket->id,
-                'ticket_number' => $ticket->ticket_number
-            ]);
-
             // Handle file uploads
-            $ticketId = $ticket->id;
-            
             if ($this->draft_document) {
-                \Log::info('TICKET CREATE: Uploading draft document');
-                $draftPath = $this->draft_document->store("tickets/{$ticketId}/draft", 'public');
+                $draftPath = $this->draft_document->store("tickets/{$ticket->id}/draft", 'public');
                 $ticket->update(['draft_document_path' => $draftPath]);
-                \Log::info('TICKET CREATE: Draft uploaded', ['path' => $draftPath]);
             }
             
             if ($this->mandatory_documents && count($this->mandatory_documents) > 0) {
-                \Log::info('TICKET CREATE: Uploading mandatory documents', ['count' => count($this->mandatory_documents)]);
                 $mandatoryPaths = [];
                 foreach ($this->mandatory_documents as $file) {
-                    $path = $file->store("tickets/{$ticketId}/mandatory", 'public');
                     $mandatoryPaths[] = [
                         'name' => $file->getClientOriginalName(),
-                        'path' => $path,
+                        'path' => $file->store("tickets/{$ticket->id}/mandatory", 'public'),
                     ];
                 }
                 $ticket->update(['mandatory_documents_path' => $mandatoryPaths]);
-                \Log::info('TICKET CREATE: Mandatory documents uploaded', ['count' => count($mandatoryPaths)]);
             }
             
             if ($this->approval_document) {
-                \Log::info('TICKET CREATE: Uploading approval document');
-                $approvalPath = $this->approval_document->store("tickets/{$ticketId}/approval", 'public');
+                $approvalPath = $this->approval_document->store("tickets/{$ticket->id}/approval", 'public');
                 $ticket->update(['approval_document_path' => $approvalPath]);
-                \Log::info('TICKET CREATE: Approval document uploaded', ['path' => $approvalPath]);
             }
 
-            \Log::info('TICKET CREATE: Sending email notification');
-            // Send email notification to legal team
-            $notificationService = app(NotificationService::class);
-            $notificationService->notifyTicketCreated($ticket);
-
-            \Log::info('=== TICKET CREATE: SUCCESS ===', ['ticket_id' => $ticket->id]);
+            // Send notification
+            app(NotificationService::class)->notifyTicketCreated($ticket);
 
             session()->flash('success', 'Ticket berhasil dibuat dan notifikasi telah dikirim ke tim legal.');
             $this->redirect(route('tickets.index'), navigate: true);
 
         } catch (\Exception $e) {
-            \Log::error('=== TICKET CREATE: FAILED ===', [
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
-                'error_trace' => $e->getTraceAsString(),
+            Log::error('Ticket creation failed', [
                 'user_id' => auth()->id(),
-                'form_data' => [
-                    'division_id' => $this->division_id,
-                    'department_id' => $this->department_id,
-                    'document_type' => $this->document_type,
-                ]
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            $this->dispatch('notify', type: 'error', message: 'Error: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Gagal membuat ticket. Silakan coba lagi.');
         }
     }
 }; ?>

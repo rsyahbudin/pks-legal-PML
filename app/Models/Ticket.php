@@ -284,7 +284,7 @@ class Ticket extends Model
             'agreement_name' => $this->proposed_document_title,
             'proposed_document_title' => $this->proposed_document_title,
             'document_type' => $this->mapDocumentType(),
-            'financial_impact' => $this->has_financial_impact ? 'income' : null, // Simplified, adjust as needed
+            'financial_impact' => null, // Ticket only has boolean has_financial_impact, not income/expenditure direction
             'tat_legal_compliance' => $this->tat_legal_compliance,
             'division_id' => $this->division_id,
             'department_id' => $this->department_id,
