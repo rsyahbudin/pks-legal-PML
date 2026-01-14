@@ -57,11 +57,7 @@ class SendContractReminders extends Command
 
         $this->info("Found {$contracts->count()} contracts to process.");
 
-        $sendToPic = Setting::get('reminder_email_pic', true);
-        $sendToLegal = Setting::get('reminder_email_legal', true);
-        $sendToManagers = Setting::get('reminder_email_managers', false);
         $legalEmail = Setting::get('legal_team_email', '');
-
         $sentCount = 0;
 
         foreach ($contracts as $contract) {
@@ -162,8 +158,8 @@ class SendContractReminders extends Command
                 }
             }
 
-            // Send to legal team email if configured
-            if ($sendToLegal && $legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
+            // Always send to legal team email if configured
+            if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
                 try {
                     Mail::to($legalEmail)->send(new ContractExpiringMail($contract, $daysRemaining));
                     $this->info("Sent reminder to legal team email: {$legalEmail}");
