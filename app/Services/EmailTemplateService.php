@@ -48,6 +48,17 @@ class EmailTemplateService
     }
 
     /**
+     * Get contract reminder email template.
+     */
+    public function getContractReminderTemplate(): array
+    {
+        return [
+            'subject' => Setting::get('contract_reminder_email_subject', 'Pengingat: Kontrak {contract_number} akan berakhir dalam {days_remaining} hari'),
+            'body' => Setting::get('contract_reminder_email_body', $this->getDefaultContractReminderBody()),
+        ];
+    }
+
+    /**
      * Parse placeholders in template.
      */
     public function parsePlaceholders(string $template, array $data): string
@@ -84,5 +95,13 @@ class EmailTemplateService
     private function getDefaultContractStatusChangedBody(): string
     {
         return "Halo,\n\nStatus kontrak telah berubah:\n\nNomor Kontrak: {contract_number}\nNama Perjanjian: {agreement_name}\nStatus Sebelumnya: {old_status}\nStatus Baru: {new_status}\nTanggal Mulai: {start_date}\nTanggal Berakhir: {end_date}\n{termination_reason}\n\nSilakan cek detail kontrak di dashboard Anda.\n\nTerima kasih,\nSistem Ticketing Legal";
+    }
+
+    /**
+     * Default contract reminder email body.
+     */
+    private function getDefaultContractReminderBody(): string
+    {
+        return "Halo,\n\nKontrak berikut akan segera berakhir:\n\nNomor Kontrak: {contract_number}\nNama Perjanjian: {agreement_name}\nCounterpart: {counterpart_name}\nTanggal Berakhir: {end_date}\nHari Tersisa: {days_remaining} hari\n\nMohon perhatian untuk perpanjangan atau tindakan yang diperlukan.\n\nTerima kasih,\nSistem Ticketing Legal";
     }
 }

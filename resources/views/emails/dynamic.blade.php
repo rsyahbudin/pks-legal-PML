@@ -6,42 +6,63 @@
     <title>{{ config('app.name') }}</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #333333;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-wrapper {
             max-width: 600px;
             margin: 0 auto;
-            padding: 20px;
-        }
-        .email-container {
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 20px;
+            background-color: #ffffff;
         }
         .email-header {
-            background-color: #4a5568;
-            color: white;
-            padding: 15px;
-            border-radius: 5px 5px 0 0;
-            margin: -20px -20px 20px -20px;
+            padding: 30px 40px;
+            text-align: center;
+            border-bottom: 2px solid #e5e5e5;
+        }
+        .email-logo {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 10px;
         }
         .email-body {
+            padding: 40px;
             white-space: pre-line;
+            font-size: 14px;
         }
         .email-footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+            padding: 20px 40px;
+            border-top: 1px solid #e5e5e5;
             font-size: 12px;
-            color: #666;
+            color: #666666;
+            text-align: center;
+        }
+        .email-footer p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <div class="email-container">
+    <div class="email-wrapper">
         <div class="email-header">
-            <h2 style="margin: 0;">{{ config('app.name') }}</h2>
+            @php
+                $logoPath = \App\Models\Setting::get('company_logo');
+                $logoUrl = null;
+                
+                if ($logoPath && file_exists(storage_path('app/public/' . $logoPath))) {
+                    // Use absolute URL for email compatibility
+                    $logoUrl = config('app.url') . '/storage/' . $logoPath;
+                }
+            @endphp
+            
+            @if($logoUrl)
+                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}" class="email-logo">
+            @else
+                <h2 style="margin: 0; color: #333333;">{{ config('app.name') }}</h2>
+            @endif
         </div>
         
         <div class="email-body">
@@ -49,7 +70,7 @@
         </div>
         
         <div class="email-footer">
-            <p>Email ini dikirim secara otomatis oleh sistem. Mohon tidak membalas email ini.</p>
+            <p>Email ini dikirim secara otomatis oleh sistem.</p>
             <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
         </div>
     </div>

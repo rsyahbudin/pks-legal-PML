@@ -1,0 +1,246 @@
+<?php
+
+use App\Models\Setting;
+use App\Services\EmailTemplateService;
+use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
+use Livewire\Attributes\Layout;
+
+new #[Layout('components.layouts.app')] class extends Component {
+    use WithFileUploads;
+
+    // Logo
+    public $company_logo = null;
+    public $current_logo = null;
+    public $remove_logo = false;
+
+    // Ticket Created
+    public $ticket_created_subject = '';
+    public $ticket_created_body = '';
+
+    // Ticket Status Changed
+    public $ticket_status_subject = '';
+    public $ticket_status_body = '';
+
+    // Contract Status Changed
+    public $contract_status_subject = '';
+    public $contract_status_body = '';
+
+    // Contract Reminder
+    public $contract_reminder_subject = '';
+    public $contract_reminder_body = '';
+
+    public function mount(): void
+    {
+        // Check permission
+        if (!auth()->user()->hasPermission('email_templates.edit')) {
+            abort(403, 'Unauthorized access');
+        }
+
+        $service = app(EmailTemplateService::class);
+
+        // Load current logo
+        $this->current_logo = Setting::get('company_logo');
+
+        // Load ticket created template
+        $ticketCreated = $service->getTicketCreatedTemplate();
+        $this->ticket_created_subject = $ticketCreated['subject'];
+        $this->ticket_created_body = $ticketCreated['body'];
+
+        // Load ticket status changed template
+        $ticketStatus = $service->getTicketStatusChangedTemplate();
+        $this->ticket_status_subject = $ticketStatus['subject'];
+        $this->ticket_status_body = $ticketStatus['body'];
+
+        // Load contract status changed template
+        $contractStatus = $service->getContractStatusChangedTemplate();
+        $this->contract_status_subject = $contractStatus['subject'];
+        $this->contract_status_body = $contractStatus['body'];
+
+        // Load contract reminder template
+        $contractReminder = $service->getContractReminderTemplate();
+        $this->contract_reminder_subject = $contractReminder['subject'];
+        $this->contract_reminder_body = $contractReminder['body'];
+    }
+
+    public function save(): void
+    {
+        // Handle logo upload
+        if ($this->company_logo) {
+            $path = $this->company_logo->store('settings', 'public');
+            Setting::set('company_logo', $path);
+            
+            // Delete old logo if exists
+            if ($this->current_logo && \Storage::disk('public')->exists($this->current_logo)) {
+                \Storage::disk('public')->delete($this->current_logo);
+            }
+        }
+
+        // Handle logo removal
+        if ($this->remove_logo && $this->current_logo) {
+            if (\Storage::disk('public')->exists($this->current_logo)) {
+                \Storage::disk('public')->delete($this->current_logo);
+            }
+            Setting::set('company_logo', null);
+        }
+
+        // Save email templates
+        Setting::set('ticket_created_email_subject', $this->ticket_created_subject);
+        Setting::set('ticket_created_email_body', $this->ticket_created_body);
+
+        Setting::set('ticket_status_changed_email_subject', $this->ticket_status_subject);
+        Setting::set('ticket_status_changed_email_body', $this->ticket_status_body);
+
+        Setting::set('contract_status_changed_email_subject', $this->contract_status_subject);
+        Setting::set('contract_status_changed_email_body', $this->contract_status_body);
+
+        Setting::set('contract_reminder_email_subject', $this->contract_reminder_subject);
+        Setting::set('contract_reminder_email_body', $this->contract_reminder_body);
+
+        $this->dispatch('notify', type: 'success', message: 'Email templates and logo saved successfully!');
+        $this->mount(); // Reload
+    }
+
+    public function resetToDefaults(): void
+    {
+        $service = app(EmailTemplateService::class);
+
+        // Reset to defaults by clearing settings
+        Setting::set('ticket_created_email_subject', null);
+        Setting::set('ticket_created_email_body', null);
+        Setting::set('ticket_status_changed_email_subject', null);
+        Setting::set('ticket_status_changed_email_body', null);
+        Setting::set('contract_status_changed_email_subject', null);
+        Setting::set('contract_status_changed_email_body', null);
+        Setting::set('contract_reminder_email_subject', null);
+        Setting::set('contract_reminder_email_body', null);
+
+        $this->dispatch('notify', type: 'success', message: 'Email templates reset to defaults!');
+        $this->mount(); // Reload with defaults
+    }
+}; ?>
+
+<div class="mx-auto max-w-5xl space-y-6">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Email Templates</h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">Customize email templates and company logo for system emails</p>
+    </div>
+
+    <form wire:submit="save" class="space-y-6">
+        <!-- Logo Settings -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Company Logo</h2>
+            
+            @if($current_logo && !$remove_logo)
+                <div class="mb-4">
+                    <p class="mb-2 text-sm text-neutral-600 dark:text-neutral-400">Current Logo:</p>
+                    <img src="{{ asset('storage/' . $current_logo) }}" alt="Company Logo" class="max-w-xs rounded border border-neutral-200 p-2 dark:border-neutral-700">
+                    <flux:button type="button" wire:click="$set('remove_logo', true)" variant="danger" size="sm" class="mt-2">
+                        Remove Logo
+                    </flux:button>
+                </div>
+            @endif
+
+            <flux:field>
+                <flux:label>Upload New Logo</flux:label>
+                <flux:input type="file" wire:model="company_logo" accept="image/*" />
+                <flux:description>Logo will be displayed in emails and can be used throughout the system. Recommended: PNG or JPG, max 200px width.</flux:description>
+                <flux:error name="company_logo" />
+            </flux:field>
+        </div>
+
+        <!-- Ticket Created Template -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Ticket Created Email</h2>
+            
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>Subject</flux:label>
+                    <flux:input wire:model="ticket_created_subject" placeholder="Email subject line" />
+                    <flux:error name="ticket_created_subject" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Body</flux:label>
+                    <flux:textarea wire:model="ticket_created_body" rows="8" />
+                    <flux:description>
+                        Available placeholders: {ticket_number}, {proposed_document_title}, {document_type}, {creator_name}, {division_name}, {department_name}, {created_at}
+                    </flux:description>
+                    <flux:error name="ticket_created_body" />
+                </flux:field>
+            </div>
+        </div>
+
+        <!-- Ticket Status Changed Template -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Ticket Status Changed Email</h2>
+            
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>Subject</flux:label>
+                    <flux:input wire:model="ticket_status_subject" />
+                    <flux:error name="ticket_status_subject" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Body</flux:label>
+                    <flux:textarea wire:model="ticket_status_body" rows="8" />
+                    <flux:description>
+                        Available placeholders: {ticket_number}, {proposed_document_title}, {old_status}, {new_status}, {reviewed_by}, {reviewed_at}, {rejection_reason}
+                    </flux:description>
+                    <flux:error name="ticket_status_body" />
+                </flux:field>
+            </div>
+        </div>
+
+        <!-- Contract Status Changed Template -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Contract Status Changed Email</h2>
+            
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>Subject</flux:label>
+                    <flux:input wire:model="contract_status_subject" />
+                    <flux:error name="contract_status_subject" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Body</flux:label>
+                    <flux:textarea wire:model="contract_status_body" rows="8" />
+                    <flux:description>
+                        Available placeholders: {contract_number}, {agreement_name}, {old_status}, {new_status}, {start_date}, {end_date}, {termination_reason}
+                    </flux:description>
+                    <flux:error name="contract_status_body" />
+                </flux:field>
+            </div>
+        </div>
+
+        <!-- Contract Reminder Template -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Contract Reminder Email</h2>
+            
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>Subject</flux:label>
+                    <flux:input wire:model="contract_reminder_subject" />
+                    <flux:error name="contract_reminder_subject" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Body</flux:label>
+                    <flux:textarea wire:model="contract_reminder_body" rows="8" />
+                    <flux:description>
+                        Available placeholders: {contract_number}, {agreement_name}, {counterpart_name}, {end_date}, {days_remaining}
+                    </flux:description>
+                    <flux:error name="contract_reminder_body" />
+                </flux:field>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <flux:button type="submit" variant="primary">Save All Changes</flux:button>
+            <flux:button type="button" wire:click="resetToDefaults" variant="ghost">Reset to Defaults</flux:button>
+        </div>
+    </form>
+</div>

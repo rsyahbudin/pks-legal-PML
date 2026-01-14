@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('divisions.index');
 });
 
+
 // Admin routes
 Route::middleware(['auth'])->prefix('admin')->group(function () {
     Volt::route('users', 'admin.users.index')
@@ -79,4 +80,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Volt::route('settings', 'admin.settings.index')
         ->middleware('permission:settings.view')
         ->name('admin.settings.index');
+    Volt::route('email-templates', 'admin.email-templates')
+        ->middleware('permission:email_templates.edit')
+        ->name('admin.email-templates');
 });
+

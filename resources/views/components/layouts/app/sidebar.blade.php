@@ -38,6 +38,9 @@
                     @if(auth()->user()->hasPermission('settings.view'))
                     <flux:navlist.item icon="cog-6-tooth" :href="route('admin.settings.index')" :current="request()->routeIs('admin.settings.*')" wire:navigate>{{ __('Pengaturan') }}</flux:navlist.item>
                     @endif
+                    @if(auth()->user()->hasPermission('email_templates.edit'))
+                    <flux:navlist.item icon="envelope" :href="route('admin.email-templates')" :current="request()->routeIs('admin.email-templates')" wire:navigate>{{ __('Email Templates') }}</flux:navlist.item>
+                    @endif
                 </flux:navlist.group>
                 @endif
             </flux:navlist>
