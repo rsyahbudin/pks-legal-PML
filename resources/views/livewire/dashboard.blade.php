@@ -10,7 +10,7 @@ use Livewire\Volt\Component;
 new #[Layout('components.layouts.app')] class extends Component
 {
     // Filter properties
-    public $contractStatusFilter = 'all';
+    public $agingFilter = 'all';
 
     public function isLegalUser(): bool
     {
@@ -83,20 +83,28 @@ new #[Layout('components.layouts.app')] class extends Component
         $query = Ticket::with(['creator', 'division', 'contract'])
             ->whereIn('status', ['open', 'on_process']);
 
-        // Filter by contract status if filter is set
-        if ($this->contractStatusFilter !== 'all') {
-            if ($this->contractStatusFilter === 'no-contract') {
-                $query->whereDoesntHave('contract');
-            } else {
-                $query->whereHas('contract', function ($q) {
-                    $q->where('status', $this->contractStatusFilter);
-                });
-            }
+        // Fetch enough records to filter (since we can't easily do calculated aging in SQL cross-db)
+        // Or better: Use collection filtering after fetching all candidate tickets (limit 100?)
+        // Since this is "Needing Attention", usually volume isn't huge.
+        
+        $tickets = $query->orderBy('created_at', 'asc')->get();
+
+        // Filter by aging
+        if ($this->agingFilter !== 'all') {
+            $tickets = $tickets->filter(function ($ticket) {
+                $start = $ticket->aging_start_at ?? $ticket->created_at;
+                $days = now()->diffInDays($start);
+
+                return match ($this->agingFilter) {
+                    'less_3' => $days < 3,
+                    '3_to_7' => $days >= 3 && $days <= 7,
+                    'more_7' => $days > 7,
+                    default => true,
+                };
+            });
         }
 
-        return $query->orderBy('created_at', 'asc')
-            ->limit(10)
-            ->get();
+        return $tickets->take(5);
     }
 
     // USER TICKET STATISTICS (for Regular User Dashboard)
@@ -127,7 +135,7 @@ new #[Layout('components.layouts.app')] class extends Component
         return Ticket::with(['division', 'department', 'contract'])
             ->where('created_by', $user->id)
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(5)
             ->get();
     }
 
@@ -141,28 +149,22 @@ new #[Layout('components.layouts.app')] class extends Component
 
         $query = Contract::query();
 
+        $query = Contract::query();
+
         if (method_exists($user, 'isPic') && $user->isPic()) {
             $query->forPic($user->id);
         }
 
-        $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
-        $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
-
         $total = (clone $query)->count();
         $active = (clone $query)->active()->count();
-        $expiringSoon = (clone $query)->where('status', 'active')
-            ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
-            ->whereDate('end_date', '>', now()->addDays($criticalThreshold))
-            ->count();
-        $critical = (clone $query)->critical()->count();
         $expired = (clone $query)->expired()->count();
+        $terminated = (clone $query)->where('status', 'terminated')->count();
 
         return [
             'total' => $total,
             'active' => $active,
-            'expiring_soon' => $expiringSoon,
-            'critical' => $critical,
             'expired' => $expired,
+            'terminated' => $terminated,
         ];
     }
 
@@ -273,7 +275,7 @@ new #[Layout('components.layouts.app')] class extends Component
     @endif
 
     <!-- Tickets Needing Attention -->
-    @if($this->ticketsNeedingAttention->isNotEmpty() || $this->contractStatusFilter !== 'all')
+    @if($this->ticketsNeedingAttention->isNotEmpty() || $this->agingFilter !== 'all')
     <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
         <div class="border-b border-neutral-200 p-4 dark:border-neutral-700">
             <div class="flex items-center justify-between">
@@ -281,13 +283,12 @@ new #[Layout('components.layouts.app')] class extends Component
                 
                 <!-- Filter Dropdown -->
                 <div class="flex items-center gap-2">
-                    <label class="text-sm text-neutral-600 dark:text-neutral-400">Filter Contract:</label>
-                    <select wire:model.live="contractStatusFilter" class="rounded-lg border-neutral-300 text-sm dark:border-neutral-600 dark:bg-zinc-800">
+                    <label class="text-sm text-neutral-600 dark:text-neutral-400">Filter Aging:</label>
+                    <select wire:model.live="agingFilter" class="rounded-lg border-neutral-300 text-sm dark:border-neutral-600 dark:bg-zinc-800">
                         <option value="all">Semua</option>
-                        <option value="no-contract">Belum Ada Contract</option>
-                        <option value="active">Active</option>
-                        <option value="expired">Expired</option>
-                        <option value="terminated">Terminated</option>
+                        <option value="less_3">< 3 Hari</option>
+                        <option value="3_to_7">3 - 7 Hari</option>
+                        <option value="more_7">> 7 Hari</option>
                     </select>
                 </div>
             </div>
@@ -330,11 +331,13 @@ new #[Layout('components.layouts.app')] class extends Component
                             </span>
                         </td>
                         <td class="px-4 py-3 text-center text-sm font-medium text-neutral-900 dark:text-white">
-                            @if($ticket->status === 'on_process' && $ticket->aging_start_at)
-                                {{ floor(now()->diffInMinutes($ticket->aging_start_at) / 1440) }}d {{ floor((now()->diffInMinutes($ticket->aging_start_at) % 1440) / 60) }}h
-                            @else
-                                -
-                            @endif
+                            @php
+                                $start = $ticket->aging_start_at ?? $ticket->created_at;
+                                $diff = now()->diff($start);
+                                $days = $diff->days;
+                                $hours = $diff->h;
+                            @endphp
+                            {{ $days }}d {{ $hours }}h
                         </td>
                     </tr>
                     @endforeach
@@ -451,7 +454,7 @@ new #[Layout('components.layouts.app')] class extends Component
     @endif
 
     <!-- Contract Statistics Cards (shown for both legal and regular users) -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Total Contracts -->
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
             <div class="flex items-center gap-4">
@@ -478,41 +481,28 @@ new #[Layout('components.layouts.app')] class extends Component
             </div>
         </div>
 
-        <!-- Expiring Soon (Yellow) -->
-        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-                    <flux:icon name="clock" class="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Mendekati Expired</p>
-                    <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ $this->statistics['expiring_soon'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Critical (Red) -->
-        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
-                    <flux:icon name="exclamation-triangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Kritis</p>
-                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $this->statistics['critical'] }}</p>
-                </div>
-            </div>
-        </div>
-
         <!-- Expired -->
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
             <div class="flex items-center gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
-                    <flux:icon name="x-circle" class="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                    <flux:icon name="x-circle" class="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">Expired</p>
-                    <p class="text-2xl font-bold text-neutral-600 dark:text-neutral-400">{{ $this->statistics['expired'] }}</p>
+                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $this->statistics['expired'] }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminated -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <div class="flex items-center gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
+                    <flux:icon name="stop" class="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                </div>
+                <div>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Terminated</p>
+                    <p class="text-2xl font-bold text-neutral-600 dark:text-neutral-400">{{ $this->statistics['terminated'] }}</p>
                 </div>
             </div>
         </div>
