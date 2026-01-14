@@ -44,6 +44,11 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:tickets.edit')
         ->name('tickets.edit');
 
+    // Contract Repository (Asset View)
+    Volt::route('contracts', 'contracts.repository')
+        ->middleware('permission:tickets.view') // Same permission as tickets for now
+        ->name('contracts.repository');
+
     // Contracts Export
     Route::get('contracts-export', function (\Illuminate\Http\Request $request) {
         if (! auth()->user()->hasPermission('reports.export')) {

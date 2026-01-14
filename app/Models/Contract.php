@@ -271,11 +271,12 @@ class Contract extends Model
     public function getDocumentTypeLabelAttribute(): string
     {
         return match ($this->document_type) {
-            'nda' => 'NDA',
+            'perjanjian' => 'Perjanjian/Adendum/Amandemen',
+            'nda' => 'Perjanjian Kerahasiaan (NDA)',
             'surat_kuasa' => 'Surat Kuasa',
             'pendapat_hukum' => 'Pendapat Hukum',
             'surat_pernyataan' => 'Surat Pernyataan',
-            'lainnya' => 'Surat Lainnya',
+            'surat_lainnya', 'lainnya' => 'Surat Lainnya',
             default => $this->document_type,
         };
     }

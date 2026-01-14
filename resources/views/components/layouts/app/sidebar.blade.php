@@ -21,6 +21,7 @@
                 @if(auth()->user()->hasPermission('tickets.view'))
                 <flux:navlist.group :heading="__('Ticketing System')" class="grid">
                     <flux:navlist.item icon="ticket" :href="route('tickets.index')" :current="request()->routeIs('tickets.*')" wire:navigate>{{ __('Tickets') }}</flux:navlist.item>
+                    <flux:navlist.item icon="document-text" :href="route('contracts.repository')" :current="request()->routeIs('contracts.repository')" wire:navigate>{{ __('Contracts') }}</flux:navlist.item>
                     @if(auth()->user()->hasPermission('divisions.view'))
                     <flux:navlist.item icon="rectangle-group" :href="route('divisions.index')" :current="request()->routeIs('divisions.*')" wire:navigate>{{ __('Divisi') }}</flux:navlist.item>
                     @endif

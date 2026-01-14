@@ -17,7 +17,9 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public string $divisionFilter = '';
 
-    public string $contractStatusFilter = '';
+    public string $dateFilter = '';
+
+    public int $perPage = 10;
 
     public function updatedSearch(): void
     {
@@ -34,7 +36,12 @@ new #[Layout('components.layouts.app')] class extends Component
         $this->resetPage();
     }
 
-    public function updatedContractStatusFilter(): void
+    public function updatedDateFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }
@@ -50,15 +57,7 @@ new #[Layout('components.layouts.app')] class extends Component
             }))
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
-            ->when($this->contractStatusFilter, function ($q) {
-                if ($this->contractStatusFilter === 'no-contract') {
-                    $q->whereDoesntHave('contract');
-                } else {
-                    $q->whereHas('contract', function ($query) {
-                        $query->where('status', $this->contractStatusFilter);
-                    });
-                }
-            });
+            ->when($this->dateFilter, fn ($q) => $q->whereDate('created_at', $this->dateFilter));
 
         // Role-based filtering
         if ($user && ! $user->hasAnyRole(['super-admin', 'legal'])) {
@@ -67,7 +66,7 @@ new #[Layout('components.layouts.app')] class extends Component
         }
         // Legal & super admin: see all tickets
 
-        return $query->orderBy('created_at', 'desc')->paginate(15);
+        return $query->orderBy('created_at', 'desc')->paginate($this->perPage);
     }
 
     public function getDivisionsProperty()
@@ -105,8 +104,14 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <flux:input 
                 wire:model.live.debounce.300ms="search" 
-                placeholder="Cari nomor ticket atau judul..." 
+                placeholder="Cari nomor ticket..." 
                 icon="magnifying-glass"
+            />
+            
+            <flux:input 
+                type="date" 
+                wire:model.live="dateFilter" 
+                icon="calendar-days"
             />
             
             <flux:select wire:model.live="statusFilter">
@@ -116,14 +121,6 @@ new #[Layout('components.layouts.app')] class extends Component
                 <option value="done">Selesai</option>
                 <option value="rejected">Ditolak</option>
                 <option value="closed">Ditutup</option>
-            </flux:select>
-
-            <flux:select wire:model.live="contractStatusFilter">
-                <option value="">Semua Status Contract</option>
-                <option value="no-contract">Belum Ada Contract</option>
-                <option value="active">Contract Active</option>
-                <option value="expired">Contract Expired</option>
-                <option value="terminated">Contract Terminated</option>
             </flux:select>
 
             <flux:select wire:model.live="divisionFilter">
@@ -144,8 +141,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         <th class="px-4 py-3 text-left">No. Ticket</th>
                         <th class="px-4 py-3 text-left">Judul Dokumen</th>
                         <th class="px-4 py-3 text-left">Divisi</th>
-                        <th class="px-4 py-3 text-center">Ticket Status</th>
-                        <th class="px-4 py-3 text-center">Contract Status</th>
+                        <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-center">Dibuat</th>
                         <th class="px-4 py-3 text-center">Updated</th>
                         <th class="px-4 py-3 text-center">Aksi</th>
@@ -190,23 +186,6 @@ new #[Layout('components.layouts.app')] class extends Component
                                 <span class="h-1.5 w-1.5 rounded-full {{ $dotClass }}"></span>
                                 {{ $ticket->status_label }}
                             </span>
-                        </td>
-                        <td class="px-4 py-3 text-center">
-                            @if($ticket->contract)
-                                @php
-                                    $contractBadge = match($ticket->contract->status) {
-                                        'active' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-                                        'expired' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-                                        'terminated' => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-                                        default => 'bg-neutral-100 text-neutral-800',
-                                    };
-                                @endphp
-                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $contractBadge }}">
-                                    {{ ucfirst($ticket->contract->status) }}
-                                </span>
-                            @else
-                                <span class="text-xs text-neutral-400">-</span>
-                            @endif
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->created_at->format('d/m/Y H:i') }}
