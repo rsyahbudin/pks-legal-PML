@@ -50,6 +50,14 @@ class Division extends Model
     }
 
     /**
+     * Get the tickets for this division.
+     */
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    /**
      * Scope to filter only active divisions.
      */
     public function scopeActive($query)
