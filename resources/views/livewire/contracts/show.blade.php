@@ -495,7 +495,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             @if($ticket->draft_document_path)
             <div>
                 <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Draft Dokumen</p>
-                <a href="{{ Storage::url($ticket->draft_document_path) }}" target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
+                <a href="{{ Storage::url($ticket->draft_document_path) }}" download target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
                     <flux:icon name="document-text" class="h-4 w-4" />
                     <span>Download Draft</span>
                     <flux:icon name="arrow-down-tray" class="h-4 w-4" />
@@ -508,7 +508,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Dokumen Wajib ({{ count($ticket->mandatory_documents_path) }} file)</p>
                 <div class="space-y-2">
                     @foreach($ticket->mandatory_documents_path as $index => $doc)
-                    <a href="{{ Storage::url($doc['path']) }}" target="_blank" class="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50">
+                    <a href="{{ Storage::url($doc['path']) }}" download target="_blank" class="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50">
                         <flux:icon name="document" class="h-4 w-4" />
                         <span class="flex-1">{{ $doc['name'] }}</span>
                         <flux:icon name="arrow-down-tray" class="h-4 w-4" />
@@ -521,7 +521,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             @if($ticket->approval_document_path)
             <div>
                 <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Dokumen Approval</p>
-                <a href="{{ Storage::url($ticket->approval_document_path) }}" target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50">
+                <a href="{{ Storage::url($ticket->approval_document_path) }}" download target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50">
                     <flux:icon name="document-check" class="h-4 w-4" />
                     <span>Download Approval</span>
                     <flux:icon name="arrow-down-tray" class="h-4 w-4" />
