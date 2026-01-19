@@ -101,6 +101,7 @@ class NotificationService
         $data = [
             'ticket_number' => $ticket->ticket_number,
             'proposed_document_title' => $ticket->proposed_document_title,
+            'document_type' => $ticket->document_type_label,
             'old_status' => $this->getStatusLabel($oldStatus),
             'new_status' => $this->getStatusLabel($newStatus),
             'reviewed_by' => $ticket->reviewer?->name ?? 'System',
@@ -166,6 +167,7 @@ class NotificationService
         $data = [
             'contract_number' => $contract->contract_number,
             'agreement_name' => $contract->agreement_name,
+            'document_type' => $contract->document_type_label,
             'old_status' => ucfirst($oldStatus),
             'new_status' => ucfirst($newStatus),
             'start_date' => $contract->start_date?->format('d M Y') ?? '-',
