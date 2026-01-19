@@ -46,11 +46,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Contract Repository (Asset View)
     Volt::route('contracts', 'contracts.repository')
-        ->middleware('permission:tickets.view') // Same permission as tickets for now
+        ->middleware('permission:contracts.view')
         ->name('contracts.repository');
 
     // Departments Management
-    Route::get('/departments', fn () => view('livewire.departments.index'))->middleware('permission:divisions.view')->name('departments.index');
+    Route::get('/departments', fn () => view('livewire.departments.index'))->middleware('permission:departments.manage')->name('departments.index');
 
     // Contracts Export
     Route::get('contracts-export', function (\Illuminate\Http\Request $request) {

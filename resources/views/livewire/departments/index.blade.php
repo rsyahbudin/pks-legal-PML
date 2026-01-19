@@ -124,7 +124,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">Manage departments and CC email lists</p>
         </div>
         
-        @if(auth()->user()?->hasPermission('divisions.create'))
+        @if(auth()->user()?->hasPermission('departments.manage'))
         <flux:button wire:click="create" icon="plus">
             Add Department
         </flux:button>
@@ -171,11 +171,11 @@ new #[Layout('components.layouts.app')] class extends Component {
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
-                                @if(auth()->user()?->hasPermission('divisions.update'))
+                                @if(auth()->user()?->hasPermission('departments.manage'))
                                 <flux:button wire:click="edit({{ $dept->id }})" size="sm" variant="ghost" icon="pencil" />
                                 @endif
                                 
-                                @if(auth()->user()?->hasPermission('divisions.delete'))
+                                @if(auth()->user()?->hasPermission('departments.manage'))
                                 <flux:button wire:click="delete({{ $dept->id }})" wire:confirm="Yakin ingin menghapus department ini?" size="sm" variant="ghost" icon="trash" class="text-red-600 hover:text-red-700" />
                                 @endif
                             </div>

@@ -13,7 +13,6 @@ class PermissionSeeder extends Seeder
         $permissions = [
             // Dashboard permissions
             ['name' => 'Lihat Dashboard Ticket Statistics', 'slug' => 'dashboard.tickets.view', 'group' => 'dashboard', 'description' => 'Melihat statistik tiket di dashboard'],
-            ['name' => 'Lihat Dashboard Aging Overview', 'slug' => 'dashboard.aging.view', 'group' => 'dashboard', 'description' => 'Melihat ringkasan aging di dashboard'],
             ['name' => 'Lihat Dashboard Contract Statistics', 'slug' => 'dashboard.contracts.view', 'group' => 'dashboard', 'description' => 'Melihat statistik kontrak di dashboard'],
             ['name' => 'Lihat My Tickets', 'slug' => 'dashboard.my-tickets.view', 'group' => 'dashboard', 'description' => 'Melihat tiket milik pengguna di dashboard'],
 
@@ -40,19 +39,22 @@ class PermissionSeeder extends Seeder
 
             // Roles permissions
             ['name' => 'Lihat Role', 'slug' => 'roles.view', 'group' => 'roles', 'description' => 'Melihat daftar role'],
-            ['name' => 'Edit Role', 'slug' => 'roles.edit', 'group' => 'roles', 'description' => 'Mengedit role dan permission'],
+            ['name' => 'Edit Role', 'slug' => 'roles.edit', 'group' => 'roles', 'description' => 'Mengedit role'],
+            ['name' => 'Manage Role Permissions', 'slug' => 'roles.manage', 'group' => 'roles', 'description' => 'Mengelola permissions untuk setiap role'],
 
             // Divisions
             ['name' => 'Lihat Divisi', 'slug' => 'divisions.view', 'group' => 'divisions', 'description' => 'Melihat daftar divisi'],
             ['name' => 'Buat Divisi', 'slug' => 'divisions.create', 'group' => 'divisions', 'description' => 'Membuat divisi baru'],
             ['name' => 'Edit Divisi', 'slug' => 'divisions.edit', 'group' => 'divisions', 'description' => 'Mengedit divisi'],
             ['name' => 'Hapus Divisi', 'slug' => 'divisions.delete', 'group' => 'divisions', 'description' => 'Menghapus divisi'],
+            ['name' => 'Manage Divisi', 'slug' => 'divisions.manage', 'group' => 'divisions', 'description' => 'Mengelola divisi (create, edit, delete)'],
 
             // Departments
             ['name' => 'Lihat Departemen', 'slug' => 'departments.view', 'group' => 'departments', 'description' => 'Melihat daftar departemen'],
             ['name' => 'Buat Departemen', 'slug' => 'departments.create', 'group' => 'departments', 'description' => 'Membuat departemen baru'],
             ['name' => 'Edit Departemen', 'slug' => 'departments.edit', 'group' => 'departments', 'description' => 'Mengedit departemen'],
             ['name' => 'Hapus Departemen', 'slug' => 'departments.delete', 'group' => 'departments', 'description' => 'Menghapus departemen'],
+            ['name' => 'Manage Departemen & CC Emails', 'slug' => 'departments.manage', 'group' => 'departments', 'description' => 'Mengelola departemen dan CC email lists'],
 
             // Settings
             ['name' => 'Lihat Pengaturan', 'slug' => 'settings.view', 'group' => 'settings', 'description' => 'Melihat pengaturan sistem'],
@@ -61,7 +63,7 @@ class PermissionSeeder extends Seeder
 
             // Reports
             ['name' => 'Lihat Laporan', 'slug' => 'reports.view', 'group' => 'reports', 'description' => 'Melihat laporan dan statistik'],
-            ['name' => 'Export Laporan', 'slug' => 'reports.export', 'group' => 'reports', 'description' => 'Export laporan ke Excel/PDF'],
+            ['name' => 'Export Laporan', 'slug' => 'reports.export', 'group' => 'reports', 'description' => 'Export laporan ke Excel/CSV (Tickets, Contracts)'],
         ];
 
         foreach ($permissions as $permission) {

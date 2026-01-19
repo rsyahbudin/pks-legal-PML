@@ -117,7 +117,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <th class="px-6 py-3 font-medium">Kode</th>
                         <th class="px-6 py-3 font-medium">Nama</th>
                         <th class="px-6 py-3 font-medium">Deskripsi</th>
-                        <th class="px-6 py-3 font-medium text-center">Users</th>
+                        <!-- <th class="px-6 py-3 font-medium text-center">Users</th> -->
                         <th class="px-6 py-3 font-medium text-center">Ticket</th>
                         <th class="px-6 py-3 font-medium text-center">Kontrak</th>
                         <th class="px-6 py-3 font-medium text-center">Status</th>
@@ -136,9 +136,9 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <td class="px-6 py-4 truncate max-w-xs" title="{{ $division->description }}">
                             {{ Str::limit($division->description, 50) ?? '-' }}
                         </td>
-                        <td class="px-6 py-4 text-center">
+                        <!-- <td class="px-6 py-4 text-center">
                             <flux:badge size="sm" color="zinc">{{ $division->users_count }}</flux:badge>
-                        </td>
+                        </td> -->
                         <td class="px-6 py-4 text-center">
                             <flux:badge size="sm" color="zinc">{{ $division->tickets_count }}</flux:badge>
                         </td>
