@@ -49,6 +49,9 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:tickets.view') // Same permission as tickets for now
         ->name('contracts.repository');
 
+    // Departments Management
+    Route::get('/departments', fn () => view('livewire.departments.index'))->middleware('permission:divisions.view')->name('departments.index');
+
     // Contracts Export
     Route::get('contracts-export', function (\Illuminate\Http\Request $request) {
         if (! auth()->user()->hasPermission('reports.export')) {

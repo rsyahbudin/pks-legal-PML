@@ -19,6 +19,9 @@ class NotificationService
      */
     public function notifyTicketCreated(Ticket $ticket): void
     {
+        // Ensure relationships are loaded
+        $ticket->load(['creator', 'division', 'department']);
+        
         $template = $this->templateService->getTicketCreatedTemplate();
 
         $data = [
@@ -35,9 +38,51 @@ class NotificationService
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
         $body = $this->templateService->parsePlaceholders($template['body'], $data);
 
-        // Send to legal team
+        // Send to legal team with department CC emails
         $legalEmail = $this->templateService->getLegalTeamEmail();
-        Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
+        
+        try {
+            // Get department CC emails if available
+            $ccEmails = [];
+            if ($ticket->department && !empty($ticket->department->cc_emails)) {
+                $ccEmails = array_filter($ticket->department->cc_emails_list, function($email) {
+                    return filter_var($email, FILTER_VALIDATE_EMAIL);
+                });
+            }
+            
+            \Log::info('Sending ticket created emails', [
+                'ticket_id' => $ticket->id,
+                'creator_email' => $ticket->creator->email,
+                'legal_email' => $legalEmail,
+                'cc_emails' => $ccEmails,
+            ]);
+            
+            // Send email - use array_values to reindex the filtered array
+            $mailable = new DynamicMail($subject, $body, $data);
+            
+            // Send to creator with CC
+            if (!empty($ccEmails)) {
+                Mail::to($ticket->creator->email)->cc(array_values($ccEmails))->send($mailable);
+            } else {
+                Mail::to($ticket->creator->email)->send($mailable);
+            }
+            
+            // Send to legal team with CC
+            if (!empty($ccEmails)) {
+                Mail::to($legalEmail)->cc(array_values($ccEmails))->send(new DynamicMail($subject, $body, $data));
+            } else {
+                Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
+            }
+            
+            \Log::info('Ticket created emails sent successfully', ['ticket_id' => $ticket->id]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send ticket created email', [
+                'ticket_id' => $ticket->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            // Don't throw - let ticket creation succeed even if email fails
+        }
 
         // Create notification for legal users
         $this->createNotificationForLegalTeam(
@@ -66,12 +111,37 @@ class NotificationService
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
         $body = $this->templateService->parsePlaceholders($template['body'], $data);
 
-        // Send to creator
-        Mail::to($ticket->creator->email)->send(new DynamicMail($subject, $body, $data));
+        try {
+            // Get department CC emails if available
+            $ccEmails = [];
+            if ($ticket->department && !empty($ticket->department->cc_emails)) {
+                $ccEmails = array_filter($ticket->department->cc_emails_list, function($email) {
+                    return filter_var($email, FILTER_VALIDATE_EMAIL);
+                });
+            }
+            
+            $mailable = new DynamicMail($subject, $body, $data);
+            
+            // Send to creator
+            if (!empty($ccEmails)) {
+                Mail::to($ticket->creator->email)->cc(array_values($ccEmails))->send($mailable);
+            } else {
+                Mail::to($ticket->creator->email)->send($mailable);
+            }
 
-        // Send to legal team
-        $legalEmail = $this->templateService->getLegalTeamEmail();
-        Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
+            // Send to legal team
+            $legalEmail = $this->templateService->getLegalTeamEmail();
+            if (!empty($ccEmails)) {
+                Mail::to($legalEmail)->cc(array_values($ccEmails))->send(new DynamicMail($subject, $body, $data));
+            } else {
+                Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to send ticket status change email', [
+                'ticket_id' => $ticket->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Create notifications
         $this->createNotificationForUser(
