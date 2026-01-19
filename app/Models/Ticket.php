@@ -295,7 +295,48 @@ class Ticket extends Model
         $this->logActivity('Ticket ditutup (tidak memerlukan contract)');
     }
 
-    // ... (skipped some methods)
+    /**
+     * Create contract from this ticket.
+     */
+    public function createContract(): Contract
+    {
+        // Calculate contract status based on end date
+        $status = 'active';
+        $endDate = $this->agreement_end_date;
+        
+        // Handle Surat Kuasa using kuasa_end_date
+        if ($this->document_type === 'surat_kuasa') {
+            $endDate = $this->kuasa_end_date;
+        }
+
+        if ($endDate && $endDate->isPast() && !$this->is_auto_renewal) {
+            $status = 'expired';
+        }
+
+        return $this->contract()->create([
+            'contract_number' => Contract::generateContractNumber(),
+            'agreement_name' => $this->proposed_document_title,
+            'proposed_document_title' => $this->proposed_document_title,
+            'document_type' => $this->document_type,
+            'financial_impact' => $this->has_financial_impact ? 'income' : null, // Default mapping, adjust if needed
+            'tat_legal_compliance' => $this->tat_legal_compliance,
+            'division_id' => $this->division_id,
+            'department_id' => $this->department_id,
+            'pic_id' => $this->created_by, // Default PIC to ticket creator
+            'pic_name' => $this->creator->name ?? 'Unknown',
+            'pic_email' => $this->creator->email ?? null,
+            'start_date' => $this->document_type === 'surat_kuasa' ? $this->kuasa_start_date : $this->agreement_start_date,
+            'end_date' => $endDate,
+            'is_auto_renewal' => $this->is_auto_renewal,
+            'description' => $this->counterpart_name 
+                ? "Pihak Lawan: {$this->counterpart_name}" 
+                : ($this->document_type === 'surat_kuasa' ? "Pemberi Kuasa: {$this->kuasa_pemberi}, Penerima: {$this->kuasa_penerima}" : null),
+            'status' => $status,
+            'mandatory_documents_path' => $this->mandatory_documents_path,
+            'approval_document_path' => $this->approval_document_path,
+            'created_by' => auth()->id() ?? $this->reviewed_by ?? $this->created_by,
+        ]);
+    }
 
     /**
      * Get human-readable aging duration.

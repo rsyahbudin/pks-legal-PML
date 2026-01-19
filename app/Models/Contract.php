@@ -53,6 +53,26 @@ class Contract extends Model
     }
 
     /**
+     * Generate unique contract number: CTR-YYYY-MM-XXXX
+     */
+    public static function generateContractNumber(): string
+    {
+        $prefix = 'CTR-' . now()->format('Y-m');
+        $lastContract = static::where('contract_number', 'like', $prefix . '-%')
+            ->orderBy('contract_number', 'desc')
+            ->first();
+
+        if ($lastContract) {
+            $lastNumber = (int) substr($lastContract->contract_number, -4);
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $newNumber = '0001';
+        }
+
+        return $prefix . '-' . $newNumber;
+    }
+
+    /**
      * Get the ticket that created this contract.
      */
     public function ticket(): BelongsTo
