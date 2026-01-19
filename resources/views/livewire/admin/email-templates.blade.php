@@ -105,17 +105,25 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         $service = app(EmailTemplateService::class);
 
-        // Reset to defaults by clearing settings
-        Setting::set('ticket_created_email_subject', null);
-        Setting::set('ticket_created_email_body', null);
-        Setting::set('ticket_status_changed_email_subject', null);
-        Setting::set('ticket_status_changed_email_body', null);
-        Setting::set('contract_status_changed_email_subject', null);
-        Setting::set('contract_status_changed_email_body', null);
-        Setting::set('contract_reminder_email_subject', null);
-        Setting::set('contract_reminder_email_body', null);
+        // Reset to actual default values from service
+        $ticketCreated = $service->getTicketCreatedTemplate();
+        $ticketStatus = $service->getTicketStatusChangedTemplate();
+        $contractStatus = $service->getContractStatusChangedTemplate();
+        $contractReminder = $service->getContractReminderTemplate();
 
-        $this->dispatch('notify', type: 'success', message: 'Email templates reset to defaults!');
+        Setting::set('ticket_created_email_subject', 'New Ticket: {ticket_number}');
+        Setting::set('ticket_created_email_body', "Dear Sir/Madam,\n\nWe would like to inform you that a new ticket has been created with the following details:\n\nTicket Number: {ticket_number}\nDocument Title: {proposed_document_title}\nDocument Type: {document_type}\nCreated by: {creator_name}\nDivision: {division_name}\nDepartment: {department_name}\nDate: {created_at}\n\nWe kindly request your review of this ticket in your dashboard at your earliest convenience.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary");
+        
+        Setting::set('ticket_status_changed_email_subject', 'Ticket {ticket_number} Status Changed');
+        Setting::set('ticket_status_changed_email_body', "Dear Sir/Madam,\n\nWe would like to inform you that the status of ticket {ticket_number} has been updated:\n\nTicket Number: {ticket_number}\nDocument Title: {proposed_document_title}\nDocument Type: {document_type}\nPrevious Status: {old_status}\nNew Status: {new_status}\nChanged by: {reviewed_by}\nDate: {reviewed_at}\n{rejection_reason}\n\nPlease review the updated ticket details in your dashboard.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary");
+        
+        Setting::set('contract_status_changed_email_subject', 'Contract {contract_number} Status Changed');
+        Setting::set('contract_status_changed_email_body', "Dear Sir/Madam,\n\nWe would like to inform you that the status of contract {contract_number} has been updated:\n\nContract Number: {contract_number}\nAgreement Name: {agreement_name}\nDocument Type: {document_type}\nPrevious Status: {old_status}\nNew Status: {new_status}\nStart Date: {start_date}\nEnd Date: {end_date}\n{termination_reason}\n\nPlease review the updated contract details in your dashboard.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary");
+        
+        Setting::set('contract_reminder_email_subject', 'Agreement {agreement_name} – Expiration Reminder');
+        Setting::set('contract_reminder_email_body', "Dear Sir/Madam,\n\nWe would like to inform you that Agreement {agreement_name} will expire on {end_date}.\n\nIn this regard, we kindly request your confirmation regarding the extension of the said agreement. Should you wish to proceed with the renewal, please contact us at legal@pfimegalife.co.id. Otherwise, kindly disregard this reminder.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary");
+
+        $this->dispatch('notify', type: 'success', message: 'Email templates restored to defaults!');
         $this->mount(); // Reload with defaults
     }
 }; ?>
@@ -240,7 +248,14 @@ new #[Layout('components.layouts.app')] class extends Component {
         <!-- Actions -->
         <div class="flex gap-3">
             <flux:button type="submit" variant="primary">Save All Changes</flux:button>
-            <flux:button type="button" wire:click="resetToDefaults" variant="ghost">Reset to Defaults</flux:button>
+            <flux:button 
+                type="button" 
+                wire:click="resetToDefaults" 
+                wire:confirm="Are you sure you want to reset all email templates to their default values? This will overwrite your current customizations." 
+                variant="ghost"
+            >
+                Reset to Defaults
+            </flux:button>
         </div>
     </form>
 </div>

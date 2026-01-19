@@ -20,7 +20,7 @@ class EmailTemplateService
     public function getTicketCreatedTemplate(): array
     {
         return [
-            'subject' => Setting::get('ticket_created_email_subject', 'Ticket Baru: {ticket_number}'),
+            'subject' => Setting::get('ticket_created_email_subject', 'New Ticket: {ticket_number}'),
             'body' => Setting::get('ticket_created_email_body', $this->getDefaultTicketCreatedBody()),
         ];
     }
@@ -31,7 +31,7 @@ class EmailTemplateService
     public function getTicketStatusChangedTemplate(): array
     {
         return [
-            'subject' => Setting::get('ticket_status_changed_email_subject', 'Status Ticket {ticket_number} Berubah'),
+            'subject' => Setting::get('ticket_status_changed_email_subject', 'Ticket {ticket_number} Status Changed'),
             'body' => Setting::get('ticket_status_changed_email_body', $this->getDefaultTicketStatusChangedBody()),
         ];
     }
@@ -42,7 +42,7 @@ class EmailTemplateService
     public function getContractStatusChangedTemplate(): array
     {
         return [
-            'subject' => Setting::get('contract_status_changed_email_subject', 'Status Kontrak {contract_number} Berubah'),
+            'subject' => Setting::get('contract_status_changed_email_subject', 'Contract {contract_number} Status Changed'),
             'body' => Setting::get('contract_status_changed_email_body', $this->getDefaultContractStatusChangedBody()),
         ];
     }
@@ -53,7 +53,7 @@ class EmailTemplateService
     public function getContractReminderTemplate(): array
     {
         return [
-            'subject' => Setting::get('contract_reminder_email_subject', 'Pengingat: Kontrak {contract_number} akan berakhir dalam {days_remaining} hari'),
+            'subject' => Setting::get('contract_reminder_email_subject', 'Agreement {agreement_name} – Expiration Reminder'),
             'body' => Setting::get('contract_reminder_email_body', $this->getDefaultContractReminderBody()),
         ];
     }
@@ -78,7 +78,7 @@ class EmailTemplateService
      */
     private function getDefaultTicketCreatedBody(): string
     {
-        return "Halo Tim Legal,\n\nTicket baru telah dibuat:\n\nNomor Ticket: {ticket_number}\nJudul Dokumen: {proposed_document_title}\nJenis Dokumen: {document_type}\nDibuat oleh: {creator_name}\nDivisi: {division_name}\nDepartemen: {department_name}\nTanggal: {created_at}\n\nSilakan review ticket ini di dashboard Anda.\n\nTerima kasih,\nSistem Ticketing Legal";
+        return "Dear Sir/Madam,\n\nWe would like to inform you that a new ticket has been created with the following details:\n\nTicket Number: {ticket_number}\nDocument Title: {proposed_document_title}\nDocument Type: {document_type}\nCreated by: {creator_name}\nDivision: {division_name}\nDepartment: {department_name}\nDate: {created_at}\n\nWe kindly request your review of this ticket in your dashboard at your earliest convenience.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary";
     }
 
     /**
@@ -86,7 +86,7 @@ class EmailTemplateService
      */
     private function getDefaultTicketStatusChangedBody(): string
     {
-        return "Halo,\n\nStatus ticket telah berubah:\n\nNomor Ticket: {ticket_number}\nJudul Dokumen: {proposed_document_title}\nStatus Sebelumnya: {old_status}\nStatus Baru: {new_status}\nDiubah oleh: {reviewed_by}\nTanggal: {reviewed_at}\n{rejection_reason}\n\nSilakan cek detail ticket di dashboard Anda.\n\nTerima kasih,\nSistem Ticketing Legal";
+        return "Dear Sir/Madam,\n\nWe would like to inform you that the status of ticket {ticket_number} has been updated:\n\nTicket Number: {ticket_number}\nDocument Title: {proposed_document_title}\nDocument Type: {document_type}\nPrevious Status: {old_status}\nNew Status: {new_status}\nChanged by: {reviewed_by}\nDate: {reviewed_at}\n{rejection_reason}\n\nPlease review the updated ticket details in your dashboard.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary";
     }
 
     /**
@@ -94,7 +94,7 @@ class EmailTemplateService
      */
     private function getDefaultContractStatusChangedBody(): string
     {
-        return "Halo,\n\nStatus kontrak telah berubah:\n\nNomor Kontrak: {contract_number}\nNama Perjanjian: {agreement_name}\nStatus Sebelumnya: {old_status}\nStatus Baru: {new_status}\nTanggal Mulai: {start_date}\nTanggal Berakhir: {end_date}\n{termination_reason}\n\nSilakan cek detail kontrak di dashboard Anda.\n\nTerima kasih,\nSistem Ticketing Legal";
+        return "Dear Sir/Madam,\n\nWe would like to inform you that the status of contract {contract_number} has been updated:\n\nContract Number: {contract_number}\nAgreement Name: {agreement_name}\nDocument Type: {document_type}\nPrevious Status: {old_status}\nNew Status: {new_status}\nStart Date: {start_date}\nEnd Date: {end_date}\n{termination_reason}\n\nPlease review the updated contract details in your dashboard.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary";
     }
 
     /**
@@ -102,6 +102,6 @@ class EmailTemplateService
      */
     private function getDefaultContractReminderBody(): string
     {
-        return "Halo,\n\nKontrak berikut akan segera berakhir:\n\nNomor Kontrak: {contract_number}\nNama Perjanjian: {agreement_name}\nCounterpart: {counterpart_name}\nTanggal Berakhir: {end_date}\nHari Tersisa: {days_remaining} hari\n\nMohon perhatian untuk perpanjangan atau tindakan yang diperlukan.\n\nTerima kasih,\nSistem Ticketing Legal";
+        return "Dear Sir/Madam,\n\nWe would like to inform you that Agreement {agreement_name} will expire on {end_date}.\n\nIn this regard, we kindly request your confirmation regarding the extension of the said agreement. Should you wish to proceed with the renewal, please contact us at legal@pfimegalife.co.id. Otherwise, kindly disregard this reminder.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary";
     }
 }

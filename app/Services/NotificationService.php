@@ -232,14 +232,14 @@ class NotificationService
     private function getStatusLabel(string $status): string
     {
         return match ($status) {
-            'open' => 'Menunggu Review',
-            'on_process' => 'Sedang Diproses',
-            'done' => 'Selesai',
-            'rejected' => 'Ditolak',
-            'closed' => 'Ditutup',
-            'active' => 'Aktif',
+            'open' => 'Open',
+            'on_process' => 'On Process',
+            'done' => 'Done',
+            'rejected' => 'Rejected',
+            'closed' => 'Closed',
+            'active' => 'Active',
             'expired' => 'Expired',
-            'terminated' => 'Diterminasi',
+            'terminated' => 'Terminated',
             default => ucfirst($status),
         };
     }
