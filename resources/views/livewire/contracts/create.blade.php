@@ -195,32 +195,30 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <!-- Division (readonly, auto-filled) -->
                 <flux:field>
                     <flux:label>Directorate/Divisi User *</flux:label>
-                    <flux:select wire:model="division_id" readonly>
-                        <option value="">-</option>
+                    <flux:select wire:model="division_id" name="division_id" disabled>
+                        <option value="">-- Pilih Divisi --</option>
                         @foreach($this->divisions as $division)
-                        <option value="{{ $division->id }}" {{ $division->id == $this->division_id ? 'selected' : '' }}>{{ $division->name }}</option>
+                        <option value="{{ $division->id }}">{{ $division->name }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:description>Auto-filled dari akun Anda</flux:description>
                     <flux:error name="division_id" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>Departemen User *</flux:label>
-                    <flux:select wire:model="department_id" readonly>
-                        <option value="">-</option>
+                    <flux:select wire:model="department_id" name="department_id" disabled>
+                        <option value="">-- Pilih Departement --</option>
                         @foreach($this->departments as $dept)
-                        <option value="{{ $dept->id }}" {{ $dept->id == $this->department_id ? 'selected' : '' }}>{{ $dept->name }}</option>
+                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:description>Auto-filled dari akun Anda</flux:description>
                     <flux:error name="department_id" />
                 </flux:field>
 
                 <!-- Financial Impact -->
                 <flux:field class="sm:col-span-2">
                     <flux:label>Financial Impact (Income-Pemasukan/Expenditure-Pengeluaran) *</flux:label>
-                    <flux:radio.group wire:model="has_financial_impact" variant="segmented" required>
+                    <flux:radio.group wire:model="has_financial_impact" variant="segmented" required wire:key="financial-impact-radio">
                         <flux:radio value="1" label="Yes" />
                         <flux:radio value="0" label="No" />
                     </flux:radio.group>
@@ -288,7 +286,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
                 <flux:field class="sm:col-span-2">
                     <flux:label>Pembaruan Otomatis *</flux:label>
-                    <flux:radio.group wire:model.live="is_auto_renewal" variant="segmented" required>
+                    <flux:radio.group wire:model.live="is_auto_renewal" variant="segmented" required wire:key="auto-renewal-radio">
                         <flux:radio value="1" label="Yes" />
                         <flux:radio value="0" label="No" />
                     </flux:radio.group>
@@ -372,7 +370,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div class="grid gap-4">
                 <flux:field>
                     <flux:label>Kesesuaian dengan Turn-Around-Time Legal *</flux:label>
-                    <flux:radio.group wire:model="tat_legal_compliance" variant="segmented" required>
+                    <flux:radio.group wire:model="tat_legal_compliance" variant="segmented" required wire:key="tat-compliance-radio">
                         <flux:radio value="1" label="Ya" />
                         <flux:radio value="0" label="Tidak" />
                     </flux:radio.group>

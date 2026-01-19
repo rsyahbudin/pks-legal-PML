@@ -269,6 +269,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     <tr>
                         <th class="px-4 py-3 text-left">Ticket #</th>
                         <th class="px-4 py-3 text-left">Title</th>
+                        <th class="px-4 py-3 text-left">Document Type</th>
                         <th class="px-4 py-3 text-left">Created By</th>
                         <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-center">Aging</th>
@@ -284,6 +285,9 @@ new #[Layout('components.layouts.app')] class extends Component
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             {{ Str::limit($ticket->proposed_document_title, 40) }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                            {{ $ticket->document_type_label }}
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->creator->name }}

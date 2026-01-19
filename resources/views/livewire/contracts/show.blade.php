@@ -383,7 +383,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
 
             <div class="sm:col-span-2">
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">TAT Legal Compliance</p>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Turn Around Time Legal</p>
                 <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->tat_legal_compliance ? 'Ya' : 'Tidak' }}</p>
             </div>
         </div>
