@@ -18,7 +18,9 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public string $divisionFilter = '';
 
-    public string $dateFilter = '';
+    public string $startDate = '';
+
+    public string $endDate = '';
 
     public string $typeFilter = '';
 
@@ -45,7 +47,12 @@ new #[Layout('components.layouts.app')] class extends Component
         $this->resetPage();
     }
 
-    public function updatedDateFilter(): void
+    public function updatedStartDate(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedEndDate(): void
     {
         $this->resetPage();
     }
@@ -67,7 +74,8 @@ new #[Layout('components.layouts.app')] class extends Component
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
             ->when($this->typeFilter, fn ($q) => $q->where('document_type', $this->typeFilter))
-            ->when($this->dateFilter, fn ($q) => $q->whereDate('created_at', $this->dateFilter));
+            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate));
 
         // Role-based filtering
         if ($user && ! $user->hasAnyRole(['super-admin', 'legal'])) {
@@ -99,6 +107,19 @@ new #[Layout('components.layouts.app')] class extends Component
             </p>
         </div>
         <div class="flex gap-2">
+            @if(auth()->user()?->hasPermission('reports.export'))
+            <a href="{{ route('tickets.export', [
+                'status' => $statusFilter,
+                'type' => $typeFilter,
+                'division' => $divisionFilter,
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ]) }}" class="inline-flex">
+                <flux:button variant="ghost" icon="arrow-down-tray">
+                    Export to Excel
+                </flux:button>
+            </a>
+            @endif
             @if(auth()->user()?->hasPermission('tickets.create'))
             <a href="{{ route('tickets.create') }}" wire:navigate>
                 <flux:button variant="primary" icon="plus">
@@ -120,7 +141,15 @@ new #[Layout('components.layouts.app')] class extends Component
             
             <flux:input 
                 type="date" 
-                wire:model.live="dateFilter" 
+                wire:model.live="startDate" 
+                placeholder="Tanggal Mulai"
+                icon="calendar-days"
+            />
+            
+            <flux:input 
+                type="date" 
+                wire:model.live="endDate" 
+                placeholder="Tanggal Akhir"
                 icon="calendar-days"
             />
             
@@ -164,6 +193,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-center">Dibuat</th>
                         <th class="px-4 py-3 text-center">Updated</th>
+                        <th class="px-4 py-3 text-center">Aging</th>
                         <th class="px-4 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -212,6 +242,11 @@ new #[Layout('components.layouts.app')] class extends Component
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->updated_at->format('d/m/Y H:i') }}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {{ $ticket->aging_display === '-' ? 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }}">
+                                {{ $ticket->aging_display }}
+                            </span>
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">

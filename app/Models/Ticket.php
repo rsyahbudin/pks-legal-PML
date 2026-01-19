@@ -255,11 +255,20 @@ class Ticket extends Model
      */
     public function reject(string $reason, User $reviewer): void
     {
+        $agingEnd = now();
+        $agingDuration = null;
+
+        if ($this->aging_start_at) {
+            $agingDuration = $this->aging_start_at->diffInMinutes($agingEnd);
+        }
+
         $this->update([
             'status' => 'rejected',
             'reviewed_at' => now(),
             'reviewed_by' => $reviewer->id,
             'rejection_reason' => $reason,
+            'aging_end_at' => $agingEnd,
+            'aging_duration' => $agingDuration,
         ]);
 
         $this->logActivity("Ticket ditolak: {$reason}", $reviewer);
@@ -309,6 +318,47 @@ class Ticket extends Model
         if ($mins > 0 || empty($parts)) $parts[] = "{$mins} menit";
 
         return implode(' ', $parts);
+    }
+
+    /**
+     * Get smart aging display based on ticket status and timestamps.
+     */
+    public function getAgingDisplayAttribute(): string
+    {
+        $totalMinutes = 0;
+        
+        // Calculate aging based on status and available timestamps
+        if ($this->aging_duration && $this->aging_duration > 0) {
+            // For completed tickets with stored aging_duration
+            $totalMinutes = $this->aging_duration;
+        } elseif (in_array($this->status, ['done', 'closed', 'rejected']) && $this->aging_start_at) {
+            // For completed tickets: use aging_start_at to aging_end_at (or updated_at as fallback)
+            $endTime = $this->aging_end_at ?? $this->updated_at;
+            $totalMinutes = $this->aging_start_at->diffInMinutes($endTime);
+        } elseif ($this->status === 'on_process' && $this->aging_start_at) {
+            // For in-progress tickets: calculate from aging_start_at to now
+            $totalMinutes = $this->aging_start_at->diffInMinutes(now());
+        }
+        
+        // Return '-' if no aging (ticket not yet processed)
+        if ($totalMinutes <= 0) {
+            return '-';
+        }
+        
+        // Smart unit selection for better readability
+        if ($totalMinutes >= 1440) {
+            // Show in days if >= 24 hours
+            $days = (int) round($totalMinutes / 1440);
+            return $days . ' hari';
+        } elseif ($totalMinutes >= 60) {
+            // Show in hours if >= 1 hour
+            $hours = (int) round($totalMinutes / 60);
+            return $hours . ' jam';
+        } else {
+            // Show in minutes if < 1 hour, minimum 1 minute
+            $minutes = max(1, (int) round($totalMinutes));
+            return $minutes . ' menit';
+        }
     }
 
     /**

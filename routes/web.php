@@ -67,6 +67,26 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->middleware('permission:reports.export')->name('contracts.export');
 
+    // Tickets Export
+    Route::get('tickets-export', function (\Illuminate\Http\Request $request) {
+        if (! auth()->user()->hasPermission('reports.export')) {
+            abort(403);
+        }
+        $export = new \App\Exports\TicketsExport(
+            $request->get('status'),
+            $request->get('type'),
+            $request->get('division') ? (int) $request->get('division') : null,
+            $request->get('start_date'),
+            $request->get('end_date')
+        );
+        $filename = 'tickets_'.now()->format('Y-m-d_His').'.csv';
+
+        return response($export->toCsv(), 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    })->middleware('permission:reports.export')->name('tickets.export');
+
     // Divisions
     Volt::route('divisions', 'divisions.index')
         ->middleware('permission:divisions.view')

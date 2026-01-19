@@ -82,18 +82,18 @@ new #[Layout('components.layouts.app')] class extends Component
 
         $query = Ticket::with(['creator', 'division', 'contract'])
             ->whereIn('status', ['open', 'on_process']);
-
-        // Fetch enough records to filter (since we can't easily do calculated aging in SQL cross-db)
-        // Or better: Use collection filtering after fetching all candidate tickets (limit 100?)
-        // Since this is "Needing Attention", usually volume isn't huge.
         
         $tickets = $query->orderBy('created_at', 'asc')->get();
 
-        // Filter by aging
+        // Filter by aging - only consider tickets that have been processed (have aging_start_at)
         if ($this->agingFilter !== 'all') {
             $tickets = $tickets->filter(function ($ticket) {
-                $start = $ticket->aging_start_at ?? $ticket->created_at;
-                $days = now()->diffInDays($start);
+                // Only show tickets with aging_start_at for aging filters
+                if (!$ticket->aging_start_at) {
+                    return false;
+                }
+                
+                $days = now()->diffInDays($ticket->aging_start_at);
 
                 return match ($this->agingFilter) {
                     'less_3' => $days < 3,
@@ -242,37 +242,7 @@ new #[Layout('components.layouts.app')] class extends Component
         </div>
     </div>
 
-    <!-- Aging Overview -->
-    @if($this->agingOverview['avg_ongoing_minutes'] > 0 || $this->agingOverview['avg_completed_minutes'] > 0)
-    <div class="rounded-xl border border-neutral-200 bg-gradient-to-r from-blue-50 to-purple-50 p-6 dark:border-neutral-700 dark:from-blue-950/30 dark:to-purple-950/30">
-        <h3 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Aging Overview</h3>
-        <div class="grid gap-4 sm:grid-cols-3">
-            <div>
-                <p class="text-sm text-neutral-600 dark:text-neutral-400">Avg Ongoing (On Process)</p>
-                <p class="text-xl font-bold text-blue-700 dark:text-blue-400">
-                    {{ floor($this->agingOverview['avg_ongoing_minutes'] / 1440) }} hari {{ floor(($this->agingOverview['avg_ongoing_minutes'] % 1440) / 60) }} jam
-                </p>
-            </div>
-            <div>
-                <p class="text-sm text-neutral-600 dark:text-neutral-400">Avg Completed</p>
-                <p class="text-xl font-bold text-green-700 dark:text-green-400">
-                    {{ floor($this->agingOverview['avg_completed_minutes'] / 1440) }} hari {{ floor(($this->agingOverview['avg_completed_minutes'] % 1440) / 60) }} jam
-                </p>
-            </div>
-            @if($this->agingOverview['longest_ticket'])
-            <div>
-                <p class="text-sm text-neutral-600 dark:text-neutral-400">Longest Ongoing</p>
-                <p class="text-lg font-bold text-red-700 dark:text-red-400">
-                    {{ $this->agingOverview['longest_ticket']->ticket_number }}
-                </p>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                    {{ floor(now()->diffInMinutes($this->agingOverview['longest_ticket']->aging_start_at) / 1440) }} hari
-                </p>
-            </div>
-            @endif
-        </div>
-    </div>
-    @endif
+
 
     <!-- Tickets Needing Attention -->
     @if($this->ticketsNeedingAttention->isNotEmpty() || $this->agingFilter !== 'all')
@@ -330,14 +300,10 @@ new #[Layout('components.layouts.app')] class extends Component
                                 {{ $config['label'] }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-center text-sm font-medium text-neutral-900 dark:text-white">
-                            @php
-                                $start = $ticket->aging_start_at ?? $ticket->created_at;
-                                $diff = now()->diff($start);
-                                $days = $diff->days;
-                                $hours = $diff->h;
-                            @endphp
-                            {{ $days }}d {{ $hours }}h
+                        <td class="px-4 py-3 text-center">
+                            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {{ $ticket->aging_display === '-' ? 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }}">
+                                {{ $ticket->aging_display }}
+                            </span>
                         </td>
                     </tr>
                     @endforeach
