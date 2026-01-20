@@ -35,11 +35,15 @@ class SendContractReminders extends Command
         // Only process these document types
         $includedTypes = ['perjanjian', 'adendum', 'amandemen'];
 
+        // Get Document Type IDs for included types
+        $documentTypeIds = \App\Models\DocumentType::whereIn('code', $includedTypes)->pluck('id')->toArray();
+        $activeStatusId = \App\Models\ContractStatus::getIdByCode('active');
+
         // Get all active contracts with these document types
         $maxDays = max($reminderDays);
         $contracts = Contract::with(['division', 'pic', 'ticket', 'ticket.creator'])
-            ->where('status', 'active') // Only active contracts
-            ->whereIn('document_type', $includedTypes)
+            ->where('status_id', $activeStatusId) // Only active contracts
+            ->whereIn('document_type_id', $documentTypeIds)
             ->whereDate('end_date', '>=', now()) // Not expired
             ->whereDate('end_date', '<=', now()->addDays($maxDays)) // Within max reminder range
             ->get();

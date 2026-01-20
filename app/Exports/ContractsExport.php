@@ -66,6 +66,7 @@ class ContractsExport
                     default => '-',
                 },
                 'Deskripsi' => $contract->description,
+                'Alasan Terminasi' => $contract->termination_reason ?? '-',
             ];
         });
     }
@@ -83,6 +84,7 @@ class ContractsExport
             'Status',
             'Kondisi',
             'Deskripsi',
+            'Alasan Terminasi',
         ];
     }
 

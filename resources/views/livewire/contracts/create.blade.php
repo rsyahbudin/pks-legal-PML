@@ -116,7 +116,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'department_id' => $this->department_id,
                 'has_financial_impact' => $validated['has_financial_impact'],
                 'proposed_document_title' => $validated['proposed_document_title'],
-                'document_type' => $validated['document_type'],
+                'document_type_id' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
                 'counterpart_name' => $this->counterpart_name ?: null,
                 'agreement_start_date' => $this->agreement_start_date ?: null,
                 'agreement_duration' => $this->agreement_duration ?: null,
@@ -130,7 +130,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'kuasa_start_date' => $this->kuasa_start_date ?: null,
                 'kuasa_end_date' => $this->kuasa_end_date ?: null,
                 'tat_legal_compliance' => $validated['tat_legal_compliance'],
-                'status' => 'open',
+                'status_id' => \App\Models\TicketStatus::getIdByCode('open'),
                 'created_by' => $user->id,
             ]);
 

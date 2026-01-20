@@ -56,15 +56,18 @@ new #[Layout('components.layouts.app')] class extends Component
                 } elseif ($this->statusFilter === 'expired') {
                     $q->expired();
                 } else {
-                    $q->where('status', $this->statusFilter);
+                    $q->whereHas('status', fn($sq) => $sq->where('code', $this->statusFilter));
                 }
             })
-            ->when($this->typeFilter, fn ($q) => $q->where('document_type', $this->typeFilter))
+            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn($sq) => $sq->where('code', $this->typeFilter)))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter));
 
         // Role-based filtering (Pic sees only their contracts, Legal/Admin sees all)
-        if (method_exists($user, 'isPic') && $user->isPic()) {
-            $query->forPic($user->id);
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->where(function($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('pic_id', $user->id);
+            });
         }
 
         return $query->orderBy('created_at', 'desc')->paginate($this->perPage);
@@ -73,6 +76,11 @@ new #[Layout('components.layouts.app')] class extends Component
     public function getDivisionsProperty()
     {
         return \App\Models\Division::active()->orderBy('name')->get();
+    }
+
+    public function getContractStatusesProperty()
+    {
+        return \App\Models\ContractStatus::active()->orderBy('sort_order')->get();
     }
 }; ?>
 
@@ -109,11 +117,12 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="w-full sm:w-48">
             <flux:select wire:model.live="statusFilter" placeholder="Filter Status">
                 <flux:select.option value="">Semua Status</flux:select.option>
-                <flux:select.option value="active">Active</flux:select.option>
-                <flux:select.option value="expired">Expired</flux:select.option>
-                <flux:select.option value="terminated">Terminated</flux:select.option>
+                @foreach($this->contractStatuses as $status)
+                    <flux:select.option value="{{ $status->code }}">{{ $status->name }}</flux:select.option>
+                @endforeach
             </flux:select>
         </div>
+        @if(auth()->user()->hasAnyRole(['super-admin', 'legal']))
         <div class="w-full sm:w-48">
             <flux:select wire:model.live="divisionFilter" placeholder="Filter Division">
                 <flux:select.option value="">Semua Division</flux:select.option>
@@ -122,6 +131,7 @@ new #[Layout('components.layouts.app')] class extends Component
                 @endforeach
             </flux:select>
         </div>
+        @endif
         <div class="w-full sm:w-32">
             <flux:select wire:model.live="perPage">
                 <option value="10">10 / page</option>
@@ -177,14 +187,9 @@ new #[Layout('components.layouts.app')] class extends Component
                         </td>
                         <td class="px-6 py-4 text-center">
                             @php
-                                $color = match($contract->status) {
-                                    'active' => 'green',
-                                    'expired' => 'red',
-                                    'terminated' => 'neutral',
-                                    default => 'neutral',
-                                };
+                                $color = $contract->status?->color ?? 'neutral';
                             @endphp
-                            <flux:badge :color="$color" size="sm" inset="top bottom">{{ ucfirst($contract->status) }}</flux:badge>
+                            <flux:badge :color="$color" size="sm" inset="top bottom">{{ $contract->status?->name ?? 'Unknown' }}</flux:badge>
                         </td>
                         <td class="px-6 py-4 text-end">
                             <flux:button :href="route('tickets.show', $contract->ticket_id)" icon="eye" size="sm" variant="ghost" class="-my-1" />

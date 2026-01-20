@@ -29,11 +29,11 @@ new #[Layout('components.layouts.app')] class extends Component
 
         return [
             'total' => Ticket::count(),
-            'open' => Ticket::where('status', 'open')->count(),
-            'on_process' => Ticket::where('status', 'on_process')->count(),
-            'done' => Ticket::where('status', 'done')->count(),
-            'rejected' => Ticket::where('status', 'rejected')->count(),
-            'closed' => Ticket::where('status', 'closed')->count(),
+            'open' => Ticket::whereHas('status', fn($q) => $q->where('code', 'open'))->count(),
+            'on_process' => Ticket::whereHas('status', fn($q) => $q->where('code', 'on_process'))->count(),
+            'done' => Ticket::whereHas('status', fn($q) => $q->where('code', 'done'))->count(),
+            'rejected' => Ticket::whereHas('status', fn($q) => $q->where('code', 'rejected'))->count(),
+            'closed' => Ticket::whereHas('status', fn($q) => $q->where('code', 'closed'))->count(),
         ];
     }
 
@@ -44,11 +44,11 @@ new #[Layout('components.layouts.app')] class extends Component
             return [];
         }
 
-        $onProcessTickets = Ticket::where('status', 'on_process')
+        $onProcessTickets = Ticket::where('status_id', \App\Models\TicketStatus::getIdByCode('on_process'))
             ->whereNotNull('aging_start_at')
             ->get();
 
-        $doneTickets = Ticket::where('status', 'done')
+        $doneTickets = Ticket::where('status_id', \App\Models\TicketStatus::getIdByCode('done'))
             ->whereNotNull('aging_duration')
             ->get();
 
@@ -81,7 +81,7 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         $query = Ticket::with(['creator', 'division', 'contract'])
-            ->whereIn('status', ['open', 'on_process']);
+            ->whereHas('status', fn($q) => $q->whereIn('code', ['open', 'on_process']));
         
         $tickets = $query->orderBy('created_at', 'asc')->get();
 
@@ -117,11 +117,11 @@ new #[Layout('components.layouts.app')] class extends Component
 
         return [
             'total' => Ticket::where('created_by', $user->id)->count(),
-            'open' => Ticket::where('created_by', $user->id)->where('status', 'open')->count(),
-            'on_process' => Ticket::where('created_by', $user->id)->where('status', 'on_process')->count(),
-            'done' => Ticket::where('created_by', $user->id)->where('status', 'done')->count(),
-            'rejected' => Ticket::where('created_by', $user->id)->where('status', 'rejected')->count(),
-            'closed' => Ticket::where('created_by', $user->id)->where('status', 'closed')->count(),
+            'open' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('open'))->count(),
+            'on_process' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('on_process'))->count(),
+            'done' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('done'))->count(),
+            'rejected' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('rejected'))->count(),
+            'closed' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('closed'))->count(),
         ];
     }
 
@@ -153,12 +153,14 @@ new #[Layout('components.layouts.app')] class extends Component
 
         if (method_exists($user, 'isPic') && $user->isPic()) {
             $query->forPic($user->id);
+        } elseif (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->forUser($user->id);
         }
 
         $total = (clone $query)->count();
         $active = (clone $query)->active()->count();
         $expired = (clone $query)->expired()->count();
-        $terminated = (clone $query)->where('status', 'terminated')->count();
+        $terminated = (clone $query)->whereHas('status', fn($q) => $q->where('code', 'terminated'))->count();
 
         return [
             'total' => $total,
@@ -180,6 +182,8 @@ new #[Layout('components.layouts.app')] class extends Component
 
         if (method_exists($user, 'isPic') && $user->isPic()) {
             $query->forPic($user->id);
+        } elseif (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->forUser($user->id);
         }
 
         return $query->limit(5)->get();
@@ -195,12 +199,14 @@ new #[Layout('components.layouts.app')] class extends Component
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
 
         $query = Contract::with(['division', 'pic', 'ticket'])
-            ->where('status', 'active')
+            ->whereHas('status', fn($q) => $q->where('code', 'active'))
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->orderBy('end_date', 'asc');
 
         if (method_exists($user, 'isPic') && $user->isPic()) {
             $query->forPic($user->id);
+        } elseif (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->forUser($user->id);
         }
 
         return $query->limit(5)->get();
@@ -298,7 +304,7 @@ new #[Layout('components.layouts.app')] class extends Component
                                     'open' => ['class' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', 'label' => 'Open'],
                                     'on_process' => ['class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', 'label' => 'On Process'],
                                 ];
-                                $config = $statusConfig[$ticket->status] ?? ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => ucfirst($ticket->status)];
+                                $config = $statusConfig[$ticket->status?->code] ?? ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => ucfirst($ticket->status?->code)];
                             @endphp
                             <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $config['class'] }}">
                                 {{ $config['label'] }}
@@ -397,7 +403,7 @@ new #[Layout('components.layouts.app')] class extends Component
                                         'rejected' => ['class' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', 'label' => 'Rejected'],
                                         'closed' => ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => 'Closed'],
                                     ];
-                                    $config = $statusConfig[$ticket->status] ?? ['class' => 'bg-neutral-100 text-neutral-800', 'label' => ucfirst($ticket->status)];
+                                    $config = $statusConfig[$ticket->status?->code] ?? ['class' => 'bg-neutral-100 text-neutral-800', 'label' => ucfirst($ticket->status?->code)];
                                 @endphp
                                 <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $config['class'] }}">
                                     {{ $config['label'] }}
@@ -539,7 +545,7 @@ new #[Layout('components.layouts.app')] class extends Component
                                 @endphp
                                 <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $color === 'green' ? 'bg-green-500' : ($color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500') }}"></span>
-                                    {{ $contract->status === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
+                                    {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
                                 </span>
                             </td>
                         </tr>
@@ -576,7 +582,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     </div>
                     <div class="text-right">
                         <p class="font-medium {{ $contract->status_color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400' }}">
-                            {{ $contract->status === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
+                            {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
                         </p>
                         <p class="text-xs text-neutral-500 dark:text-neutral-400">
                             {{ $contract->end_date?->format('d M Y') ?? '-' }}

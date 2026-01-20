@@ -8,7 +8,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class DynamicMail extends Mailable
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class DynamicMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

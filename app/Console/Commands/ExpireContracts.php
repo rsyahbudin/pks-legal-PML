@@ -30,7 +30,7 @@ class ExpireContracts extends Command
         $this->info('Checking for contracts to expire...');
 
         // Find active contracts past their end date (excluding auto-renewal)
-        $expiredContracts = Contract::where('status', 'active')
+        $expiredContracts = Contract::whereHas('status', fn($q) => $q->where('code', 'active'))
             ->where('is_auto_renewal', false)
             ->whereNotNull('end_date')
             ->whereDate('end_date', '<', now())
@@ -46,7 +46,7 @@ class ExpireContracts extends Command
             $oldValues = $contract->toArray();
             
             // Update status to expired
-            $contract->update(['status' => 'expired']);
+            $contract->update(['status_id' => \App\Models\ContractStatus::getIdByCode('expired')]);
             
             // Log the activity
             ActivityLog::logUpdated($contract, $oldValues, null); // null = system user

@@ -23,7 +23,10 @@ new #[Layout('components.layouts.app')] class extends Component {
             'creator', 
             'reviewer',
             'contract',
-            'activityLogs.user'
+            'contract.status', // Ensure contract status is loaded
+            'activityLogs.user',
+            'status', // Load ticket status
+            'documentType', // Load document type
         ])->findOrFail($contract);
     }
 
@@ -41,7 +44,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             return;
         }
 
-        $oldStatus = $this->ticket->status;
+        $oldStatus = $this->ticket->status?->code;
         $this->ticket->moveToOnProcess($user);
 
         // Send notification
@@ -49,6 +52,9 @@ new #[Layout('components.layouts.app')] class extends Component {
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'on_process');
 
         $this->dispatch('notify', type: 'success', message: 'Ticket berhasil dipindah ke status On Process.');
+
+        // Refresh data
+        $this->mount($this->ticket->id);
     }
 
     public function openRejectModal(): void
@@ -69,7 +75,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'rejectionReason' => ['required', 'string', 'min:10'],
         ]);
 
-        $oldStatus = $this->ticket->status;
+        $oldStatus = $this->ticket->status?->code;
         $this->ticket->reject($this->rejectionReason, $user);
 
         // Send notification
@@ -78,6 +84,9 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         $this->showRejectModal = false;
         $this->dispatch('notify', type: 'success', message: 'Ticket berhasil ditolak.');
+
+        // Refresh data
+        $this->mount($this->ticket->id);
     }
 
     public function moveToDone(): void
@@ -89,12 +98,12 @@ new #[Layout('components.layouts.app')] class extends Component {
             return;
         }
 
-        if ($this->ticket->status !== 'on_process') {
+        if ($this->ticket->status?->code !== 'on_process') {
             $this->dispatch('notify', type: 'error', message: 'Hanya ticket dengan status On Process yang dapat diselesaikan.');
             return;
         }
 
-        $oldStatus = $this->ticket->status;
+        $oldStatus = $this->ticket->status?->code;
         $this->ticket->moveToDone();
         
         // Refresh ticket to get updated status from database
@@ -103,6 +112,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         // Create contract from ticket
         if (!$this->ticket->contract && $this->canCreateContract()) {
             $this->generateContract();
+            $this->ticket->load('contract');
         }
 
         // Send notification
@@ -110,6 +120,14 @@ new #[Layout('components.layouts.app')] class extends Component {
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'done');
 
         // Refresh data
+        $this->ticket = $this->ticket->fresh([
+            'division', 
+            'department', 
+            'creator', 
+            'reviewer',
+            'contract.status', // Ensure deep load of contract status
+            'activityLogs.user'
+        ]);
         $this->mount($this->ticket->id);
     }
 
@@ -117,21 +135,21 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         \Log::info('=== GENERATE CONTRACT: START ===', [
             'ticket_id' => $this->ticket->id,
-            'document_type' => $this->ticket->document_type,
-            'status' => $this->ticket->status,
+            'document_type' => $this->ticket->documentType?->code,
+            'status' => $this->ticket->status?->code,
         ]);
         
         // Only allow contract creation for specific document types
         $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
         
-        if (!in_array($this->ticket->document_type, $contractableTypes)) {
-            \Log::warning('Document type not contractable', ['type' => $this->ticket->document_type]);
+        if (!in_array($this->ticket->documentType?->code, $contractableTypes)) {
+            \Log::warning('Document type not contractable', ['type' => $this->ticket->documentType?->code]);
             $this->dispatch('notify', type: 'error', message: 'Tipe dokumen ini tidak memerlukan contract.');
             return;
         }
 
-        if ($this->ticket->status !== 'done') {
-            \Log::warning('Ticket status not done', ['status' => $this->ticket->status]);
+        if ($this->ticket->status?->code !== 'done') {
+            \Log::warning('Ticket status not done', ['status' => $this->ticket->status?->code]);
             $this->dispatch('notify', type: 'error', message: 'Ticket harus berstatus Done untuk membuat contract.');
             return;
         }
@@ -152,7 +170,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             ]);
             
             // Auto-close ticket if contract is created with expired status
-            if ($contract->status === 'expired') {
+            if ($contract->status?->code === 'expired') {
                 $this->ticket->update(['status' => 'closed']);
                 $this->ticket->logActivity('Ticket ditutup otomatis karena contract sudah expired');
                 $this->dispatch('notify', type: 'warning', message: "Contract #{$contract->contract_number} dibuat dengan status Expired. Ticket ditutup otomatis.");
@@ -172,9 +190,9 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
         
-        return $this->ticket->status === 'done' 
+        return $this->ticket->status?->code === 'done' 
             && !$this->ticket->contract
-            && in_array($this->ticket->document_type, $contractableTypes);
+            && in_array($this->ticket->documentType?->code, $contractableTypes);
     }
 
     public function openTerminateModal(): void
@@ -200,7 +218,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'terminationReason' => ['required', 'string', 'min:10'],
         ]);
 
-        $oldStatus = $this->ticket->contract->status;
+        $oldStatus = $this->ticket->contract->status?->code;
         $this->ticket->contract->terminate($this->terminationReason);
 
         // Send notification
@@ -223,12 +241,12 @@ new #[Layout('components.layouts.app')] class extends Component {
             return;
         }
 
-        if ($this->ticket->status !== 'on_process') {
+        if ($this->ticket->status?->code !== 'on_process') {
             $this->dispatch('notify', type: 'error', message: 'Hanya ticket dengan status On Process yang dapat ditutup.');
             return;
         }
 
-        $oldStatus = $this->ticket->status;
+        $oldStatus = $this->ticket->status?->code;
         $this->ticket->moveToClosedDirectly();
 
         // Send notification
@@ -252,7 +270,6 @@ new #[Layout('components.layouts.app')] class extends Component {
         <div class="flex items-start justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $ticket->ticket_number }}</h1>
-                <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{{ $ticket->proposed_document_title }}</p>
             </div>
             @php
                 $statusBadge = match($ticket->status_color) {
@@ -290,16 +307,16 @@ new #[Layout('components.layouts.app')] class extends Component {
                 </flux:button>
             </a>
 
-            @if($ticket->status === 'open')
+            @if($ticket->status?->code === 'open')
                 <flux:button wire:click="moveToOnProcess" variant="primary" icon="play">
                     Process Ticket
                 </flux:button>
                 <flux:button wire:click="openRejectModal" variant="danger" icon="x-mark">
                     Reject Ticket
                 </flux:button>
-            @elseif($ticket->status === 'on_process')
+            @elseif($ticket->status?->code === 'on_process')
                 @php
-                    $isContractable = in_array($ticket->document_type, ['perjanjian', 'nda', 'surat_kuasa']);
+                    $isContractable = in_array($ticket->documentType?->code, ['perjanjian', 'nda', 'surat_kuasa']);
                 @endphp
                 
                 @if($isContractable)
@@ -313,7 +330,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 @endif
             @endif
 
-            @if($ticket->contract && $ticket->contract->status === 'active')
+            @if($ticket->contract && $ticket->contract->status?->code === 'active')
                 <flux:button wire:click="openTerminateModal" variant="danger" icon="x-circle">
                     Terminate Contract
                 </flux:button>
@@ -334,6 +351,10 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Jenis Dokumen</p>
                 <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->document_type_label }}</p>
+            </div>
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Judul Dokumen (Usulan)</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->proposed_document_title }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Divisi</p>
@@ -363,12 +384,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
 
-            @if($ticket->aging_duration)
-            <div class="sm:col-span-2">
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">Durasi Processing (Aging)</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->aging_duration_display }}</p>
-            </div>
-            @endif
+
 
             @if($ticket->rejection_reason)
             <div class="sm:col-span-2">
@@ -384,14 +400,16 @@ new #[Layout('components.layouts.app')] class extends Component {
 
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Turn Around Time Legal</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->tat_legal_compliance ? 'Ya' : 'Tidak' }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->tat_legal_compliance ? 'Yes' : 'No' }}</p>
             </div>
+
+
         </div>
 
         <!-- Document-specific details -->
-        @if(in_array($ticket->document_type, ['perjanjian', 'nda']) && $ticket->counterpart_name)
+        @if(in_array($ticket->documentType?->code, ['perjanjian', 'nda']) && $ticket->counterpart_name)
         <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-700">
-            <h3 class="mb-3 font-semibold text-neutral-900 dark:text-white">Detail {{ $ticket->document_type === 'nda' ? 'NDA' : 'Perjanjian' }}</h3>
+            <h3 class="mb-3 font-semibold text-neutral-900 dark:text-white">Detail {{ $ticket->documentType?->code === 'nda' ? 'NDA' : 'Perjanjian' }}</h3>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">Counterpart</p>
@@ -415,29 +433,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         </div>
         @endif
 
-        @if($ticket->document_type === 'surat_kuasa' && $ticket->kuasa_pemberi)
-        <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-700">
-            <h3 class="mb-3 font-semibold text-neutral-900 dark:text-white">Detail Surat Kuasa</h3>
-            <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Pemberi Kuasa</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_pemberi }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Penerima Kuasa</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_penerima }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Mulai</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_start_date?->format('d M Y') ?? '-' }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_end_date?->format('d M Y') ?? '-' }}</p>
-                </div>
-            </div>
-        </div>
-        @endif
+
     </div>
 
     <!-- Contract Information (if exists) -->
@@ -453,16 +449,9 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Status Contract</p>
                 @php
-                    $contractBadge = match($ticket->contract->status) {
-                        'active' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-                        'expired' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-                        'terminated' => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-                        default => 'bg-neutral-100 text-neutral-800',
-                    };
+                    $color = $ticket->contract->status?->color ?? 'neutral';
                 @endphp
-                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $contractBadge }}">
-                    {{ ucfirst($ticket->contract->status) }}
-                </span>
+                <flux:badge :color="$color" size="sm" inset="top bottom">{{ $ticket->contract->status?->name ?? 'Unknown' }}</flux:badge>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Mulai</p>
@@ -472,6 +461,17 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Tanggal Berakhir</p>
                 <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->end_date?->format('d M Y') ?? '-' }}</p>
             </div>
+
+            @if($ticket->documentType?->code === 'surat_kuasa' && $ticket->kuasa_pemberi)
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Pemberi Kuasa</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_pemberi }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Penerima Kuasa</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_penerima }}</p>
+            </div>
+            @endif
             
             @if($ticket->contract->terminated_at)
             <div class="sm:col-span-2">

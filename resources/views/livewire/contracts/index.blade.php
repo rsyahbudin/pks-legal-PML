@@ -66,14 +66,14 @@ new #[Layout('components.layouts.app')] class extends Component
     {
         $user = auth()->user();
 
-        $query = Ticket::with(['division', 'department', 'creator', 'contract'])
+        $query = Ticket::with(['division', 'department', 'creator', 'contract', 'status', 'documentType'])
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('ticket_number', 'like', "%{$this->search}%")
                     ->orWhere('proposed_document_title', 'like', "%{$this->search}%");
             }))
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter, fn ($q) => $q->whereHas('status', fn($sq) => $sq->where('code', $this->statusFilter)))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
-            ->when($this->typeFilter, fn ($q) => $q->where('document_type', $this->typeFilter))
+            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn($sq) => $sq->where('code', $this->typeFilter)))
             ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
             ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate));
 
@@ -90,6 +90,11 @@ new #[Layout('components.layouts.app')] class extends Component
     public function getDivisionsProperty()
     {
         return Division::active()->orderBy('name')->get();
+    }
+
+    public function getTicketStatusesProperty()
+    {
+        return \App\Models\TicketStatus::active()->orderBy('sort_order')->get();
     }
 }; ?>
 
@@ -155,11 +160,9 @@ new #[Layout('components.layouts.app')] class extends Component
             
             <flux:select wire:model.live="statusFilter">
                 <option value="">Semua Status Ticket</option>
-                <option value="open">Menunggu Review</option>
-                <option value="on_process">Sedang Diproses</option>
-                <option value="done">Selesai</option>
-                <option value="rejected">Ditolak</option>
-                <option value="closed">Ditutup</option>
+                @foreach($this->ticketStatuses as $status)
+                    <option value="{{ $status->code }}">{{ $status->name }}</option>
+                @endforeach
             </flux:select>
 
             <flux:select wire:model.live="typeFilter" placeholder="Jenis Dokumen">
@@ -214,28 +217,9 @@ new #[Layout('components.layouts.app')] class extends Component
                         </td>
                         <td class="px-4 py-3 text-center">
                             @php
-                                $color = $ticket->status_color;
-                                $badgeClass = match($color) {
-                                    'blue' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-                                    'yellow' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-                                    'green' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-                                    'red' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-                                    'gray' => 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-                                    default => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
-                                };
-                                $dotClass = match($color) {
-                                    'blue' => 'bg-blue-500',
-                                    'yellow' => 'bg-yellow-500',
-                                    'green' => 'bg-green-500',
-                                    'red' => 'bg-red-500',
-                                    'gray' => 'bg-gray-500',
-                                    default => 'bg-neutral-500',
-                                };
+                                $color = $ticket->status?->color ?? 'neutral';
                             @endphp
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium {{ $badgeClass }}">
-                                <span class="h-1.5 w-1.5 rounded-full {{ $dotClass }}"></span>
-                                {{ $ticket->status_label }}
-                            </span>
+                            <flux:badge :color="$color" size="sm" inset="top bottom">{{ $ticket->status?->name ?? 'Unknown' }}</flux:badge>
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->created_at->format('d/m/Y H:i') }}

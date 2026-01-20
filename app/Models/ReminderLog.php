@@ -13,7 +13,7 @@ class ReminderLog extends Model
     protected $fillable = [
         'contract_id',
         'user_id',
-        'type',
+        'type_id',
         'days_remaining',
         'sent_at',
     ];
@@ -42,13 +42,23 @@ class ReminderLog extends Model
     }
 
     /**
+     * Get the reminder type.
+     */
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(ReminderType::class, 'type_id');
+    }
+
+    /**
      * Check if a reminder was already sent today.
      */
-    public static function wasSentToday(int $contractId, int $userId, string $type): bool
+    public static function wasSentToday(int $contractId, int $userId, string $typeCode): bool
     {
+        $typeId = \App\Models\ReminderType::getIdByCode($typeCode);
+        
         return static::where('contract_id', $contractId)
             ->where('user_id', $userId)
-            ->where('type', $type)
+            ->where('type_id', $typeId)
             ->whereDate('sent_at', today())
             ->exists();
     }
@@ -56,12 +66,14 @@ class ReminderLog extends Model
     /**
      * Log a sent reminder.
      */
-    public static function logReminder(Contract $contract, User $user, string $type, int $daysRemaining): self
+    public static function logReminder(Contract $contract, User $user, string $typeCode, int $daysRemaining): self
     {
+        $typeId = \App\Models\ReminderType::getIdByCode($typeCode);
+
         return static::create([
             'contract_id' => $contract->id,
             'user_id' => $user->id,
-            'type' => $type,
+            'type_id' => $typeId,
             'days_remaining' => $daysRemaining,
             'sent_at' => now(),
         ]);

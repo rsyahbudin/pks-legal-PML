@@ -18,8 +18,8 @@ class Contract extends Model
         'contract_number',
         'agreement_name',
         'proposed_document_title',
-        'document_type',
-        'financial_impact',
+        'document_type_id',
+        'financial_impact_id',
         'tat_legal_compliance',
         'division_id',
         'department_id',
@@ -30,7 +30,7 @@ class Contract extends Model
         'end_date',
         'is_auto_renewal',
         'description',
-        'status',
+        'status_id',
         'terminated_at',
         'termination_reason',
         'document_path',
@@ -94,6 +94,30 @@ class Contract extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the status for this contract.
+     */
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(ContractStatus::class, 'status_id');
+    }
+
+    /**
+     * Get the document type for this contract.
+     */
+    public function documentType(): BelongsTo
+    {
+        return $this->belongsTo(DocumentType::class, 'document_type_id');
+    }
+
+    /**
+     * Get the financial impact for this contract.
+     */
+    public function financialImpact(): BelongsTo
+    {
+        return $this->belongsTo(FinancialImpact::class, 'financial_impact_id');
     }
 
     /**
@@ -165,7 +189,7 @@ class Contract extends Model
             return 'green';
         }
 
-        if ($daysRemaining < 0 || $this->status === 'expired') {
+        if ($daysRemaining < 0 || $this->status?->code === 'expired') {
             return 'red';
         }
 
@@ -213,7 +237,7 @@ class Contract extends Model
     public function scopeExpired(Builder $query): Builder
     {
         return $query->where(function ($q) {
-            $q->where('status', 'expired')
+            $q->whereHas('status', fn($sq) => $sq->where('code', 'expired'))
                 ->orWhereDate('end_date', '<', now());
         });
     }
@@ -223,7 +247,7 @@ class Contract extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active')
+        return $query->whereHas('status', fn($q) => $q->where('code', 'active'))
             ->whereDate('end_date', '>=', now());
     }
 
@@ -247,6 +271,14 @@ class Contract extends Model
     public function scopeForPic(Builder $query, int $userId): Builder
     {
         return $query->where('pic_id', $userId);
+    }
+
+    /**
+     * Scope to filter by creator (user).
+     */
+    public function scopeForUser(Builder $query, int $userId): Builder
+    {
+        return $query->where('created_by', $userId);
     }
 
     /**
@@ -282,7 +314,7 @@ class Contract extends Model
             return false;
         }
 
-        return ($this->end_date && $this->end_date->isPast()) || $this->status === 'expired';
+        return ($this->end_date && $this->end_date->isPast()) || $this->status?->code === 'expired';
     }
 
     /**
@@ -290,15 +322,7 @@ class Contract extends Model
      */
     public function getDocumentTypeLabelAttribute(): string
     {
-        return match ($this->document_type) {
-            'perjanjian' => 'Perjanjian/Adendum/Amandemen',
-            'nda' => 'Perjanjian Kerahasiaan (NDA)',
-            'surat_kuasa' => 'Surat Kuasa',
-            'pendapat_hukum' => 'Pendapat Hukum',
-            'surat_pernyataan' => 'Surat Pernyataan',
-            'surat_lainnya', 'lainnya' => 'Surat Lainnya',
-            default => $this->document_type,
-        };
+        return $this->documentType?->name ?? 'Unknown';
     }
 
     /**
@@ -306,15 +330,7 @@ class Contract extends Model
      */
     public function getFinancialImpactLabelAttribute(): ?string
     {
-        if (! $this->financial_impact) {
-            return null;
-        }
-
-        return match ($this->financial_impact) {
-            'income' => 'Income (Pemasukan)',
-            'expenditure' => 'Expenditure (Pengeluaran)',
-            default => $this->financial_impact,
-        };
+        return $this->financialImpact?->name_id ?? $this->financialImpact?->name;
     }
 
     /**
@@ -322,7 +338,7 @@ class Contract extends Model
      */
     public function isTerminated(): bool
     {
-        return $this->status === 'terminated';
+        return $this->status?->code === 'terminated';
     }
 
     /**
@@ -339,14 +355,14 @@ class Contract extends Model
     public function terminate(string $reason): void
     {
         $this->update([
-            'status' => 'terminated',
+            'status_id' => ContractStatus::getIdByCode('terminated'),
             'terminated_at' => now(),
             'termination_reason' => $reason,
         ]);
 
         // Auto-close associated ticket
         if ($this->ticket && $this->ticket->status !== 'closed') {
-            $this->ticket->update(['status' => 'closed']);
+            $this->ticket->update(['status_id' => TicketStatus::getIdByCode('closed')]);
             $this->ticket->logActivity('Ticket ditutup otomatis karena contract terminated');
         }
 

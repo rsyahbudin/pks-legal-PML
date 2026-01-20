@@ -11,7 +11,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ContractExpiringMail extends Mailable
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class ContractExpiringMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

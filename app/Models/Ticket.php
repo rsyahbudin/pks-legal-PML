@@ -21,7 +21,7 @@ class Ticket extends Model
         'has_financial_impact',
         'proposed_document_title',
         'draft_document_path',
-        'document_type',
+        'document_type_id',
         // Conditional: perjanjian/nda
         'counterpart_name',
         'agreement_start_date',
@@ -41,7 +41,7 @@ class Ticket extends Model
         'mandatory_documents_path',
         'approval_document_path',
         // Workflow
-        'status',
+        'status_id',
         'reviewed_at',
         'reviewed_by',
         'aging_start_at',
@@ -116,6 +116,22 @@ class Ticket extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the status for this ticket.
+     */
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(TicketStatus::class, 'status_id');
+    }
+
+    /**
+     * Get the document type for this ticket.
+     */
+    public function documentType(): BelongsTo
+    {
+        return $this->belongsTo(DocumentType::class, 'document_type_id');
     }
 
     /**
@@ -211,7 +227,7 @@ class Ticket extends Model
      */
     public function canBeReviewed(): bool
     {
-        return $this->status === 'open';
+        return $this->status?->code === 'open';
     }
 
     /**
@@ -220,7 +236,7 @@ class Ticket extends Model
     public function moveToOnProcess(User $reviewer): void
     {
         $this->update([
-            'status' => 'on_process',
+            'status_id' => TicketStatus::getIdByCode('on_process'),
             'reviewed_at' => now(),
             'reviewed_by' => $reviewer->id,
             'aging_start_at' => now(),
@@ -242,7 +258,7 @@ class Ticket extends Model
         }
 
         $this->update([
-            'status' => 'done',
+            'status_id' => TicketStatus::getIdByCode('done'),
             'aging_end_at' => $agingEnd,
             'aging_duration' => $agingDuration,
         ]);
@@ -263,7 +279,7 @@ class Ticket extends Model
         }
 
         $this->update([
-            'status' => 'rejected',
+            'status_id' => TicketStatus::getIdByCode('rejected'),
             'reviewed_at' => now(),
             'reviewed_by' => $reviewer->id,
             'rejection_reason' => $reason,
@@ -287,7 +303,7 @@ class Ticket extends Model
         }
 
         $this->update([
-            'status' => 'closed',
+            'status_id' => TicketStatus::getIdByCode('closed'),
             'aging_end_at' => $agingEnd,
             'aging_duration' => $agingDuration,
         ]);
@@ -305,7 +321,7 @@ class Ticket extends Model
         $endDate = $this->agreement_end_date;
         
         // Handle Surat Kuasa using kuasa_end_date
-        if ($this->document_type === 'surat_kuasa') {
+        if ($this->documentType?->code === 'surat_kuasa') {
             $endDate = $this->kuasa_end_date;
         }
 
@@ -317,21 +333,21 @@ class Ticket extends Model
             'contract_number' => Contract::generateContractNumber(),
             'agreement_name' => $this->proposed_document_title,
             'proposed_document_title' => $this->proposed_document_title,
-            'document_type' => $this->document_type,
-            'financial_impact' => $this->has_financial_impact ? 'income' : null, // Default mapping, adjust if needed
+            'document_type_id' => $this->document_type_id,
+            'financial_impact_id' => $this->has_financial_impact ? FinancialImpact::getIdByCode('income') : null,
             'tat_legal_compliance' => $this->tat_legal_compliance,
             'division_id' => $this->division_id,
             'department_id' => $this->department_id,
             'pic_id' => $this->created_by, // Default PIC to ticket creator
             'pic_name' => $this->creator->name ?? 'Unknown',
             'pic_email' => $this->creator->email ?? null,
-            'start_date' => $this->document_type === 'surat_kuasa' ? $this->kuasa_start_date : $this->agreement_start_date,
+            'start_date' => $this->documentType?->code === 'surat_kuasa' ? $this->kuasa_start_date : $this->agreement_start_date,
             'end_date' => $endDate,
             'is_auto_renewal' => $this->is_auto_renewal,
             'description' => $this->counterpart_name 
                 ? "Pihak Lawan: {$this->counterpart_name}" 
-                : ($this->document_type === 'surat_kuasa' ? "Pemberi Kuasa: {$this->kuasa_pemberi}, Penerima: {$this->kuasa_penerima}" : null),
-            'status' => $status,
+                : ($this->documentType?->code === 'surat_kuasa' ? "Pemberi Kuasa: {$this->kuasa_pemberi}, Penerima: {$this->kuasa_penerima}" : null),
+            'status_id' => \App\Models\ContractStatus::getIdByCode($status),
             'mandatory_documents_path' => $this->mandatory_documents_path,
             'approval_document_path' => $this->approval_document_path,
             'created_by' => auth()->id() ?? $this->reviewed_by ?? $this->created_by,
@@ -372,11 +388,11 @@ class Ticket extends Model
         if ($this->aging_duration && $this->aging_duration > 0) {
             // For completed tickets with stored aging_duration
             $totalMinutes = $this->aging_duration;
-        } elseif (in_array($this->status, ['done', 'closed', 'rejected']) && $this->aging_start_at) {
+        } elseif (in_array($this->status?->code, ['done', 'closed', 'rejected']) && $this->aging_start_at) {
             // For completed tickets: use aging_start_at to aging_end_at (or updated_at as fallback)
             $endTime = $this->aging_end_at ?? $this->updated_at;
             $totalMinutes = $this->aging_start_at->diffInMinutes($endTime);
-        } elseif ($this->status === 'on_process' && $this->aging_start_at) {
+        } elseif ($this->status?->code === 'on_process' && $this->aging_start_at) {
             // For in-progress tickets: calculate from aging_start_at to now
             $totalMinutes = $this->aging_start_at->diffInMinutes(now());
         }
@@ -407,15 +423,7 @@ class Ticket extends Model
      */
     public function getDocumentTypeLabelAttribute(): string
     {
-        return match ($this->document_type) {
-            'perjanjian' => 'Perjanjian/Adendum/Amandemen',
-            'nda' => 'Perjanjian Kerahasiaan (NDA)',
-            'surat_kuasa' => 'Surat Kuasa',
-            'pendapat_hukum' => 'Pendapat Hukum',
-            'surat_pernyataan' => 'Surat Pernyataan',
-            'surat_lainnya' => 'Surat Lainnya',
-            default => $this->document_type,
-        };
+        return $this->documentType?->name ?? 'Unknown';
     }
 
     /**
@@ -423,14 +431,7 @@ class Ticket extends Model
      */
     public function getStatusLabelAttribute(): string
     {
-        return match ($this->status) {
-            'open' => 'Open',
-            'on_process' => 'On Process',
-            'done' => 'Done',
-            'rejected' => 'Rejected',
-            'closed' => 'Closed',
-            default => $this->status,
-        };
+        return $this->status?->name ?? 'Unknown';
     }
 
     /**
@@ -438,14 +439,7 @@ class Ticket extends Model
      */
     public function getStatusColorAttribute(): string
     {
-        return match ($this->status) {
-            'open' => 'blue',
-            'on_process' => 'yellow',
-            'done' => 'green',
-            'rejected' => 'red',
-            'closed' => 'gray',
-            default => 'gray',
-        };
+        return $this->status?->color ?? 'gray';
     }
 
     /**

@@ -46,11 +46,11 @@ class TicketsExport
             if ($ticket->aging_duration && $ticket->aging_duration > 0) {
                 // For completed tickets with stored aging_duration (already in minutes)
                 $totalMinutes = $ticket->aging_duration;
-            } elseif (in_array($ticket->status, ['done', 'closed', 'rejected']) && $ticket->aging_start_at) {
+            } elseif (in_array($ticket->status?->code, ['done', 'closed', 'rejected']) && $ticket->aging_start_at) {
                 // For completed tickets: use aging_start_at to aging_end_at (or updated_at as fallback)
                 $endTime = $ticket->aging_end_at ?? $ticket->updated_at;
                 $totalMinutes = $ticket->aging_start_at->diffInMinutes($endTime);
-            } elseif ($ticket->status === 'on_process' && $ticket->aging_start_at) {
+            } elseif ($ticket->status?->code === 'on_process' && $ticket->aging_start_at) {
                 // For in-progress tickets: calculate from aging_start_at to now
                 $totalMinutes = $ticket->aging_start_at->diffInMinutes(now());
             }
@@ -83,6 +83,7 @@ class TicketsExport
                 'Tanggal Dibuat' => $ticket->created_at->format('d/m/Y H:i'),
                 'Terakhir Diupdate' => $ticket->updated_at->format('d/m/Y H:i'),
                 'Status' => $ticket->status_label,
+                'Status Contract' => $ticket->contract?->status?->name ?? '-',
                 
                 // Aging information
                 'Mulai Diproses' => $ticket->aging_start_at?->format('d/m/Y H:i') ?? '-',
@@ -110,6 +111,7 @@ class TicketsExport
                 'TAT Legal Compliance' => $ticket->tat_legal_compliance ? 'Ya' : 'Tidak',
                 'No. Kontrak' => $ticket->contract?->contract_number ?? '-',
                 'Alasan Penolakan' => $ticket->rejection_reason ?? '-',
+                'Alasan Terminasi' => $ticket->contract?->termination_reason ?? '-',
             ];
         });
     }
@@ -126,6 +128,7 @@ class TicketsExport
             'Tanggal Dibuat',
             'Terakhir Diupdate',
             'Status',
+            'Status Contract',
             'Mulai Diproses',
             'Selesai Diproses',
             'Aging',
@@ -145,6 +148,7 @@ class TicketsExport
             'TAT Legal Compliance',
             'No. Kontrak',
             'Alasan Penolakan',
+            'Alasan Terminasi',
         ];
     }
 

@@ -52,7 +52,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->department_id = $this->ticket->department_id;
         $this->has_financial_impact = $this->ticket->has_financial_impact;
         $this->proposed_document_title = $this->ticket->proposed_document_title;
-        $this->document_type = $this->ticket->document_type;
+        $this->document_type = $this->ticket->documentType?->code ?? '';
         $this->tat_legal_compliance = $this->ticket->tat_legal_compliance;
         
         // Conditional fields
@@ -134,7 +134,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'department_id' => $this->department_id,
             'has_financial_impact' => $validated['has_financial_impact'],
             'proposed_document_title' => $validated['proposed_document_title'],
-            'document_type' => $validated['document_type'],
+            'document_type_id' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
             // Conditional fields
             'counterpart_name' => $this->counterpart_name ?: null,
             'agreement_start_date' => $this->agreement_start_date ?: null,
@@ -176,6 +176,16 @@ new #[Layout('components.layouts.app')] class extends Component {
             $approvalPath = $this->approval_document->store("tickets/{$this->ticket->id}/approval", 'public');
             $this->ticket->update(['approval_document_path' => $approvalPath]);
         }
+
+        // Log activity
+        $this->ticket->activityLogs()->create([
+            'user_id' => $user->id,
+            'action' => 'updated ticket details',
+            'metadata' => [
+                'updated_at' => now(),
+                'updated_by' => $user->name
+            ]
+        ]);
 
         session()->flash('success', 'Ticket berhasil diupdate.');
         $this->redirect(route('tickets.show', $this->ticket->id), navigate: true);
