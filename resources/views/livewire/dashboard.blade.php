@@ -468,7 +468,7 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
             <div class="flex items-center gap-4">
                 <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
-                    <flux:icon name="stop" class="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
+                    <flux:icon name="no-symbol" class="h-6 w-6 text-neutral-600 dark:text-neutral-400" />
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">Terminated</p>

@@ -187,7 +187,7 @@ new #[Layout('components.layouts.app')] class extends Component
                             <flux:badge :color="$color" size="sm" inset="top bottom">{{ ucfirst($contract->status) }}</flux:badge>
                         </td>
                         <td class="px-6 py-4 text-end">
-                            <flux:button :href="route('tickets.show', $contract->id)" icon="eye" size="sm" variant="ghost" class="-my-1" />
+                            <flux:button :href="route('tickets.show', $contract->ticket_id)" icon="eye" size="sm" variant="ghost" class="-my-1" />
                         </td>
                     </tr>
                     @empty

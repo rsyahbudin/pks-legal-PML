@@ -30,8 +30,8 @@ class ContractExpiringMail extends Mailable
         $this->replyToName = $replyToName;
         
         // Load templates from settings
-        $subjectTemplate = Setting::get('email_reminder_subject', 'Agreement [XX] – Expiration Reminder');
-        $bodyTemplate = Setting::get('email_reminder_body', '');
+        $subjectTemplate = Setting::get('contract_reminder_email_subject', 'Agreement {agreement_name} – Expiration Reminder');
+        $bodyTemplate = Setting::get('contract_reminder_email_body', $this->getDefaultBody());
         
         // Replace placeholders
         $this->emailSubject = $this->replacePlaceholders($subjectTemplate);
@@ -45,11 +45,11 @@ class ContractExpiringMail extends Mailable
             : 'Auto Renewal';
             
         $replacements = [
-            '[XX]' => $this->contract->agreement_name ?? $this->contract->contract_number,
-            '[agreement name]' => $this->contract->agreement_name ?? '',
-            '[contract number]' => $this->contract->contract_number,
-            '[expiration date]' => $expirationDate,
-            '[days remaining]' => $this->daysRemaining,
+            '{agreement_name}' => $this->contract->agreement_name ?? '',
+            '{contract_number}' => $this->contract->contract_number,
+            '{end_date}' => $expirationDate,
+            '{days_remaining}' => $this->daysRemaining,
+            '{counterpart_name}' => $this->contract->description ?? '',
         ];
         
         return str_replace(
@@ -57,6 +57,11 @@ class ContractExpiringMail extends Mailable
             array_values($replacements),
             $template
         );
+    }
+    
+    protected function getDefaultBody(): string
+    {
+        return "Dear Sir/Madam,\n\nWe would like to inform you that Agreement {agreement_name} will expire on {end_date}.\n\nIn this regard, we kindly request your confirmation regarding the extension of the said agreement. Should you wish to proceed with the renewal, please contact us at legal@pfimegalife.co.id. Otherwise, kindly disregard this reminder.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary";
     }
 
     public function envelope(): Envelope

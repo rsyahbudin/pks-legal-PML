@@ -280,5 +280,6 @@ new #[Layout('components.layouts.app')] class extends Component
             {{ $this->tickets->links() }}
         </div>
         @endif
+
     </div>
 </div>
