@@ -82,12 +82,10 @@ class SendContractReminders extends Command
                 }
 
                 try {
-                    // Get CC emails from sub-division or division
+                    // Get CC emails from department only
                     $ccEmails = [];
-                    if ($contract->subDivision && $contract->subDivision->cc_emails) {
-                        $ccEmails = array_filter(array_map('trim', explode(',', $contract->subDivision->cc_emails)));
-                    } elseif ($contract->division && $contract->division->cc_emails) {
-                        $ccEmails = array_filter(array_map('trim', explode(',', $contract->division->cc_emails)));
+                    if ($contract->department && $contract->department->cc_emails) {
+                        $ccEmails = array_filter(array_map('trim', explode(',', $contract->department->cc_emails)));
                     }
 
                     // Send email with CC to division emails

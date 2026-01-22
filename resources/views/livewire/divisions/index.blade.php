@@ -15,7 +15,6 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $name = '';
     public string $code = '';
     public string $description = '';
-    public string $cc_emails = '';
     public bool $is_active = true;
 
     public function updatedSearch(): void
@@ -35,7 +34,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function create(): void
     {
-        $this->reset(['editingId', 'name', 'code', 'description', 'cc_emails', 'is_active']);
+        $this->reset(['editingId', 'name', 'code', 'description', 'is_active']);
         $this->is_active = true;
         $this->showModal = true;
     }
@@ -47,7 +46,6 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->name = $division->name;
         $this->code = $division->code;
         $this->description = $division->description ?? '';
-        $this->cc_emails = $division->cc_emails ?? '';
         $this->is_active = $division->is_active;
         $this->showModal = true;
     }
@@ -58,7 +56,6 @@ new #[Layout('components.layouts.app')] class extends Component {
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:20', $this->editingId ? "unique:divisions,code,{$this->editingId}" : 'unique:divisions,code'],
             'description' => ['nullable', 'string', 'max:500'],
-            'cc_emails' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
         ]);
 

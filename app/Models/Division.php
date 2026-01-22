@@ -14,7 +14,6 @@ class Division extends Model
         'name',
         'code',
         'description',
-        'cc_emails',
         'is_active',
     ];
 
