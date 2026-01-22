@@ -334,7 +334,7 @@ class Ticket extends Model
             'agreement_name' => $this->proposed_document_title,
             'proposed_document_title' => $this->proposed_document_title,
             'document_type_id' => $this->document_type_id,
-            'financial_impact_id' => $this->has_financial_impact ? FinancialImpact::getIdByCode('income') : null,
+            'has_financial_impact' => $this->has_financial_impact,
             'tat_legal_compliance' => $this->tat_legal_compliance,
             'division_id' => $this->division_id,
             'department_id' => $this->department_id,
