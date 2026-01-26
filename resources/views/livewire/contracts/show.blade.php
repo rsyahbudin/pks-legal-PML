@@ -393,14 +393,46 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
 
-            <div class="sm:col-span-2">
+            <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Financial Impact</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->has_financial_impact ? 'Yes' : 'No' }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">
+                    @if($ticket->has_financial_impact)
+                        <flux:badge color="green">Yes</flux:badge>
+                    @else
+                        <flux:badge color="neutral">No</flux:badge>
+                    @endif
+                </p>
             </div>
 
-            <div class="sm:col-span-2">
+            @if($ticket->has_financial_impact && $ticket->payment_type)
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Jenis Pembayaran</p>
+                <p class="font-medium text-neutral-900 dark:text-white">
+                    @if($ticket->payment_type === 'pay')
+                        <flux:badge color="orange">Pay (Bayar)</flux:badge>
+                    @elseif($ticket->payment_type === 'receive_payment')
+                        <flux:badge color="blue">Receive Payment</flux:badge>
+                    @endif
+                </p>
+            </div>
+            
+            @if($ticket->payment_type === 'pay' && $ticket->recurring_description)
+            <div>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Recurring Description</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->recurring_description }}</p>
+            </div>
+            @endif
+            @endif
+
+            <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Turn Around Time Legal</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->tat_legal_compliance ? 'Yes' : 'No' }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">
+                    @if($ticket->tat_legal_compliance)
+                        <flux:badge color="green">Yes</flux:badge>
+                    @else
+                        <flux:badge color="neutral">No</flux:badge>
+                    @endif
+                </p>
             </div>
 
 

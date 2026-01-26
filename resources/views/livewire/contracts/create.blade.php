@@ -16,7 +16,9 @@ new #[Layout('components.layouts.app')] class extends Component {
     // Common fields
     public $division_id;
     public $department_id;
-    public bool $has_financial_impact = false;
+    public int $has_financial_impact = 0;
+    public string $payment_type = '';
+    public string $recurring_description = '';
     public string $proposed_document_title = '';
     public $draft_document;
     public string $document_type = '';
@@ -25,7 +27,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $counterpart_name = '';
     public string $agreement_start_date = '';
     public string $agreement_duration = '';
-    public bool $is_auto_renewal = false;
+    public int $is_auto_renewal = 0;
     public string $renewal_period = '';
     public string $renewal_notification_days = '';
     public string $agreement_end_date = '';
@@ -38,7 +40,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $kuasa_end_date = '';
     
     // Common for all
-    public bool $tat_legal_compliance = false;
+    public int $tat_legal_compliance = 0;
     public $mandatory_documents = [];
     public $approval_document;
 
@@ -78,6 +80,8 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'division_id' => ['required', 'exists:divisions,id'],
                 'department_id' => ['required', 'exists:departments,id'],
                 'has_financial_impact' => ['required', 'boolean'],
+                'payment_type' => ['nullable', 'required_if:has_financial_impact,true', 'string', 'max:50'],
+                'recurring_description' => ['nullable', 'string', 'max:200'],
                 'proposed_document_title' => ['required', 'string', 'max:255'],
                 'draft_document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
                 'document_type' => ['required', Rule::in(['perjanjian', 'nda', 'surat_kuasa', 'pendapat_hukum', 'surat_pernyataan', 'surat_lainnya'])],
@@ -115,6 +119,8 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'division_id' => $this->division_id,
                 'department_id' => $this->department_id,
                 'has_financial_impact' => $validated['has_financial_impact'],
+                'payment_type' => $this->payment_type ?: null,
+                'recurring_description' => $this->recurring_description ?: null,
                 'proposed_document_title' => $validated['proposed_document_title'],
                 'document_type_id' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
                 'counterpart_name' => $this->counterpart_name ?: null,
@@ -218,12 +224,36 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <!-- Financial Impact -->
                 <flux:field class="sm:col-span-2">
                     <flux:label>Financial Impact (Income-Pemasukan/Expenditure-Pengeluaran) *</flux:label>
-                    <flux:radio.group wire:model="has_financial_impact" variant="segmented" required wire:key="financial-impact-radio">
+                    <flux:radio.group wire:model.live="has_financial_impact" variant="segmented" required wire:key="financial-impact-radio">
                         <flux:radio value="1" label="Yes" />
                         <flux:radio value="0" label="No" />
                     </flux:radio.group>
                     <flux:error name="has_financial_impact" />
                 </flux:field>
+
+                <!-- Payment Type (conditional) -->
+                @if($has_financial_impact)
+                <flux:field class="sm:col-span-2">
+                    <flux:label>Jenis Pembayaran *</flux:label>
+                    <flux:radio.group wire:model.live="payment_type" variant="segmented" required>
+                        <flux:radio value="pay" label="Pay (Bayar)" />
+                        <flux:radio value="receive_payment" label="Receive Payment (Terima)" />
+                    </flux:radio.group>
+                    <flux:error name="payment_type" />
+                </flux:field>
+                @endif
+
+                <!-- Recurring Description (conditional on payment_type = 'pay') -->
+                @if($has_financial_impact && $payment_type === 'pay')
+                <flux:field class="sm:col-span-2">
+                    <flux:label>Deskripsi Recurring (Opsional)</flux:label>
+                    <flux:input 
+                        wire:model="recurring_description" 
+                        placeholder="Contoh: Setiap bulan, Per 3 bulan, dll"
+                    />
+                    <flux:error name="recurring_description" />
+                </flux:field>
+                @endif
 
                 <!-- Usulan Judul Dokumen -->
                 <flux:field class="sm:col-span-2">
@@ -370,7 +400,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div class="grid gap-4">
                 <flux:field>
                     <flux:label>Kesesuaian dengan Turn-Around-Time Legal *</flux:label>
-                    <flux:radio.group wire:model="tat_legal_compliance" variant="segmented" required wire:key="tat-compliance-radio">
+                    <flux:radio.group wire:model.live="tat_legal_compliance" variant="segmented" required wire:key="tat-compliance-radio">
                         <flux:radio value="1" label="Ya" />
                         <flux:radio value="0" label="Tidak" />
                     </flux:radio.group>

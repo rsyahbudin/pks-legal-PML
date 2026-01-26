@@ -19,6 +19,8 @@ class Ticket extends Model
         'division_id',
         'department_id',
         'has_financial_impact',
+        'payment_type',
+        'recurring_description',
         'proposed_document_title',
         'draft_document_path',
         'document_type_id',

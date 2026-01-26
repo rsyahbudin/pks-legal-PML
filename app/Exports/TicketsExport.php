@@ -108,6 +108,12 @@ class TicketsExport
                 
                 // Common fields
                 'Dampak Finansial' => $ticket->has_financial_impact ? 'Ya' : 'Tidak',
+                'Jenis Pembayaran' => match($ticket->payment_type) {
+                    'pay' => 'Pay (Bayar)',
+                    'receive_payment' => 'Receive Payment (Terima)',
+                    default => '-'
+                },
+                'Recurring' => $ticket->recurring_description ?? '-',
                 'TAT Legal Compliance' => $ticket->tat_legal_compliance ? 'Ya' : 'Tidak',
                 'No. Kontrak' => $ticket->contract?->contract_number ?? '-',
                 'Alasan Penolakan' => $ticket->rejection_reason ?? '-',
@@ -145,6 +151,8 @@ class TicketsExport
             'Tanggal Mulai Kuasa',
             'Tanggal Akhir Kuasa',
             'Dampak Finansial',
+            'Jenis Pembayaran',
+            'Recurring',
             'TAT Legal Compliance',
             'No. Kontrak',
             'Alasan Penolakan',
