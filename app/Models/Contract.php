@@ -38,6 +38,7 @@ class Contract extends Model
         'mandatory_documents_path',
         'approval_document_path',
         'created_by',
+        'folder_link',
     ];
 
     protected function casts(): array

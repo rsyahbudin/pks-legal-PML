@@ -27,6 +27,11 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public int $perPage = 10;
 
+    // Folder Link Modal
+    public bool $showFolderLinkModal = false;
+    public $selectedContract = null;
+    public string $folder_link = '';
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -95,6 +100,34 @@ new #[Layout('components.layouts.app')] class extends Component
     public function getTicketStatusesProperty()
     {
         return \App\Models\TicketStatus::active()->orderBy('sort_order')->get();
+    }
+
+    public function editFolderLink($contractId): void
+    {
+        $contract = \App\Models\Contract::findOrFail($contractId);
+        $this->selectedContract = $contract;
+        $this->folder_link = $contract->folder_link ?? '';
+        $this->showFolderLinkModal = true;
+    }
+
+    public function saveFolderLink(): void
+    {
+        $validated = $this->validate([
+            'folder_link' => ['nullable', 'url', 'max:500'],
+        ]);
+
+        $this->selectedContract->update([
+            'folder_link' => $this->folder_link ?: null,
+        ]);
+
+        \App\Models\ActivityLog::logActivity(
+            $this->selectedContract,
+            'updated',
+            'Folder link updated'
+        );
+
+        $this->showFolderLinkModal = false;
+        $this->dispatch('notify', type: 'success', message: 'Folder link berhasil disimpan');
     }
 }; ?>
 
@@ -192,7 +225,8 @@ new #[Layout('components.layouts.app')] class extends Component
                     <tr>
                         <th class="px-4 py-3 text-left">No. Ticket</th>
                         <th class="px-4 py-3 text-left">Judul Dokumen</th>
-                        <th class="px-4 py-3 text-left">Divisi</th>
+                        <!-- <th class="px-4 py-3 text-left">Divisi</th> -->
+                        <th class="px-4 py-3 text-left">Departement</th>
                         <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-center">Dibuat</th>
                         <th class="px-4 py-3 text-center">Updated</th>
@@ -212,8 +246,11 @@ new #[Layout('components.layouts.app')] class extends Component
                                 <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ $ticket->document_type_label }}</p>
                             </div>
                         </td>
-                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                        <!-- <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->division->name }}
+                        </td> -->
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                            {{ $ticket->department->name }}
                         </td>
                         <td class="px-4 py-3 text-center">
                             @php

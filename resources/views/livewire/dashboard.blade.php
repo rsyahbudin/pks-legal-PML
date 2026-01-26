@@ -144,17 +144,17 @@ new #[Layout('components.layouts.app')] class extends Component
     {
         $user = auth()->user();
         if (! $user) {
-            return ['total' => 0, 'active' => 0, 'expiring_soon' => 0, 'critical' => 0, 'expired' => 0];
+            return ['total' => 0, 'active' => 0, 'expired' => 0, 'terminated' => 0];
         }
 
         $query = Contract::query();
 
-        $query = Contract::query();
-
-        if (method_exists($user, 'isPic') && $user->isPic()) {
-            $query->forPic($user->id);
-        } elseif (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->forUser($user->id);
+        // Role-based filtering: regular users see contracts they created or are PIC for
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->where(function($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('pic_id', $user->id);
+            });
         }
 
         $total = (clone $query)->count();
@@ -180,10 +180,12 @@ new #[Layout('components.layouts.app')] class extends Component
         $query = Contract::with(['division', 'pic', 'ticket'])
             ->orderBy('end_date', 'asc');
 
-        if (method_exists($user, 'isPic') && $user->isPic()) {
-            $query->forPic($user->id);
-        } elseif (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->forUser($user->id);
+        // Role-based filtering: regular users see contracts they created or are PIC for
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->where(function($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('pic_id', $user->id);
+            });
         }
 
         return $query->limit(5)->get();
@@ -203,10 +205,12 @@ new #[Layout('components.layouts.app')] class extends Component
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->orderBy('end_date', 'asc');
 
-        if (method_exists($user, 'isPic') && $user->isPic()) {
-            $query->forPic($user->id);
-        } elseif (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->forUser($user->id);
+        // Role-based filtering: regular users see contracts they created or are PIC for
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
+            $query->where(function($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('pic_id', $user->id);
+            });
         }
 
         return $query->limit(5)->get();
@@ -506,7 +510,7 @@ new #[Layout('components.layouts.app')] class extends Component
             <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
                 <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Kontrak Terbaru</h2>
                 @if(auth()->user()?->hasPermission('contracts.view'))
-                <a href="{{ route('tickets.index') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                <a href="{{ route('contracts.repository') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
                     Lihat Semua →
                 </a>
                 @endif

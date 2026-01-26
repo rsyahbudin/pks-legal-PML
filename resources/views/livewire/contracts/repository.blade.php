@@ -16,6 +16,11 @@ new #[Layout('components.layouts.app')] class extends Component
     public string $divisionFilter = '';
     public int $perPage = 10;
 
+    // Folder Link Modal
+    public bool $showFolderLinkModal =false;
+    public $selectedContract = null;
+    public string $folder_link = '';
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -73,6 +78,28 @@ new #[Layout('components.layouts.app')] class extends Component
         return $query->orderBy('created_at', 'desc')->paginate($this->perPage);
     }
 
+    public function editFolderLink($contractId): void
+    {
+        $contract = Contract::findOrFail($contractId);
+        $this->selectedContract = $contract;
+        $this->folder_link = $contract->folder_link ?? '';
+        $this->showFolderLinkModal = true;
+    }
+
+    public function saveFolderLink(): void
+    {
+        $validated = $this->validate([
+            'folder_link' => ['nullable', 'url', 'max:500'],
+        ]);
+
+        $this->selectedContract->update([
+            'folder_link' => $this->folder_link ?: null,
+        ]);
+
+        $this->showFolderLinkModal = false;
+        $this->dispatch('notify', type: 'success', message: 'Folder link berhasil disimpan');
+    }
+
     public function getDivisionsProperty()
     {
         return \App\Models\Division::active()->orderBy('name')->get();
@@ -109,9 +136,6 @@ new #[Layout('components.layouts.app')] class extends Component
                 <flux:select.option value="perjanjian">Perjanjian</flux:select.option>
                 <flux:select.option value="nda">NDA</flux:select.option>
                 <flux:select.option value="surat_kuasa">Surat Kuasa</flux:select.option>
-                <flux:select.option value="pendapat_hukum">Pendapat Hukum</flux:select.option>
-                <flux:select.option value="surat_pernyataan">Surat Pernyataan</flux:select.option>
-                <flux:select.option value="surat_lainnya">Surat Lainnya</flux:select.option>
             </flux:select>
         </div>
         <div class="w-full sm:w-48">
@@ -192,7 +216,12 @@ new #[Layout('components.layouts.app')] class extends Component
                             <flux:badge :color="$color" size="sm" inset="top bottom">{{ $contract->status?->name ?? 'Unknown' }}</flux:badge>
                         </td>
                         <td class="px-6 py-4 text-end">
-                            <flux:button :href="route('tickets.show', $contract->ticket_id)" icon="eye" size="sm" variant="ghost" class="-my-1" />
+                            <div class="flex items-center justify-end gap-2">
+                                @if(auth()->user()->hasAnyRole(['super-admin', 'legal']))
+                                <flux:button wire:click="editFolderLink({{ $contract->id }})" icon="link" size="sm" variant="ghost" class="-my-1" title="Folder Link" />
+                                @endif
+                                <flux:button :href="route('tickets.show', $contract->ticket_id)" icon="eye" size="sm" variant="ghost" class="-my-1" />
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -216,4 +245,28 @@ new #[Layout('components.layouts.app')] class extends Component
             </div>
         </div>
     </div>
+
+    <!-- Folder Link Modal -->
+    <flux:modal wire:model="showFolderLinkModal" class="space-y-6">
+        <div>
+            <flux:heading size="lg">Edit Folder Link</flux:heading>
+            <flux:subheading>Contract: {{ $selectedContract?->contract_number }}</flux:subheading>
+        </div>
+
+        <flux:field>
+            <flux:label>Folder Link (Internal File Sharing)</flux:label>
+            <flux:input 
+                wire:model="folder_link" 
+                type="url"
+                placeholder="https://..."
+            />
+            <flux:description>Masukkan link folder sharing internal (network drive, SharePoint, dll)</flux:description>
+            <flux:error name="folder_link" />
+        </flux:field>
+
+        <div class="flex gap-2 justify-end">
+            <flux:button variant="ghost" wire:click="$set('showFolderLinkModal', false)">Cancel</flux:button>
+            <flux:button wire:click="saveFolderLink" variant="primary">Save</flux:button>
+        </div>
+    </flux:modal>
 </div>

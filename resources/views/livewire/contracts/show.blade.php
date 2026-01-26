@@ -505,6 +505,22 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
             
+            @if($ticket->contract->folder_link)
+            <div class="sm:col-span-2">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">Folder Dokumen</p>
+                <a 
+                    href="{{ $ticket->contract->folder_link }}" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                >
+                    <flux:icon.link class="size-4" />
+                    Buka Folder Sharing Internal
+                    <flux:icon.arrow-top-right-on-square class="size-3" />
+                </a>
+            </div>
+            @endif
+            
             @if($ticket->contract->terminated_at)
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Diterminasi Pada</p>
