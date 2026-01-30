@@ -5,21 +5,23 @@ namespace App\Mail;
 use App\Models\Contract;
 use App\Models\Setting;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
-
 class ContractExpiringMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public ?string $replyToEmail = null;
+
     public ?string $replyToName = null;
+
     public string $emailSubject;
+
     public string $emailBody;
 
     public function __construct(
@@ -30,22 +32,22 @@ class ContractExpiringMail extends Mailable implements ShouldQueue
     ) {
         $this->replyToEmail = $replyToEmail;
         $this->replyToName = $replyToName;
-        
+
         // Load templates from settings
         $subjectTemplate = Setting::get('contract_reminder_email_subject', 'Agreement {agreement_name} – Expiration Reminder');
         $bodyTemplate = Setting::get('contract_reminder_email_body', $this->getDefaultBody());
-        
+
         // Replace placeholders
         $this->emailSubject = $this->replacePlaceholders($subjectTemplate);
         $this->emailBody = $this->replacePlaceholders($bodyTemplate);
     }
-    
+
     protected function replacePlaceholders(string $template): string
     {
-        $expirationDate = $this->contract->end_date 
+        $expirationDate = $this->contract->end_date
             ? $this->contract->end_date->format('d F Y')
             : 'Auto Renewal';
-            
+
         $replacements = [
             '{agreement_name}' => $this->contract->agreement_name ?? '',
             '{contract_number}' => $this->contract->contract_number,
@@ -53,14 +55,14 @@ class ContractExpiringMail extends Mailable implements ShouldQueue
             '{days_remaining}' => $this->daysRemaining,
             '{counterpart_name}' => $this->contract->description ?? '',
         ];
-        
+
         return str_replace(
             array_keys($replacements),
             array_values($replacements),
             $template
         );
     }
-    
+
     protected function getDefaultBody(): string
     {
         return "Dear Sir/Madam,\n\nWe would like to inform you that Agreement {agreement_name} will expire on {end_date}.\n\nIn this regard, we kindly request your confirmation regarding the extension of the said agreement. Should you wish to proceed with the renewal, please contact us at legal@pfimegalife.co.id. Otherwise, kindly disregard this reminder.\n\nThank you for your attention and cooperation.\n\nBest regards,\nLegal & Corporate Secretary";

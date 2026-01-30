@@ -16,15 +16,16 @@ class RecalculateTicketAging extends Command
         $this->info('Recalculating aging for completed tickets...');
 
         // Get all completed tickets (done, closed, rejected) without proper aging_duration
-        $tickets = Ticket::whereHas('status', fn($q) => $q->whereIn('code', ['done', 'closed', 'rejected']))
+        $tickets = Ticket::whereHas('status', fn ($q) => $q->whereIn('code', ['done', 'closed', 'rejected']))
             ->where(function ($q) {
                 $q->whereNull('aging_duration')
-                  ->orWhere('aging_duration', 0);
+                    ->orWhere('aging_duration', 0);
             })
             ->get();
 
         if ($tickets->isEmpty()) {
             $this->info('No tickets need aging recalculation.');
+
             return self::SUCCESS;
         }
 

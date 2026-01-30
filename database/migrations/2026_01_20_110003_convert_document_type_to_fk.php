@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -38,7 +38,7 @@ return new class extends Migration
     private function migrateTicketDocumentTypes(): void
     {
         $typeMap = DB::table('document_types')->pluck('id', 'code');
-        
+
         foreach ($typeMap as $code => $id) {
             DB::table('tickets')
                 ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(COALESCE(document_type, 'null'), '$')) = ?", [$code])
@@ -50,7 +50,7 @@ return new class extends Migration
     private function migrateContractDocumentTypes(): void
     {
         $typeMap = DB::table('document_types')->pluck('id', 'code');
-        
+
         foreach ($typeMap as $code => $id) {
             DB::table('contracts')
                 ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(COALESCE(document_type, 'null'), '$')) = ?", [$code])

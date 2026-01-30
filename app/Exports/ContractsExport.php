@@ -9,7 +9,9 @@ use Illuminate\Support\Collection;
 class ContractsExport
 {
     protected ?string $statusFilter;
+
     protected ?string $colorFilter;
+
     protected ?int $divisionId;
 
     public function __construct(
@@ -28,8 +30,8 @@ class ContractsExport
         $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
 
         $query = Contract::with(['division', 'pic', 'ticket'])
-            ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
-            ->when($this->divisionId, fn($q) => $q->where('division_id', $this->divisionId))
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->divisionId, fn ($q) => $q->where('division_id', $this->divisionId))
             ->when($this->colorFilter, function ($q) use ($warningThreshold, $criticalThreshold) {
                 return match ($this->colorFilter) {
                     'green' => $q->where('status', 'active')
@@ -59,7 +61,7 @@ class ContractsExport
                 'Tanggal Berakhir' => $contract->end_date->format('d/m/Y'),
                 'Sisa Hari' => $contract->days_remaining,
                 'Status' => ucfirst($contract->status),
-                'Kondisi' => match($contract->status_color) {
+                'Kondisi' => match ($contract->status_color) {
                     'green' => 'Aman',
                     'yellow' => 'Mendekati Expired',
                     'red' => 'Kritis/Expired',
@@ -93,18 +95,19 @@ class ContractsExport
         $data = $this->collection();
         $headings = $this->headings();
 
-        $csv = implode(',', $headings) . "\n";
+        $csv = implode(',', $headings)."\n";
 
         foreach ($data as $row) {
             $values = array_map(function ($value) {
                 // Escape quotes and wrap in quotes if contains comma
                 $value = str_replace('"', '""', $value ?? '');
                 if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
-                    return '"' . $value . '"';
+                    return '"'.$value.'"';
                 }
+
                 return $value;
             }, $row);
-            $csv .= implode(',', $values) . "\n";
+            $csv .= implode(',', $values)."\n";
         }
 
         return $csv;

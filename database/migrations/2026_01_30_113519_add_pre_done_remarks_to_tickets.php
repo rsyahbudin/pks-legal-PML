@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('divisions', function (Blueprint $table) {
-            $table->text('cc_emails')->nullable()->after('description')
-                ->comment('Comma-separated list of CC emails for this division');
+        Schema::table('tickets', function (Blueprint $table) {
+            $table->text('pre_done_remarks')->nullable()->after('pre_done_question_3');
         });
     }
 
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('divisions', function (Blueprint $table) {
-            $table->dropColumn('cc_emails');
+        Schema::table('tickets', function (Blueprint $table) {
+            $table->dropColumn('pre_done_remarks');
         });
     }
 };

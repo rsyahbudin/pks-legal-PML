@@ -15,16 +15,16 @@ return new class extends Migration
             // Agreement Information
             $table->string('agreement_name')->after('contract_number');
             $table->string('proposed_document_title')->nullable()->after('agreement_name');
-            
+
             // Document Classification
             $table->enum('document_type', ['nda', 'surat_kuasa', 'pendapat_hukum', 'surat_pernyataan', 'lainnya'])
-                  ->default('lainnya')
-                  ->after('proposed_document_title');
-            
+                ->default('lainnya')
+                ->after('proposed_document_title');
+
             // Financial & Compliance
             $table->enum('financial_impact', ['income', 'expenditure'])->nullable()->after('document_type');
             $table->boolean('tat_legal_compliance')->nullable()->after('financial_impact');
-            
+
             // File Paths
             $table->string('draft_document_path')->nullable()->after('document_path');
             $table->json('mandatory_documents_path')->nullable()->after('draft_document_path');

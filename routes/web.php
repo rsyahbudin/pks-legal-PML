@@ -8,6 +8,7 @@ Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
+
     return redirect()->route('login');
 })->name('home');
 
@@ -99,7 +100,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('divisions.index');
 });
 
-
 // Admin routes
 Route::middleware(['auth'])->prefix('admin')->group(function () {
     Volt::route('users', 'admin.users.index')
@@ -115,4 +115,3 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
         ->middleware('permission:email_templates.edit')
         ->name('admin.email-templates');
 });
-

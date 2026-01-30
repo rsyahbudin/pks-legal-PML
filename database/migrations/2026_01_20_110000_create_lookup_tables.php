@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->boolean('requires_contract')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->index('is_active');
         });
 
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->index('is_active');
         });
 
@@ -64,7 +64,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->index('is_active');
         });
 
@@ -83,7 +83,7 @@ return new class extends Migration
             $table->string('color', 20)->default('neutral');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->index('is_active');
         });
 
@@ -99,7 +99,7 @@ return new class extends Migration
             $table->string('name', 50);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            
+
             $table->index('is_active');
         });
 

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -50,6 +49,10 @@ class Ticket extends Model
         'aging_end_at',
         'aging_duration',
         'rejection_reason',
+        'pre_done_question_1',
+        'pre_done_question_2',
+        'pre_done_question_3',
+        'pre_done_remarks',
         'created_by',
     ];
 
@@ -67,6 +70,9 @@ class Ticket extends Model
             'reviewed_at' => 'datetime',
             'aging_start_at' => 'datetime',
             'aging_end_at' => 'datetime',
+            'pre_done_question_1' => 'boolean',
+            'pre_done_question_2' => 'boolean',
+            'pre_done_question_3' => 'boolean',
         ];
     }
 
@@ -250,8 +256,15 @@ class Ticket extends Model
     /**
      * Move ticket to "done" status and calculate aging.
      */
-    public function moveToDone(): void
+    public function moveToDone(?array $preDoneAnswers = null, ?string $remarks = null): void
     {
+        // Validasi untuk perjanjian
+        if ($this->documentType?->code === 'perjanjian') {
+            if (! $preDoneAnswers || count($preDoneAnswers) !== 3) {
+                throw new \InvalidArgumentException('Pre-done questions must be answered for Perjanjian');
+            }
+        }
+
         $agingEnd = now();
         $agingDuration = null;
 
@@ -259,11 +272,21 @@ class Ticket extends Model
             $agingDuration = $this->aging_start_at->diffInMinutes($agingEnd);
         }
 
-        $this->update([
+        $updateData = [
             'status_id' => TicketStatus::getIdByCode('done'),
             'aging_end_at' => $agingEnd,
             'aging_duration' => $agingDuration,
-        ]);
+        ];
+
+        // Jika perjanjian, simpan jawaban dan remarks
+        if ($this->documentType?->code === 'perjanjian' && $preDoneAnswers) {
+            $updateData['pre_done_question_1'] = $preDoneAnswers[0];
+            $updateData['pre_done_question_2'] = $preDoneAnswers[1];
+            $updateData['pre_done_question_3'] = $preDoneAnswers[2];
+            $updateData['pre_done_remarks'] = $remarks;
+        }
+
+        $this->update($updateData);
 
         $this->logActivity('Ticket diselesaikan (Done)');
     }
@@ -321,13 +344,13 @@ class Ticket extends Model
         // Calculate contract status based on end date
         $status = 'active';
         $endDate = $this->agreement_end_date;
-        
+
         // Handle Surat Kuasa using kuasa_end_date
         if ($this->documentType?->code === 'surat_kuasa') {
             $endDate = $this->kuasa_end_date;
         }
 
-        if ($endDate && $endDate->isPast() && !$this->is_auto_renewal) {
+        if ($endDate && $endDate->isPast() && ! $this->is_auto_renewal) {
             $status = 'expired';
         }
 
@@ -346,8 +369,8 @@ class Ticket extends Model
             'start_date' => $this->documentType?->code === 'surat_kuasa' ? $this->kuasa_start_date : $this->agreement_start_date,
             'end_date' => $endDate,
             'is_auto_renewal' => $this->is_auto_renewal,
-            'description' => $this->counterpart_name 
-                ? "Pihak Lawan: {$this->counterpart_name}" 
+            'description' => $this->counterpart_name
+                ? "Pihak Lawan: {$this->counterpart_name}"
                 : ($this->documentType?->code === 'surat_kuasa' ? "Pemberi Kuasa: {$this->kuasa_pemberi}, Penerima: {$this->kuasa_penerima}" : null),
             'status_id' => \App\Models\ContractStatus::getIdByCode($status),
             'mandatory_documents_path' => $this->mandatory_documents_path,
@@ -372,9 +395,15 @@ class Ticket extends Model
         $mins = $minutes % 60;
 
         $parts = [];
-        if ($days > 0) $parts[] = "{$days} hari";
-        if ($hours > 0) $parts[] = "{$hours} jam";
-        if ($mins > 0 || empty($parts)) $parts[] = "{$mins} menit";
+        if ($days > 0) {
+            $parts[] = "{$days} hari";
+        }
+        if ($hours > 0) {
+            $parts[] = "{$hours} jam";
+        }
+        if ($mins > 0 || empty($parts)) {
+            $parts[] = "{$mins} menit";
+        }
 
         return implode(' ', $parts);
     }
@@ -385,7 +414,7 @@ class Ticket extends Model
     public function getAgingDisplayAttribute(): string
     {
         $totalMinutes = 0;
-        
+
         // Calculate aging based on status and available timestamps
         if ($this->aging_duration && $this->aging_duration > 0) {
             // For completed tickets with stored aging_duration
@@ -398,25 +427,28 @@ class Ticket extends Model
             // For in-progress tickets: calculate from aging_start_at to now
             $totalMinutes = $this->aging_start_at->diffInMinutes(now());
         }
-        
+
         // Return '-' if no aging (ticket not yet processed)
         if ($totalMinutes <= 0) {
             return '-';
         }
-        
+
         // Smart unit selection for better readability
         if ($totalMinutes >= 1440) {
             // Show in days if >= 24 hours
             $days = (int) round($totalMinutes / 1440);
-            return $days . ' hari';
+
+            return $days.' hari';
         } elseif ($totalMinutes >= 60) {
             // Show in hours if >= 1 hour
             $hours = (int) round($totalMinutes / 60);
-            return $hours . ' jam';
+
+            return $hours.' jam';
         } else {
             // Show in minutes if < 1 hour, minimum 1 minute
             $minutes = max(1, (int) round($totalMinutes));
-            return $minutes . ' menit';
+
+            return $minutes.' menit';
         }
     }
 

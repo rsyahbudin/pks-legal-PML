@@ -105,7 +105,7 @@ class ActivityLog extends Model
      */
     public function getChangesDescriptionAttribute(): ?string
     {
-        if ($this->action !== 'updated' || !$this->old_values || !$this->new_values) {
+        if ($this->action !== 'updated' || ! $this->old_values || ! $this->new_values) {
             return null;
         }
 
@@ -115,7 +115,7 @@ class ActivityLog extends Model
             'division_id' => 'Divisi',
             'department_id' => 'Departemen',
             'pic_id' => 'PIC',
-           'pic_name' => 'Nama PIC',
+            'pic_name' => 'Nama PIC',
             'pic_email' => 'Email PIC',
             'start_date' => 'Tanggal Mulai',
             'end_date' => 'Tanggal Berakhir',
@@ -145,8 +145,12 @@ class ActivityLog extends Model
                     $oldValue = $oldValue ? 'Ya' : 'Tidak';
                     $newValue = $newValue ? 'Ya' : 'Tidak';
                 } elseif (in_array($field, ['start_date', 'end_date'])) {
-                    if ($oldValue) $oldValue = \Carbon\Carbon::parse($oldValue)->format('d F Y');
-                    if ($newValue) $newValue = \Carbon\Carbon::parse($newValue)->format('d F Y');
+                    if ($oldValue) {
+                        $oldValue = \Carbon\Carbon::parse($oldValue)->format('d F Y');
+                    }
+                    if ($newValue) {
+                        $newValue = \Carbon\Carbon::parse($newValue)->format('d F Y');
+                    }
                 } elseif ($field === 'document_path') {
                     $oldValue = $oldValue ? 'Ada' : 'Tidak ada';
                     $newValue = $newValue ? 'Ada' : 'Tidak ada';
@@ -163,6 +167,6 @@ class ActivityLog extends Model
             }
         }
 
-        return !empty($changes) ? implode(', ', $changes) : null;
+        return ! empty($changes) ? implode(', ', $changes) : null;
     }
 }

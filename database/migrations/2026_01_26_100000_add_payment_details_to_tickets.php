@@ -13,7 +13,7 @@ return new class extends Migration
                 ->nullable()
                 ->after('has_financial_impact')
                 ->comment('pay or receive_payment');
-            
+
             $table->string('recurring_description', 200)
                 ->nullable()
                 ->after('payment_type')

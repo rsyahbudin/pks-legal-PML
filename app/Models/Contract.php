@@ -59,8 +59,8 @@ class Contract extends Model
      */
     public static function generateContractNumber(): string
     {
-        $prefix = 'CTR-' . now()->format('Y-m');
-        $lastContract = static::where('contract_number', 'like', $prefix . '-%')
+        $prefix = 'CTR-'.now()->format('Y-m');
+        $lastContract = static::where('contract_number', 'like', $prefix.'-%')
             ->orderBy('contract_number', 'desc')
             ->first();
 
@@ -71,7 +71,7 @@ class Contract extends Model
             $newNumber = '0001';
         }
 
-        return $prefix . '-' . $newNumber;
+        return $prefix.'-'.$newNumber;
     }
 
     /**
@@ -239,7 +239,7 @@ class Contract extends Model
     public function scopeExpired(Builder $query): Builder
     {
         return $query->where(function ($q) {
-            $q->whereHas('status', fn($sq) => $sq->where('code', 'expired'))
+            $q->whereHas('status', fn ($sq) => $sq->where('code', 'expired'))
                 ->orWhereDate('end_date', '<', now());
         });
     }
@@ -249,7 +249,7 @@ class Contract extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->whereHas('status', fn($q) => $q->where('code', 'active'))
+        return $query->whereHas('status', fn ($q) => $q->where('code', 'active'))
             ->whereDate('end_date', '>=', now());
     }
 

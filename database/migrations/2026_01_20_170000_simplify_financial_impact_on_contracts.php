@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -24,7 +24,7 @@ return new class extends Migration
         Schema::table('contracts', function (Blueprint $table) {
             // Drop foreign key first (name follows Laravel convention: table_column_foreign)
             // Or use array syntax to let Laravel find it
-            $table->dropForeign(['financial_impact_id']); 
+            $table->dropForeign(['financial_impact_id']);
             $table->dropColumn('financial_impact_id');
         });
 
@@ -51,7 +51,7 @@ return new class extends Migration
             ['code' => 'income', 'name' => 'Income', 'name_id' => 'Pemasukan', 'color' => 'green', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
             ['code' => 'expenditure', 'name' => 'Expenditure', 'name_id' => 'Pengeluaran', 'color' => 'red', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
         ]);
-        
+
         // 2. Re-add column
         Schema::table('contracts', function (Blueprint $table) {
             $table->foreignId('financial_impact_id')->nullable()->after('status_id')->constrained('financial_impacts')->nullOnDelete();
@@ -60,7 +60,7 @@ return new class extends Migration
         // Data restoration is partial/lossy (mapped to null or default)
         // We cannot know if it was Income or Expenditure, so we leave it NULL or check constraints if possible.
         // For simplicity in down(), we leave it null.
-        
+
         // 3. Drop boolean
         Schema::table('contracts', function (Blueprint $table) {
             $table->dropColumn('has_financial_impact');

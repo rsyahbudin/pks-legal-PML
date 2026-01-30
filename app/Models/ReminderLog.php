@@ -55,7 +55,7 @@ class ReminderLog extends Model
     public static function wasSentToday(int $contractId, int $userId, string $typeCode): bool
     {
         $typeId = \App\Models\ReminderType::getIdByCode($typeCode);
-        
+
         return static::where('contract_id', $contractId)
             ->where('user_id', $userId)
             ->where('type_id', $typeId)

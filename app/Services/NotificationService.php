@@ -21,7 +21,7 @@ class NotificationService
     {
         // Ensure relationships are loaded
         $ticket->load(['creator', 'division', 'department']);
-        
+
         $template = $this->templateService->getTicketCreatedTemplate();
 
         $data = [
@@ -40,40 +40,40 @@ class NotificationService
 
         // Send to legal team with department CC emails
         $legalEmail = $this->templateService->getLegalTeamEmail();
-        
+
         try {
             // Get department CC emails if available
             $ccEmails = [];
-            if ($ticket->department && !empty($ticket->department->cc_emails)) {
-                $ccEmails = array_filter($ticket->department->cc_emails_list, function($email) {
+            if ($ticket->department && ! empty($ticket->department->cc_emails)) {
+                $ccEmails = array_filter($ticket->department->cc_emails_list, function ($email) {
                     return filter_var($email, FILTER_VALIDATE_EMAIL);
                 });
             }
-            
+
             \Log::info('Sending ticket created emails', [
                 'ticket_id' => $ticket->id,
                 'creator_email' => $ticket->creator->email,
                 'legal_email' => $legalEmail,
                 'cc_emails' => $ccEmails,
             ]);
-            
+
             // Send email - use array_values to reindex the filtered array
             $mailable = new DynamicMail($subject, $body, $data);
-            
+
             // Send to creator with CC
-            if (!empty($ccEmails)) {
+            if (! empty($ccEmails)) {
                 Mail::to($ticket->creator->email)->cc(array_values($ccEmails))->send($mailable);
             } else {
                 Mail::to($ticket->creator->email)->send($mailable);
             }
-            
+
             // Send to legal team with CC
-            if (!empty($ccEmails)) {
+            if (! empty($ccEmails)) {
                 Mail::to($legalEmail)->cc(array_values($ccEmails))->send(new DynamicMail($subject, $body, $data));
             } else {
                 Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
             }
-            
+
             \Log::info('Ticket created emails sent successfully', ['ticket_id' => $ticket->id]);
         } catch (\Exception $e) {
             \Log::error('Failed to send ticket created email', [
@@ -115,16 +115,16 @@ class NotificationService
         try {
             // Get department CC emails if available
             $ccEmails = [];
-            if ($ticket->department && !empty($ticket->department->cc_emails)) {
-                $ccEmails = array_filter($ticket->department->cc_emails_list, function($email) {
+            if ($ticket->department && ! empty($ticket->department->cc_emails)) {
+                $ccEmails = array_filter($ticket->department->cc_emails_list, function ($email) {
                     return filter_var($email, FILTER_VALIDATE_EMAIL);
                 });
             }
-            
+
             $mailable = new DynamicMail($subject, $body, $data);
-            
+
             // Send to creator
-            if (!empty($ccEmails)) {
+            if (! empty($ccEmails)) {
                 Mail::to($ticket->creator->email)->cc(array_values($ccEmails))->send($mailable);
             } else {
                 Mail::to($ticket->creator->email)->send($mailable);
@@ -132,7 +132,7 @@ class NotificationService
 
             // Send to legal team
             $legalEmail = $this->templateService->getLegalTeamEmail();
-            if (!empty($ccEmails)) {
+            if (! empty($ccEmails)) {
                 Mail::to($legalEmail)->cc(array_values($ccEmails))->send(new DynamicMail($subject, $body, $data));
             } else {
                 Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
@@ -168,8 +168,8 @@ class NotificationService
             'contract_number' => $contract->contract_number,
             'agreement_name' => $contract->agreement_name,
             'document_type' => $contract->document_type_label,
-            'old_status' => ucfirst($oldStatus),
-            'new_status' => ucfirst($newStatus),
+            'old_status' => $this->getStatusLabel($oldStatus),
+            'new_status' => $this->getStatusLabel($newStatus),
             'start_date' => $contract->start_date?->format('d M Y') ?? '-',
             'end_date' => $contract->end_date?->format('d M Y') ?? '-',
             'termination_reason' => $contract->termination_reason ? "\nAlasan Terminasi: {$contract->termination_reason}" : '',
@@ -229,20 +229,18 @@ class NotificationService
     }
 
     /**
-     * Get human-readable status label.
+     * Get human-readable status label from database.
      */
     private function getStatusLabel(string $status): string
     {
-        return match ($status) {
-            'open' => 'Menunggu Review',
-            'on_process' => 'Sedang Diproses',
-            'done' => 'Selesai',
-            'rejected' => 'Ditolak',
-            'closed' => 'Ditutup',
-            'active' => 'Aktif',
-            'expired' => 'Expired',
-            'terminated' => 'Terminated',
-            default => ucfirst($status),
-        };
+        // Try to get status name from database
+        $ticketStatus = \App\Models\TicketStatus::where('code', $status)->first();
+
+        if ($ticketStatus) {
+            return $ticketStatus->name; // English name from database
+        }
+
+        // Fallback to ucfirst if not found
+        return ucfirst(str_replace('_', ' ', $status));
     }
 }

@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -19,7 +19,7 @@ return new class extends Migration
         Schema::table('contracts', function (Blueprint $table) {
             $table->foreignId('status_id')->nullable()->after('description')->constrained('contract_statuses')->nullOnDelete();
             $table->foreignId('financial_impact_id')->nullable()->after('document_type')->constrained('financial_impacts')->nullOnDelete();
-            
+
             $table->index('status_id');
             $table->index('financial_impact_id');
         });
@@ -67,7 +67,7 @@ return new class extends Migration
     private function migrateTicketStatuses(): void
     {
         $statusMap = DB::table('ticket_statuses')->pluck('id', 'code');
-        
+
         foreach ($statusMap as $code => $id) {
             DB::table('tickets')
                 ->where('status', $code)
@@ -78,7 +78,7 @@ return new class extends Migration
     private function migrateContractStatuses(): void
     {
         $statusMap = DB::table('contract_statuses')->pluck('id', 'code');
-        
+
         foreach ($statusMap as $code => $id) {
             DB::table('contracts')
                 ->where('status', $code)
@@ -89,7 +89,7 @@ return new class extends Migration
     private function migrateFinancialImpacts(): void
     {
         $impactMap = DB::table('financial_impacts')->pluck('id', 'code');
-        
+
         foreach ($impactMap as $code => $id) {
             DB::table('contracts')
                 ->where('financial_impact', $code)
@@ -100,7 +100,7 @@ return new class extends Migration
     private function migrateReminderTypes(): void
     {
         $typeMap = DB::table('reminder_types')->pluck('id', 'code');
-        
+
         foreach ($typeMap as $code => $id) {
             DB::table('reminder_logs')
                 ->where('type', $code)

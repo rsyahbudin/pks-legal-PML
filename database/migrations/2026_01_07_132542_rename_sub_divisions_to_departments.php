@@ -13,7 +13,7 @@ return new class extends Migration
     {
         // Rename the table
         Schema::rename('sub_divisions', 'departments');
-        
+
         // Rename the foreign key column in contracts table
         Schema::table('contracts', function (Blueprint $table) {
             $table->renameColumn('sub_division_id', 'department_id');
@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::table('contracts', function (Blueprint $table) {
             $table->renameColumn('department_id', 'sub_division_id');
         });
-        
+
         // Rename back the table
         Schema::rename('departments', 'sub_divisions');
     }

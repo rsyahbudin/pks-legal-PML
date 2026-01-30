@@ -7,7 +7,6 @@ use App\Models\ActivityLog;
 use App\Models\Contract;
 use App\Models\Notification;
 use App\Models\ReminderLog;
-use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -21,8 +20,9 @@ class SendContractReminders extends Command
 
     public function handle(): int
     {
-        if (!Setting::get('reminder_email_enabled', true)) {
+        if (! Setting::get('reminder_email_enabled', true)) {
             $this->info('Email reminders are disabled.');
+
             return self::SUCCESS;
         }
 
@@ -49,13 +49,15 @@ class SendContractReminders extends Command
             ->get();
 
         // Filter to only contracts with exact match on reminder days
-        $contracts = $contracts->filter(function($contract) use ($reminderDays) {
+        $contracts = $contracts->filter(function ($contract) use ($reminderDays) {
             $daysRemaining = $contract->days_remaining;
+
             return in_array($daysRemaining, $reminderDays);
         });
 
         if ($contracts->isEmpty()) {
             $this->info('No contracts needing reminders.');
+
             return self::SUCCESS;
         }
 
@@ -90,7 +92,7 @@ class SendContractReminders extends Command
 
                     // Send email with CC to division emails
                     $mail = Mail::to($recipient->email);
-                    if (!empty($ccEmails)) {
+                    if (! empty($ccEmails)) {
                         $mail->cc($ccEmails);
                     }
                     $mail->send(new ContractExpiringMail($contract, $daysRemaining));
@@ -128,7 +130,7 @@ class SendContractReminders extends Command
 
                     $sentCount++;
 
-                    $ccInfo = !empty($ccEmails) ? ' (CC: ' . implode(', ', $ccEmails) . ')' : '';
+                    $ccInfo = ! empty($ccEmails) ? ' (CC: '.implode(', ', $ccEmails).')' : '';
                     $this->info("Sent reminder to {$recipient->email}{$ccInfo} for contract {$contract->contract_number}");
                 } catch (\Exception $e) {
                     $this->error("Failed to send to {$recipient->email}: {$e->getMessage()}");

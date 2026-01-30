@@ -2,7 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\{Department, Division, Role, User};
+use App\Models\Department;
+use App\Models\Division;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -19,7 +22,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             SettingSeeder::class,
             DivisionSeeder::class,
-            
+
         ]);
 
         // Create users

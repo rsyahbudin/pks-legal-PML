@@ -31,13 +31,14 @@ class UpdateExpiredContracts extends Command
 
         // Find all active contracts that have passed their end_date
         $expiredContracts = Contract::with('ticket')
-            ->whereHas('status', fn($q) => $q->where('code', 'active'))
+            ->whereHas('status', fn ($q) => $q->where('code', 'active'))
             ->whereNotNull('end_date')
             ->whereDate('end_date', '<', now())
             ->get();
 
         if ($expiredContracts->isEmpty()) {
             $this->info('No expired contracts found.');
+
             return Command::SUCCESS;
         }
 
@@ -47,16 +48,16 @@ class UpdateExpiredContracts extends Command
         foreach ($expiredContracts as $contract) {
             $oldStatus = $contract->status;
             $contract->update(['status_id' => \App\Models\ContractStatus::getIdByCode('expired')]);
-            
+
             // Auto-close the related ticket
             if ($contract->ticket && $contract->ticket->status !== 'closed') {
                 $contract->ticket->update(['status_id' => \App\Models\TicketStatus::getIdByCode('closed')]);
                 $this->line("  → Ticket #{$contract->ticket->ticket_number} auto-closed");
             }
-            
+
             // Send notification about status change
             $notificationService->notifyContractStatusChanged($contract, $oldStatus, 'expired');
-            
+
             $count++;
             $this->line("✓ Contract #{$contract->contract_number} marked as expired");
         }

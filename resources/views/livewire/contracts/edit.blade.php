@@ -1,54 +1,83 @@
 <?php
 
-use App\Models\Ticket;
-use App\Models\Division;
 use App\Models\Department;
+use App\Models\Division;
+use App\Models\Ticket;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
-use Livewire\Attributes\Layout;
-use Illuminate\Validation\Rule;
 
-new #[Layout('components.layouts.app')] class extends Component {
+new #[Layout('components.layouts.app')] class extends Component
+{
     use WithFileUploads;
 
     public Ticket $ticket;
-    
+
     // Common fields
     public $division_id;
+
     public $department_id;
+
     public int $has_financial_impact = 0;
+
     public string $payment_type = '';
+
     public string $recurring_description = '';
+
     public string $proposed_document_title = '';
+
     public $draft_document;
+
     public string $document_type = '';
-    
+
     // Conditional: perjanjian/nda
     public string $counterpart_name = '';
+
     public string $agreement_start_date = '';
+
     public string $agreement_duration = '';
+
     public int $is_auto_renewal = 0;
+
     public string $renewal_period = '';
+
     public string $renewal_notification_days = '';
+
     public string $agreement_end_date = '';
+
     public string $termination_notification_days = '';
-    
+
     // Conditional: surat_kuasa
     public string $kuasa_pemberi = '';
+
     public string $kuasa_penerima = '';
+
     public string $kuasa_start_date = '';
+
     public string $kuasa_end_date = '';
-    
+
     // Common for all
     public int $tat_legal_compliance = 0;
+
     public $mandatory_documents = [];
+
     public $approval_document;
+
+    // Pre-done questions (for Perjanjian only, when status = done)
+    public ?int $pre_done_question_1 = null;
+
+    public ?int $pre_done_question_2 = null;
+
+    public ?int $pre_done_question_3 = null;
+
+    public string $pre_done_remarks = '';
 
     public function mount(int $contract): void
     {
         // Load ticket data
         $this->ticket = Ticket::findOrFail($contract);
-        
+
         // Populate form with ticket data
         $this->division_id = $this->ticket->division_id;
         $this->department_id = $this->ticket->department_id;
@@ -58,7 +87,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->proposed_document_title = $this->ticket->proposed_document_title;
         $this->document_type = $this->ticket->documentType?->code ?? '';
         $this->tat_legal_compliance = $this->ticket->tat_legal_compliance;
-        
+
         // Conditional fields
         $this->counterpart_name = $this->ticket->counterpart_name ?? '';
         $this->agreement_start_date = $this->ticket->agreement_start_date?->format('Y-m-d') ?? '';
@@ -68,11 +97,17 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->renewal_notification_days = $this->ticket->renewal_notification_days ?? '';
         $this->agreement_end_date = $this->ticket->agreement_end_date?->format('Y-m-d') ?? '';
         $this->termination_notification_days = $this->ticket->termination_notification_days ?? '';
-        
+
         $this->kuasa_pemberi = $this->ticket->kuasa_pemberi ?? '';
         $this->kuasa_penerima = $this->ticket->kuasa_penerima ?? '';
         $this->kuasa_start_date = $this->ticket->kuasa_start_date?->format('Y-m-d') ?? '';
         $this->kuasa_end_date = $this->ticket->kuasa_end_date?->format('Y-m-d') ?? '';
+
+        // Pre-done questions - convert to integer for radio button compatibility
+        $this->pre_done_question_1 = $this->ticket->pre_done_question_1 !== null ? (int) $this->ticket->pre_done_question_1 : null;
+        $this->pre_done_question_2 = $this->ticket->pre_done_question_2 !== null ? (int) $this->ticket->pre_done_question_2 : null;
+        $this->pre_done_question_3 = $this->ticket->pre_done_question_3 !== null ? (int) $this->ticket->pre_done_question_3 : null;
+        $this->pre_done_remarks = $this->ticket->pre_done_remarks ?? '';
     }
 
     public function getDivisionsProperty()
@@ -82,9 +117,10 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function getDepartmentsProperty()
     {
-        if (!$this->division_id) {
+        if (! $this->division_id) {
             return collect();
         }
+
         return Department::where('division_id', $this->division_id)->orderBy('name')->get();
     }
 
@@ -92,8 +128,9 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         $user = auth()->user();
 
-        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
             $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat mengedit ticket.');
+
             return;
         }
 
@@ -114,20 +151,28 @@ new #[Layout('components.layouts.app')] class extends Component {
             $rules['agreement_start_date'] = ['required', 'date'];
             $rules['agreement_duration'] = ['required', 'string', 'max:100'];
             $rules['is_auto_renewal'] = ['required', 'boolean'];
-            
+
             if ($this->is_auto_renewal) {
                 $rules['renewal_period'] = ['required', Rule::in(['yearly', 'monthly', 'weekly'])];
                 $rules['renewal_notification_days'] = ['required', 'integer', 'min:1'];
             } else {
                 $rules['agreement_end_date'] = ['required', 'date', 'after:agreement_start_date'];
             }
-            
+
             $rules['termination_notification_days'] = ['nullable', 'integer', 'min:1'];
         } elseif ($this->document_type === 'surat_kuasa') {
             $rules['kuasa_pemberi'] = ['required', 'string', 'max:255'];
             $rules['kuasa_penerima'] = ['required', 'string', 'max:255'];
             $rules['kuasa_start_date'] = ['required', 'date'];
             $rules['kuasa_end_date'] = ['required', 'date', 'after:kuasa_start_date'];
+        }
+
+        // Pre-done questions validation (for Perjanjian when status = done)
+        if ($this->document_type === 'perjanjian' && $this->ticket->status?->code === 'done') {
+            $rules['pre_done_question_1'] = ['required', 'boolean'];
+            $rules['pre_done_question_2'] = ['required', 'boolean'];
+            $rules['pre_done_question_3'] = ['required', 'boolean'];
+            $rules['pre_done_remarks'] = ['nullable', 'string', 'max:1000'];
         }
 
         $validated = $this->validate($rules);
@@ -146,13 +191,18 @@ new #[Layout('components.layouts.app')] class extends Component {
             'is_auto_renewal' => $this->is_auto_renewal,
             'renewal_period' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
             'renewal_notification_days' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
-            'agreement_end_date' => (!$this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
+            'agreement_end_date' => (! $this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
             'termination_notification_days' => $this->termination_notification_days ?: null,
             'kuasa_pemberi' => $this->kuasa_pemberi ?: null,
             'kuasa_penerima' => $this->kuasa_penerima ?: null,
             'kuasa_start_date' => $this->kuasa_start_date ?: null,
             'kuasa_end_date' => $this->kuasa_end_date ?: null,
             'tat_legal_compliance' => $validated['tat_legal_compliance'],
+            // Pre-done questions (if applicable)
+            'pre_done_question_1' => $this->pre_done_question_1,
+            'pre_done_question_2' => $this->pre_done_question_2,
+            'pre_done_question_3' => $this->pre_done_question_3,
+            'pre_done_remarks' => $this->pre_done_remarks,
         ]);
 
         // Handle file uploads (only if new files uploaded)
@@ -160,12 +210,12 @@ new #[Layout('components.layouts.app')] class extends Component {
             $draftPath = $this->draft_document->store("tickets/{$this->ticket->id}/draft", 'public');
             $this->ticket->update(['draft_document_path' => $draftPath]);
         }
-        
+
         if ($this->mandatory_documents && count($this->mandatory_documents) > 0) {
             // Append to existing documents
             $existingDocs = $this->ticket->mandatory_documents_path ?? [];
             $mandatoryPaths = $existingDocs;
-            
+
             foreach ($this->mandatory_documents as $file) {
                 $path = $file->store("tickets/{$this->ticket->id}/mandatory", 'public');
                 $mandatoryPaths[] = [
@@ -175,20 +225,25 @@ new #[Layout('components.layouts.app')] class extends Component {
             }
             $this->ticket->update(['mandatory_documents_path' => $mandatoryPaths]);
         }
-        
+
         if ($this->approval_document) {
             $approvalPath = $this->approval_document->store("tickets/{$this->ticket->id}/approval", 'public');
             $this->ticket->update(['approval_document_path' => $approvalPath]);
         }
 
         // Log activity
+        $logMessage = 'updated ticket details';
+        if ($this->document_type === 'perjanjian' && $this->ticket->status?->code === 'done') {
+            $logMessage .= ' (including pre-done answers)';
+        }
+
         $this->ticket->activityLogs()->create([
             'user_id' => $user->id,
-            'action' => 'updated ticket details',
+            'action' => $logMessage,
             'metadata' => [
                 'updated_at' => now(),
-                'updated_by' => $user->name
-            ]
+                'updated_by' => $user->name,
+            ],
         ]);
 
         session()->flash('success', 'Ticket berhasil diupdate.');
@@ -442,6 +497,50 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <div wire:loading wire:target="approval_document" class="mt-2 text-sm text-orange-600">
                         Mengupload approval document...
                     </div>
+                </flux:field>
+            </div>
+        </div>
+        @endif
+
+        {{-- Pre-Done Questions Section (for Perjanjian with done status only) --}}
+        @if($this->document_type === 'perjanjian' && $ticket->status?->code === 'done')
+        <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-900 dark:bg-green-950/30">
+            <h2 class="mb-4 text-lg font-semibold text-green-900 dark:text-green-300">Finalization Checklist</h2>
+            <p class="mb-4 text-sm text-green-700 dark:text-green-400">Answers to finalization questions. You can update them if needed.</p>
+            
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>1. Has the document been signed by both parties? *</flux:label>
+                    <flux:radio.group wire:model="pre_done_question_1" variant="segmented" required>
+                        <flux:radio value="1" label="Yes" />
+                        <flux:radio value="0" label="No" />
+                    </flux:radio.group>
+                    <flux:error name="pre_done_question_1" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>2. Has the final document been saved in the internal sharing folder? *</flux:label>
+                    <flux:radio.group wire:model="pre_done_question_2" variant="segmented" required>
+                        <flux:radio value="1" label="Yes" />
+                        <flux:radio value="0" label="No" />
+                    </flux:radio.group>
+                    <flux:error name="pre_done_question_2" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>3. Are all mandatory attachments complete? *</flux:label>
+                    <flux:radio.group wire:model="pre_done_question_3" variant="segmented" required>
+                        <flux:radio value="1" label="Yes" />
+                        <flux:radio value="0" label="No" />
+                    </flux:radio.group>
+                    <flux:error name="pre_done_question_3" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Remarks (Optional)</flux:label>
+                    <flux:textarea wire:model="pre_done_remarks" rows="3" placeholder="Additional notes or remarks (max 1000 characters)" />
+                    <flux:description>Maximum 1000 characters</flux:description>
+                    <flux:error name="pre_done_remarks" />
                 </flux:field>
             </div>
         </div>

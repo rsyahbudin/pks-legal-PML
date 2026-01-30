@@ -10,8 +10,13 @@ new #[Layout('components.layouts.app')] class extends Component {
     public Ticket $ticket;
     public bool $showRejectModal = false;
     public bool $showTerminateModal = false;
+    public bool $showPreDoneModal = false;
     public string $rejectionReason = '';
     public string $terminationReason = '';
+    public bool $preDoneQ1 = false;
+    public bool $preDoneQ2 = false;
+    public bool $preDoneQ3 = false;
+    public string $preDoneRemarks = '';
 
     public function mount(int $contract): void
     {
@@ -89,6 +94,17 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->mount($this->ticket->id);
     }
 
+    public function openPreDoneModal(): void
+    {
+        // Reset values
+        $this->preDoneQ1 = false;
+        $this->preDoneQ2 = false;
+        $this->preDoneQ3 = false;
+        $this->preDoneRemarks = '';
+        
+        $this->showPreDoneModal = true;
+    }
+
     public function moveToDone(): void
     {
         $user = auth()->user();
@@ -103,8 +119,28 @@ new #[Layout('components.layouts.app')] class extends Component {
             return;
         }
 
+        // Untuk perjanjian, validasi pre-done answers
+        $preDoneAnswers = null;
+        $remarks = null;
+        if ($this->ticket->documentType?->code === 'perjanjian') {
+            $this->validate([
+                'preDoneQ1' => 'required|boolean',
+                'preDoneQ2' => 'required|boolean',
+                'preDoneQ3' => 'required|boolean',
+                'preDoneRemarks' => 'nullable|string|max:1000',
+            ], [
+                'preDoneQ1.required' => 'Pertanyaan 1 harus dijawab',
+                'preDoneQ2.required' => 'Pertanyaan 2 harus dijawab',
+                'preDoneQ3.required' => 'Pertanyaan 3 harus dijawab',
+                'preDoneRemarks.max' => 'Remarks maksimal 1000 karakter',
+            ]);
+
+            $preDoneAnswers = [$this->preDoneQ1, $this->preDoneQ2, $this->preDoneQ3];
+            $remarks = $this->preDoneRemarks;
+        }
+
         $oldStatus = $this->ticket->status?->code;
-        $this->ticket->moveToDone();
+        $this->ticket->moveToDone($preDoneAnswers, $remarks);
         
         // Refresh ticket to get updated status from database
         $this->ticket->refresh();
@@ -128,6 +164,8 @@ new #[Layout('components.layouts.app')] class extends Component {
             'contract.status', // Ensure deep load of contract status
             'activityLogs.user'
         ]);
+        
+        $this->showPreDoneModal = false;
         $this->mount($this->ticket->id);
     }
 
@@ -320,9 +358,15 @@ new #[Layout('components.layouts.app')] class extends Component {
                 @endphp
                 
                 @if($isContractable)
-                    <flux:button wire:click="moveToDone" variant="primary" icon="check">
-                        Mark as Done (Create Contract)
-                    </flux:button>
+                    @if($ticket->documentType?->code === 'perjanjian')
+                        <flux:button wire:click="openPreDoneModal" variant="primary" icon="check">
+                            Mark as Done (Create Contract)
+                        </flux:button>
+                    @else
+                        <flux:button wire:click="moveToDone" variant="primary" icon="check">
+                            Mark as Done (Create Contract)
+                        </flux:button>
+                    @endif
                 @else
                     <flux:button wire:click="moveToClosedDirectly" variant="primary" icon="check-circle">
                         Close Ticket
@@ -467,6 +511,70 @@ new #[Layout('components.layouts.app')] class extends Component {
 
 
     </div>
+
+    {{-- Pre-Done Questions Answers (for Perjanjian only) --}}
+    @if($ticket->documentType?->code === 'perjanjian' && $ticket->status?->code === 'done' && ($ticket->pre_done_question_1 !== null || $ticket->pre_done_question_2 !== null || $ticket->pre_done_question_3 !== null))
+    <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+        <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Finalization Checklist</h2>
+        
+        <div class="space-y-3">
+            <div class="flex items-start gap-3">
+                @if($ticket->pre_done_question_1)
+                    <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                @else
+                    <flux:icon.x-circle class="size-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                @endif
+                <div>
+                    <p class="text-sm font-medium text-neutral-900 dark:text-white">
+                        Has the document been signed by both parties?
+                    </p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                        {{ $ticket->pre_done_question_1 ? 'Yes' : 'No' }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                @if($ticket->pre_done_question_2)
+                    <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                @else
+                    <flux:icon.x-circle class="size-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                @endif
+                <div>
+                    <p class="text-sm font-medium text-neutral-900 dark:text-white">
+                        Has the final document been saved in the internal sharing folder?
+                    </p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                        {{ $ticket->pre_done_question_2 ? 'Yes' : 'No' }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                @if($ticket->pre_done_question_3)
+                    <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                @else
+                    <flux:icon.x-circle class="size-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                @endif
+                <div>
+                    <p class="text-sm font-medium text-neutral-900 dark:text-white">
+                        Are all mandatory attachments complete?
+                    </p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                        {{ $ticket->pre_done_question_3 ? 'Yes' : 'No' }}
+                    </p>
+                </div>
+            </div>
+
+            @if($ticket->pre_done_remarks)
+            <div class="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-800">
+                <p class="mb-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">Remarks:</p>
+                <p class="text-sm text-neutral-900 dark:text-white whitespace-pre-wrap">{{ $ticket->pre_done_remarks }}</p>
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
 
     <!-- Contract Information (if exists) -->
     @if($ticket->contract)
@@ -652,6 +760,76 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <flux:spacer />
                 <flux:button variant="ghost" type="button" wire:click="$set('showTerminateModal', false)">Batal</flux:button>
                 <flux:button type="submit" variant="danger">Terminate Contract</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    {{-- Pre-Done Questions Modal --}}
+    <flux:modal name="pre-done-modal" :open="$showPreDoneModal" wire:model="showPreDoneModal">
+        <form wire:submit="moveToDone" class="space-y-6">
+            <div>
+                <flux:heading size="lg">Pre-Finalization Checklist</flux:heading>
+                <flux:subheading>Please answer all questions before completing the ticket</flux:subheading>
+            </div>
+
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>1. Has the document been signed by both parties? *</flux:label>
+                    <div class="flex gap-4 mt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" wire:model="preDoneQ1" value="1" class="size-4 text-blue-600" required />
+                            <span class="text-sm text-neutral-700 dark:text-neutral-300">Yes</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" wire:model="preDoneQ1" value="0" class="size-4 text-blue-600" required />
+                            <span class="text-sm text-neutral-700 dark:text-neutral-300">No</span>
+                        </label>
+                    </div>
+                    <flux:error name="preDoneQ1" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>2. Has the final document been saved in the internal sharing folder? *</flux:label>
+                    <div class="flex gap-4 mt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" wire:model="preDoneQ2" value="1" class="size-4 text-blue-600" required />
+                            <span class="text-sm text-neutral-700 dark:text-neutral-300">Yes</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" wire:model="preDoneQ2" value="0" class="size-4 text-blue-600" required />
+                            <span class="text-sm text-neutral-700 dark:text-neutral-300">No</span>
+                        </label>
+                    </div>
+                    <flux:error name="preDoneQ2" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>3. Are all mandatory attachments complete? *</flux:label>
+                    <div class="flex gap-4 mt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" wire:model="preDoneQ3" value="1" class="size-4 text-blue-600" required />
+                            <span class="text-sm text-neutral-700 dark:text-neutral-300">Yes</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" wire:model="preDoneQ3" value="0" class="size-4 text-blue-600" required />
+                            <span class="text-sm text-neutral-700 dark:text-neutral-300">No</span>
+                        </label>
+                    </div>
+                    <flux:error name="preDoneQ3" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Remarks (Optional)</flux:label>
+                    <flux:textarea wire:model="preDoneRemarks" rows="3" placeholder="Additional notes or remarks (max 1000 characters)" />
+                    <flux:description>Maximum 1000 characters</flux:description>
+                    <flux:error name="preDoneRemarks" />
+                </flux:field>
+            </div>
+
+            <div class="flex gap-2">
+                <flux:spacer />
+                <flux:button variant="ghost" type="button" wire:click="$set('showPreDoneModal', false)">Cancel</flux:button>
+                <flux:button type="submit" variant="primary">Continue & Complete Ticket</flux:button>
             </div>
         </form>
     </flux:modal>
