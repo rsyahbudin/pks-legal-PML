@@ -46,7 +46,7 @@ class UpdateExpiredContracts extends Command
         $notificationService = app(NotificationService::class);
 
         foreach ($expiredContracts as $contract) {
-            $oldStatus = $contract->status;
+            $oldStatus = $contract->status?->code ?? 'active';
             $contract->update(['status_id' => \App\Models\ContractStatus::getIdByCode('expired')]);
 
             // Auto-close the related ticket
