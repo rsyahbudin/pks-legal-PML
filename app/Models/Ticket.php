@@ -433,23 +433,10 @@ class Ticket extends Model
             return '-';
         }
 
-        // Smart unit selection for better readability
-        if ($totalMinutes >= 1440) {
-            // Show in days if >= 24 hours
-            $days = (int) round($totalMinutes / 1440);
+        // Always show in days for web display (rounded down)
+        $days = (int) floor($totalMinutes / 1440); // Convert minutes to days, rounded down
 
-            return $days.' hari';
-        } elseif ($totalMinutes >= 60) {
-            // Show in hours if >= 1 hour
-            $hours = (int) round($totalMinutes / 60);
-
-            return $hours.' jam';
-        } else {
-            // Show in minutes if < 1 hour, minimum 1 minute
-            $minutes = max(1, (int) round($totalMinutes));
-
-            return $minutes.' menit';
-        }
+        return $days.' days';
     }
 
     /**

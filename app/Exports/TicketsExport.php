@@ -60,21 +60,10 @@ class TicketsExport
             }
             // If aging_start_at is not set, aging stays as '-' (ticket hasn't been processed yet)
 
-            // Smart unit selection for better readability
+            // Always show in hours for export
             if ($totalMinutes > 0) {
-                if ($totalMinutes >= 1440) {
-                    // Show in days if >= 24 hours
-                    $days = (int) round($totalMinutes / 1440);
-                    $agingDisplay = $days.' hari';
-                } elseif ($totalMinutes >= 60) {
-                    // Show in hours if >= 1 hour
-                    $hours = (int) round($totalMinutes / 60);
-                    $agingDisplay = $hours.' jam';
-                } else {
-                    // Show in minutes if < 1 hour, minimum 1 minute
-                    $minutes = max(1, (int) round($totalMinutes));
-                    $agingDisplay = $minutes.' menit';
-                }
+                $hours = round($totalMinutes / 60, 1); // Convert minutes to hours with 1 decimal
+                $agingDisplay = $hours.' hours';
             }
 
             return [
