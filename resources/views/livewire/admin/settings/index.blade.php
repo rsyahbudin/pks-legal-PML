@@ -1,24 +1,31 @@
 <?php
 
 use App\Models\Setting;
-use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app')] class extends Component {
+new #[Layout('components.layouts.app')] class extends Component
+{
     public bool $reminder_email_enabled = true;
-    public string $reminder_send_time = '08:00';
-    public string $app_name = '';
-    public string $company_name = '';
-    public array $reminder_days = [60, 30, 7];
 
+    public string $reminder_send_time = '08:00';
+
+    public string $ticket_cutoff_time = '17:00';
+
+    public string $app_name = '';
+
+    public string $company_name = '';
+
+    public array $reminder_days = [60, 30, 7];
 
     public function mount(): void
     {
         $this->reminder_email_enabled = (bool) Setting::get('reminder_email_enabled', true);
         $this->reminder_send_time = Setting::get('reminder_send_time', '08:00');
+        $this->ticket_cutoff_time = Setting::get('ticket_cutoff_time', '17:00');
         $this->app_name = Setting::get('app_name', 'PKS Tracking System');
         $this->company_name = Setting::get('company_name', '');
-        
+
         $reminderDays = Setting::get('reminder_days', [60, 30, 7]);
         $this->reminder_days = is_array($reminderDays) ? $reminderDays : json_decode($reminderDays, true) ?? [60, 30, 7];
 
@@ -26,13 +33,15 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function save(): void
     {
-        if (!auth()->user()?->hasPermission('settings.edit')) {
+        if (! auth()->user()?->hasPermission('settings.edit')) {
             session()->flash('error', 'Anda tidak memiliki akses untuk mengubah pengaturan.');
+
             return;
         }
 
         $this->validate([
             'reminder_send_time' => ['required', 'date_format:H:i'],
+            'ticket_cutoff_time' => ['required', 'date_format:H:i'],
             'app_name' => ['required', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:100'],
             'reminder_days' => ['required', 'array', 'min:1'],
@@ -42,10 +51,10 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         Setting::set('reminder_email_enabled', $this->reminder_email_enabled, 'boolean');
         Setting::set('reminder_send_time', $this->reminder_send_time, 'string');
+        Setting::set('ticket_cutoff_time', $this->ticket_cutoff_time, 'string');
         Setting::set('app_name', $this->app_name, 'string');
         Setting::set('company_name', $this->company_name, 'string');
         Setting::set('reminder_days', json_encode(array_values($this->reminder_days)), 'string');
-
 
         session()->flash('success', 'Pengaturan berhasil disimpan.');
     }
@@ -127,6 +136,19 @@ new #[Layout('components.layouts.app')] class extends Component {
                         Email reminder otomatis akan dikirim tepat pada H- hari ini. Default: 60, 30, 7 hari sebelum contract berakhir.
                     </flux:description>
                     <flux:error name="reminder_days" />
+                </flux:field>
+            </div>
+        </div>
+
+        <!-- Ticket Settings -->
+        <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Ticket System</h2>
+            <div class="space-y-4">
+                <flux:field>
+                    <flux:label>Ticket Cutoff Time</flux:label>
+                    <flux:input type="time" wire:model="ticket_cutoff_time" required />
+                    <flux:description>Tickets created after this time will have the next day's date. Default: 17:00 (5 PM)</flux:description>
+                    <flux:error name="ticket_cutoff_time" />
                 </flux:field>
             </div>
         </div>

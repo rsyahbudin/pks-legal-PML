@@ -77,15 +77,26 @@ class Ticket extends Model
     }
 
     /**
-     * Boot method to auto-generate ticket number.
+     * Boot method to auto-generate ticket number and adjust created_at.
      */
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($ticket) {
+            // Auto-generate ticket number
             if (! $ticket->ticket_number) {
                 $ticket->ticket_number = static::generateTicketNumber();
+            }
+
+            // Adjust created_at if ticket created after cutoff time
+            $now = now();
+            $cutoffTime = Setting::get('ticket_cutoff_time', '17:00');
+            $cutoffHour = (int) substr($cutoffTime, 0, 2); // Extract hour from HH:mm
+
+            if ($now->hour >= $cutoffHour) {
+                // Add 1 day to the date, keep the same time
+                $ticket->created_at = $now->addDay();
             }
         });
     }
