@@ -6,7 +6,6 @@ use Livewire\Attributes\Layout;
 
 new #[Layout('components.layouts.app')] class extends Component {
     public bool $reminder_email_enabled = true;
-    public string $legal_team_email = '';
     public string $reminder_send_time = '08:00';
     public string $app_name = '';
     public string $company_name = '';
@@ -16,7 +15,6 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function mount(): void
     {
         $this->reminder_email_enabled = (bool) Setting::get('reminder_email_enabled', true);
-        $this->legal_team_email = Setting::get('legal_team_email', '');
         $this->reminder_send_time = Setting::get('reminder_send_time', '08:00');
         $this->app_name = Setting::get('app_name', 'PKS Tracking System');
         $this->company_name = Setting::get('company_name', '');
@@ -34,7 +32,6 @@ new #[Layout('components.layouts.app')] class extends Component {
         }
 
         $this->validate([
-            'legal_team_email' => ['nullable', 'email'],
             'reminder_send_time' => ['required', 'date_format:H:i'],
             'app_name' => ['required', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:100'],
@@ -44,7 +41,6 @@ new #[Layout('components.layouts.app')] class extends Component {
         ]);
 
         Setting::set('reminder_email_enabled', $this->reminder_email_enabled, 'boolean');
-        Setting::set('legal_team_email', $this->legal_team_email, 'string');
         Setting::set('reminder_send_time', $this->reminder_send_time, 'string');
         Setting::set('app_name', $this->app_name, 'string');
         Setting::set('company_name', $this->company_name, 'string');
@@ -100,14 +96,11 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div class="space-y-4">
                 <flux:switch wire:model="reminder_email_enabled" label="Aktifkan email reminder otomatis" />
                 
-                <div class="grid gap-4 pt-4 sm:grid-cols-2">
-                    <flux:field>
-                        <flux:label>Email Tim Legal</flux:label>
-                        <flux:input type="email" wire:model="legal_team_email" placeholder="legal@company.com" />
-                    </flux:field>
+                <div class="grid gap-4 pt-4">
                     <flux:field>
                         <flux:label>Waktu Kirim Harian</flux:label>
                         <flux:input type="time" wire:model="reminder_send_time" />
+                        <flux:description>Email reminder akan dikirim otomatis pada waktu ini setiap hari. Email akan dikirim ke email Department Legal.</flux:description>
                     </flux:field>
                 </div>
 

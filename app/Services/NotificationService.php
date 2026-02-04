@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Mail\DynamicMail;
 use App\Models\Contract;
+use App\Models\Department;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -38,43 +39,57 @@ class NotificationService
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
         $body = $this->templateService->parsePlaceholders($template['body'], $data);
 
-        // Send to legal team with department CC emails
-        $legalEmail = $this->templateService->getLegalTeamEmail();
+        // Get legal department email
+        $legalEmail = Department::getLegalEmail();
 
         try {
-            // Get department CC emails if available
-            $ccEmails = [];
+            // Get department email and CC emails
+            $departmentEmail = $ticket->department?->email;
+            $deptCcEmails = [];
+
             if ($ticket->department && ! empty($ticket->department->cc_emails)) {
-                $ccEmails = array_filter($ticket->department->cc_emails_list, function ($email) {
+                $deptCcEmails = array_filter($ticket->department->cc_emails_list, function ($email) {
                     return filter_var($email, FILTER_VALIDATE_EMAIL);
                 });
             }
 
-            \Log::info('Sending ticket created emails', [
+            // TO: Legal Department
+            $to = $legalEmail;
+
+            // CC: Creator + Creator Department + Creator Dept CC Emails
+            $cc = [$ticket->creator->email];
+
+            if ($departmentEmail && filter_var($departmentEmail, FILTER_VALIDATE_EMAIL)) {
+                $cc[] = $departmentEmail;
+            }
+
+            if (! empty($deptCcEmails)) {
+                $cc = array_merge($cc, $deptCcEmails);
+            }
+
+            // Remove duplicates
+            $cc = array_unique(array_filter($cc));
+
+            \Log::info('Sending ticket created email', [
                 'ticket_id' => $ticket->id,
-                'creator_email' => $ticket->creator->email,
-                'legal_email' => $legalEmail,
-                'cc_emails' => $ccEmails,
+                'to' => $to,
+                'cc' => $cc,
             ]);
 
-            // Send email - use array_values to reindex the filtered array
-            $mailable = new DynamicMail($subject, $body, $data);
+            // Send email
+            if ($to && filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                $mailable = new DynamicMail($subject, $body, $data);
 
-            // Send to creator with CC
-            if (! empty($ccEmails)) {
-                Mail::to($ticket->creator->email)->cc(array_values($ccEmails))->send($mailable);
+                if (! empty($cc)) {
+                    Mail::to($to)->cc(array_values($cc))->send($mailable);
+                } else {
+                    Mail::to($to)->send($mailable);
+                }
+
+                \Log::info('Ticket created email sent successfully', ['ticket_id' => $ticket->id]);
             } else {
-                Mail::to($ticket->creator->email)->send($mailable);
+                \Log::warning('No valid legal email found', ['ticket_id' => $ticket->id]);
             }
-
-            // Send to legal team with CC
-            if (! empty($ccEmails)) {
-                Mail::to($legalEmail)->cc(array_values($ccEmails))->send(new DynamicMail($subject, $body, $data));
-            } else {
-                Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
-            }
-
-            \Log::info('Ticket created emails sent successfully', ['ticket_id' => $ticket->id]);
         } catch (\Exception $e) {
             \Log::error('Failed to send ticket created email', [
                 'ticket_id' => $ticket->id,
@@ -86,7 +101,7 @@ class NotificationService
 
         // Create notification for legal users
         $this->createNotificationForLegalTeam(
-            "Ticket baru #{$ticket->ticket_number} memerlukan review",
+            "New ticket #{$ticket->ticket_number} requires review",
             $ticket
         );
     }
@@ -113,29 +128,55 @@ class NotificationService
         $body = $this->templateService->parsePlaceholders($template['body'], $data);
 
         try {
-            // Get department CC emails if available
-            $ccEmails = [];
-            if ($ticket->department && ! empty($ticket->department->cc_emails)) {
-                $ccEmails = array_filter($ticket->department->cc_emails_list, function ($email) {
+            // TO: Creator
+            $to = $ticket->creator->email;
+
+            // Prepare CC list
+            $cc = [];
+
+            // Get legal department email and CC emails
+            $legalEmail = Department::getLegalEmail();
+            $legalDept = Department::where('code', 'LEGAL')->orWhere('name', 'LIKE', '%Legal%')->first();
+
+            if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
+                $cc[] = $legalEmail;
+            }
+
+            // Add Legal Department CC Emails
+            if ($legalDept && ! empty($legalDept->cc_emails)) {
+                $legalCcEmails = array_filter($legalDept->cc_emails_list, function ($email) {
                     return filter_var($email, FILTER_VALIDATE_EMAIL);
                 });
+                $cc = array_merge($cc, $legalCcEmails);
             }
 
+            // Get creator department email and CC emails
+            $departmentEmail = $ticket->department?->email;
+
+            if ($departmentEmail && filter_var($departmentEmail, FILTER_VALIDATE_EMAIL)) {
+                $cc[] = $departmentEmail;
+            }
+
+            // Add Creator Department CC Emails
+            if ($ticket->department && ! empty($ticket->department->cc_emails)) {
+                $deptCcEmails = array_filter($ticket->department->cc_emails_list, function ($email) {
+                    return filter_var($email, FILTER_VALIDATE_EMAIL);
+                });
+                $cc = array_merge($cc, $deptCcEmails);
+            }
+
+            // Remove duplicates and filter out the creator (TO recipient)
+            $cc = array_unique(array_filter($cc, function ($email) use ($to) {
+                return $email !== $to;
+            }));
+
+            // Send email
             $mailable = new DynamicMail($subject, $body, $data);
 
-            // Send to creator
-            if (! empty($ccEmails)) {
-                Mail::to($ticket->creator->email)->cc(array_values($ccEmails))->send($mailable);
+            if (! empty($cc)) {
+                Mail::to($to)->cc(array_values($cc))->send($mailable);
             } else {
-                Mail::to($ticket->creator->email)->send($mailable);
-            }
-
-            // Send to legal team
-            $legalEmail = $this->templateService->getLegalTeamEmail();
-            if (! empty($ccEmails)) {
-                Mail::to($legalEmail)->cc(array_values($ccEmails))->send(new DynamicMail($subject, $body, $data));
-            } else {
-                Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
+                Mail::to($to)->send($mailable);
             }
         } catch (\Exception $e) {
             \Log::error('Failed to send ticket status change email', [
@@ -147,12 +188,12 @@ class NotificationService
         // Create notifications
         $this->createNotificationForUser(
             $ticket->creator,
-            "Ticket #{$ticket->ticket_number} status berubah: {$this->getStatusLabel($newStatus)}",
+            "Ticket #{$ticket->ticket_number} status changed: {$this->getStatusLabel($newStatus)}",
             $ticket
         );
 
         $this->createNotificationForLegalTeam(
-            "Ticket #{$ticket->ticket_number} status berubah: {$this->getStatusLabel($newStatus)}",
+            "Ticket #{$ticket->ticket_number} status changed: {$this->getStatusLabel($newStatus)}",
             $ticket
         );
     }
@@ -178,26 +219,78 @@ class NotificationService
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
         $body = $this->templateService->parsePlaceholders($template['body'], $data);
 
-        // Send to creator
+        // Send notification
         if ($contract->creator) {
-            Mail::to($contract->creator->email)->send(new DynamicMail($subject, $body, $data));
-        }
+            try {
+                // TO: Creator
+                $to = $contract->creator->email;
 
-        // Send to legal team
-        $legalEmail = $this->templateService->getLegalTeamEmail();
-        Mail::to($legalEmail)->send(new DynamicMail($subject, $body, $data));
+                // Prepare CC list
+                $cc = [];
+
+                // Get legal department email and CC emails
+                $legalEmail = Department::getLegalEmail();
+                $legalDept = Department::where('code', 'LEGAL')->orWhere('name', 'LIKE', '%Legal%')->first();
+
+                if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
+                    $cc[] = $legalEmail;
+                }
+
+                // Add Legal Department CC Emails
+                if ($legalDept && ! empty($legalDept->cc_emails)) {
+                    $legalCcEmails = array_filter($legalDept->cc_emails_list, function ($email) {
+                        return filter_var($email, FILTER_VALIDATE_EMAIL);
+                    });
+                    $cc = array_merge($cc, $legalCcEmails);
+                }
+
+                // Get contract department email and CC emails
+                $departmentEmail = $contract->department?->email;
+
+                if ($departmentEmail && filter_var($departmentEmail, FILTER_VALIDATE_EMAIL)) {
+                    $cc[] = $departmentEmail;
+                }
+
+                // Add Contract Department CC Emails
+                if ($contract->department && ! empty($contract->department->cc_emails)) {
+                    $deptCcEmails = array_filter($contract->department->cc_emails_list, function ($email) {
+                        return filter_var($email, FILTER_VALIDATE_EMAIL);
+                    });
+                    $cc = array_merge($cc, $deptCcEmails);
+                }
+
+                // Remove duplicates and filter out the creator (TO recipient)
+                $cc = array_unique(array_filter($cc, function ($email) use ($to) {
+                    return $email !== $to;
+                }));
+
+                // Send email
+                $mailable = new DynamicMail($subject, $body, $data);
+
+                if (! empty($cc)) {
+                    Mail::to($to)->cc(array_values($cc))->send($mailable);
+                } else {
+                    Mail::to($to)->send($mailable);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send contract status change email', [
+                    'contract_id' => $contract->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         // Create notifications
         if ($contract->creator) {
             $this->createNotificationForUser(
                 $contract->creator,
-                "Kontrak #{$contract->contract_number} status berubah: {$newStatus}",
+                "Contract #{$contract->contract_number} status changed: {$newStatus}",
                 $contract
             );
         }
 
         $this->createNotificationForLegalTeam(
-            "Kontrak #{$contract->contract_number} status berubah: {$newStatus}",
+            "Contract #{$contract->contract_number} status changed: {$newStatus}",
             $contract
         );
     }

@@ -11,6 +11,7 @@ new class extends Component {
     
     public $name = '';
     public $code = '';
+    public $email = '';
     public $cc_emails = '';
     public $editingId = null;
     public $showModal = false;
@@ -39,6 +40,7 @@ new class extends Component {
         $this->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:100',
             'cc_emails' => 'nullable|string',
         ]);
 
@@ -46,12 +48,14 @@ new class extends Component {
             Department::find($this->editingId)->update([
                 'name' => $this->name,
                 'code' => $this->code,
+                'email' => $this->email,
                 'cc_emails' => $this->cc_emails,
             ]);
         } else {
             $this->division->departments()->create([
                 'name' => $this->name,
                 'code' => $this->code,
+                'email' => $this->email,
                 'cc_emails' => $this->cc_emails,
             ]);
         }
@@ -66,6 +70,7 @@ new class extends Component {
         $this->editingId = $dept->id;
         $this->name = $dept->name;
         $this->code = $dept->code;
+        $this->email = $dept->email ?? '';
         $this->cc_emails = $dept->cc_emails;
     }
 
@@ -77,7 +82,7 @@ new class extends Component {
     
     public function resetForm()
     {
-        $this->reset(['name', 'code', 'cc_emails', 'editingId']);
+        $this->reset(['name', 'code', 'email', 'cc_emails', 'editingId']);
     }
 
     public function close()
@@ -114,6 +119,12 @@ new class extends Component {
                 </div>
 
                 <flux:field>
+                    <flux:label>Email Departemen</flux:label>
+                    <flux:input wire:model="email" type="email" placeholder="department@example.com" />
+                    <flux:error name="email" />
+                </flux:field>
+
+                <flux:field>
                     <flux:label>CC Emails (untuk reminder)</flux:label>
                     <flux:textarea wire:model="cc_emails" rows="2" placeholder="email1@example.com, email2@example.com" />
                     <flux:description>Pisahkan dengan koma.</flux:description>
@@ -137,7 +148,7 @@ new class extends Component {
                 @foreach($departments as $dept)
                 <div class="flex items-center justify-between p-3">
                     <div>
-                        <div class="font-medium">{{ $dept->name }} <span class="text-xs text-neutral-500">({{ $dept->code ?? '-' }})</span></div>
+                        <div class="font-medium">{{ $dept->name }} <span class="text-xs text-neutral-500">({{ $dept->code ?? '-' }}) | {{ $dept->email }}</span></div>
                         @if($dept->cc_emails)
                         <div class="text-xs text-neutral-500">{{ Str::limit($dept->cc_emails, 50) }}</div>
                         @endif

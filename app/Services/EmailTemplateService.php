@@ -7,14 +7,6 @@ use App\Models\Setting;
 class EmailTemplateService
 {
     /**
-     * Get legal team email from settings.
-     */
-    public function getLegalTeamEmail(): string
-    {
-        return Setting::get('legal_team_email', 'legal@pfimegalife.co.id');
-    }
-
-    /**
      * Get ticket created email template.
      */
     public function getTicketCreatedTemplate(): array

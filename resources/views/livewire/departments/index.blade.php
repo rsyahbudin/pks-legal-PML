@@ -14,6 +14,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public ?int $division_id = null;
     public string $name = '';
     public string $code = '';
+    public string $email = '';
     public string $cc_emails_input = '';
     
     public function mount(): void
@@ -31,7 +32,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     
     public function create(): void
     {
-        $this->reset(['editingId', 'division_id', 'name', 'code', 'cc_emails_input']);
+        $this->reset(['editingId', 'division_id', 'name', 'code', 'email', 'cc_emails_input']);
         $this->showModal = true;
     }
     
@@ -42,6 +43,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->division_id = $dept->division_id;
         $this->name = $dept->name;
         $this->code = $dept->code;
+        $this->email = $dept->email ?? '';
         
         // Convert array to comma-separated string for editing
         $this->cc_emails_input = !empty($dept->cc_emails) 
@@ -57,6 +59,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'division_id' => ['required', 'exists:divisions,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:20', $this->editingId ? "unique:departments,code,{$this->editingId}" : 'unique:departments,code'],
+            'email' => ['nullable', 'email', 'max:100'],
             'cc_emails_input' => ['nullable', 'string'],
         ]);
         
@@ -75,6 +78,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'division_id' => $validated['division_id'],
             'name' => $validated['name'],
             'code' => $validated['code'],
+            'email' => !empty($validated['email']) ? $validated['email'] : null,
             'cc_emails' => !empty($ccEmails) ? $ccEmails : null,
         ];
         
@@ -140,6 +144,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <th class="px-4 py-3 text-left">Division</th>
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Code</th>
+                        <th class="px-4 py-3 text-left">Email</th>
                         <th class="px-4 py-3 text-left">CC Emails</th>
                         <th class="px-4 py-3 text-center">Actions</th>
                     </tr>
@@ -155,6 +160,13 @@ new #[Layout('components.layouts.app')] class extends Component {
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             <code class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-800">{{ $dept->code }}</code>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                            @if($dept->email)
+                                <a href="mailto:{{ $dept->email }}" class="text-blue-600 hover:underline dark:text-blue-400">{{ $dept->email }}</a>
+                            @else
+                                <span class="text-neutral-400 dark:text-neutral-500">No email</span>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             @if(!empty($dept->cc_emails))
@@ -183,7 +195,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+                        <td colspan="6" class="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                             No departments found. Create one to get started.
                         </td>
                     </tr>
@@ -222,6 +234,13 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <flux:label>Code *</flux:label>
                     <flux:input wire:model="code" name="code" />
                     <flux:error name="code" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>Department Email</flux:label>
+                    <flux:input wire:model="email" name="email" type="email" placeholder="department@example.com" />
+                    <flux:description>Primary email address for this department</flux:description>
+                    <flux:error name="email" />
                 </flux:field>
 
                 <flux:field>

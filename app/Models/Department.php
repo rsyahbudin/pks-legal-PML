@@ -17,6 +17,7 @@ class Department extends Model
         'division_id',
         'name',
         'code',
+        'email',
         'cc_emails',
     ];
 
@@ -81,5 +82,17 @@ class Department extends Model
     public function contracts(): HasMany
     {
         return $this->hasMany(Contract::class, 'department_id');
+    }
+
+    /**
+     * Get Legal department email.
+     */
+    public static function getLegalEmail(): ?string
+    {
+        $legalDept = static::where('code', 'LEGAL')
+            ->orWhere('name', 'LIKE', '%Legal%')
+            ->first();
+
+        return $legalDept?->email;
     }
 }

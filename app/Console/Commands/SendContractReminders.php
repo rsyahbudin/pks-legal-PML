@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Mail\ContractExpiringMail;
 use App\Models\ActivityLog;
 use App\Models\Contract;
+use App\Models\Department;
 use App\Models\Notification;
 use App\Models\ReminderLog;
 use App\Models\Setting;
@@ -63,7 +64,6 @@ class SendContractReminders extends Command
 
         $this->info("Found {$contracts->count()} contracts to process.");
 
-        $legalEmail = Setting::get('legal_team_email', '');
         $sentCount = 0;
 
         foreach ($contracts as $contract) {
@@ -84,16 +84,52 @@ class SendContractReminders extends Command
                 }
 
                 try {
-                    // Get CC emails from department only
-                    $ccEmails = [];
-                    if ($contract->department && $contract->department->cc_emails) {
-                        $ccEmails = array_filter(array_map('trim', explode(',', $contract->department->cc_emails)));
+                    // TO: Creator/PIC
+                    $to = $recipient->email;
+
+                    // Prepare CC list
+                    $cc = [];
+
+                    // Get legal department email and CC emails
+                    $legalEmail = Department::getLegalEmail();
+                    $legalDept = Department::where('code', 'LEGAL')->orWhere('name', 'LIKE', '%Legal%')->first();
+
+                    if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
+                        $cc[] = $legalEmail;
                     }
 
-                    // Send email with CC to division emails
-                    $mail = Mail::to($recipient->email);
-                    if (! empty($ccEmails)) {
-                        $mail->cc($ccEmails);
+                    // Add Legal Department CC Emails
+                    if ($legalDept && ! empty($legalDept->cc_emails)) {
+                        $legalCcEmails = array_filter($legalDept->cc_emails_list, function ($email) {
+                            return filter_var($email, FILTER_VALIDATE_EMAIL);
+                        });
+                        $cc = array_merge($cc, $legalCcEmails);
+                    }
+
+                    // Get contract department email and CC emails
+                    $departmentEmail = $contract->department?->email;
+
+                    if ($departmentEmail && filter_var($departmentEmail, FILTER_VALIDATE_EMAIL)) {
+                        $cc[] = $departmentEmail;
+                    }
+
+                    // Add Contract Department CC Emails
+                    if ($contract->department && ! empty($contract->department->cc_emails)) {
+                        $deptCcEmails = array_filter($contract->department->cc_emails_list, function ($email) {
+                            return filter_var($email, FILTER_VALIDATE_EMAIL);
+                        });
+                        $cc = array_merge($cc, $deptCcEmails);
+                    }
+
+                    // Remove duplicates and filter out the recipient
+                    $cc = array_unique(array_filter($cc, function ($email) use ($to) {
+                        return $email !== $to;
+                    }));
+
+                    // Send email with CC
+                    $mail = Mail::to($to);
+                    if (! empty($cc)) {
+                        $mail->cc(array_values($cc));
                     }
                     $mail->send(new ContractExpiringMail($contract, $daysRemaining));
 
@@ -162,11 +198,12 @@ class SendContractReminders extends Command
                 }
             }
 
-            // Always send to legal team email if configured
+            // Always send to legal department email if configured
+            $legalEmail = Department::getLegalEmail();
             if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
                 try {
                     Mail::to($legalEmail)->send(new ContractExpiringMail($contract, $daysRemaining));
-                    $this->info("Sent reminder to legal team email: {$legalEmail}");
+                    $this->info("Sent reminder to legal department email: {$legalEmail}");
                 } catch (\Exception $e) {
                     $this->error("Failed to send to legal email: {$e->getMessage()}");
                 }
