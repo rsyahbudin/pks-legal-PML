@@ -9,6 +9,7 @@ use Livewire\Volt\Component;
 new class extends Component {
     public string $name = '';
     public string $email = '';
+    public string $user_id = '';
 
     /**
      * Mount the component.
@@ -17,6 +18,7 @@ new class extends Component {
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->user_id = Auth::user()->user_id ?? '';
     }
 
     /**
@@ -28,7 +30,7 @@ new class extends Component {
 
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-
+            'user_id' => ['nullable', 'string', 'max:10', 'regex:/^[0-9]*$/'],
             'email' => [
                 'required',
                 'string',
@@ -97,6 +99,16 @@ new class extends Component {
                     </div>
                 @endif
             </div>
+
+            <flux:input 
+                wire:model="user_id" 
+                label="NIK / User ID" 
+                type="text" 
+                maxlength="10"
+                pattern="[0-9]*"
+                inputmode="numeric"
+                placeholder="Enter 10-digit NIK"
+            />
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center justify-end">

@@ -18,6 +18,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $name = '';
     public string $email = '';
     public string $password = '';
+    public string $user_id = '';
     public string $role_id = '';
     public string $division_id = '';
     public string $department_id = '';
@@ -56,7 +57,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function create(): void
     {
-        $this->reset(['editingId', 'name', 'email', 'password', 'role_id', 'division_id', 'department_id']);
+        $this->reset(['editingId', 'name', 'email', 'password', 'user_id', 'role_id', 'division_id', 'department_id']);
         $this->showModal = true;
     }
 
@@ -67,6 +68,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->name = $user->name;
         $this->email = $user->email;
         $this->password = '';
+        $this->user_id = $user->user_id ?? '';
         $this->role_id = (string) ($user->role_id ?? '');
         $this->division_id = (string) ($user->division_id ?? '');
         $this->department_id = (string) ($user->department_id ?? '');
@@ -78,6 +80,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', $this->editingId ? "unique:users,email,{$this->editingId}" : 'unique:users,email'],
+            'user_id' => ['nullable', 'string', 'max:10', 'regex:/^[0-9]*$/'],
             'role_id' => ['nullable', 'exists:roles,id'],
             'division_id' => ['nullable', 'exists:divisions,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
@@ -92,6 +95,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $data = [
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'user_id' => $validated['user_id'] ?: null,
             'role_id' => $validated['role_id'] ?: null,
             'division_id' => $validated['division_id'] ?: null,
             'department_id' => $validated['department_id'] ?: null,
@@ -146,6 +150,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <tr>
                         <th class="px-4 py-3 text-left">Nama</th>
                         <th class="px-4 py-3 text-left">Email</th>
+                        <th class="px-4 py-3 text-left">NIK</th>
                         <th class="px-4 py-3 text-left">Role</th>
                         <th class="px-4 py-3 text-left">Divisi</th>
                         <th class="px-4 py-3 text-left">Departemen</th>
@@ -157,6 +162,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="user-{{ $user->id }}">
                         <td class="px-4 py-3 font-medium text-neutral-900 dark:text-white">{{ $user->name }}</td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->email }}</td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->user_id ?? '-' }}</td>
                         <td class="px-4 py-3">
                             @if($user->role)
                             <flux:badge color="{{ $user->role->slug === 'super-admin' ? 'red' : ($user->role->slug === 'legal' ? 'blue' : 'zinc') }}">{{ $user->role->name }}</flux:badge>
@@ -179,7 +185,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-12 text-center text-neutral-500">Belum ada pengguna</td>
+                        <td colspan="7" class="px-4 py-12 text-center text-neutral-500">Belum ada pengguna</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -204,6 +210,19 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <flux:label>Email</flux:label>
                 <flux:input type="email" wire:model="email" required />
                 <flux:error name="email" />
+            </flux:field>
+            
+            <flux:field>
+                <flux:label>NIK / User ID</flux:label>
+                <flux:input 
+                    type="text" 
+                    wire:model="user_id" 
+                    maxlength="10"
+                    pattern="[0-9]*"
+                    inputmode="numeric"
+                    placeholder="Enter 10-digit NIK"
+                />
+                <flux:error name="user_id" />
             </flux:field>
             
             <flux:field>
