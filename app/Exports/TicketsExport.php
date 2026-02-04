@@ -4,8 +4,13 @@ namespace App\Exports;
 
 use App\Models\Ticket;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class TicketsExport
+class TicketsExport implements FromCollection, WithColumnWidths, WithHeadings, WithStyles
 {
     protected ?string $statusFilter;
 
@@ -161,6 +166,72 @@ class TicketsExport
             'No. Kontrak',
             'Alasan Penolakan',
             'Alasan Terminasi',
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        // Style header row
+        $sheet->getStyle('A1:AJ1')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '4472C4'], // Blue background
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+        // Set header row height
+        $sheet->getRowDimension(1)->setRowHeight(25);
+
+        return [];
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 18,  // Ticket Number
+            'B' => 40,  // Document Title
+            'C' => 20,  // Document Type
+            'D' => 20,  // Division
+            'E' => 20,  // Department
+            'F' => 20,  // Created By
+            'G' => 18,  // Created Date
+            'H' => 18,  // Updated Date
+            'I' => 15,  // Status
+            'J' => 18,  // Contract Status
+            'K' => 18,  // Processing Started
+            'L' => 18,  // Processing Ended
+            'M' => 15,  // Aging
+            'N' => 30,  // Counterpart
+            'O' => 20,  // Agreement Start
+            'P' => 20,  // Agreement Duration
+            'Q' => 15,  // Auto Renewal
+            'R' => 20,  // Renewal Period
+            'S' => 22,  // Renewal Notification
+            'T' => 20,  // Agreement End
+            'U' => 25,  // Termination Notification
+            'V' => 25,  // Kuasa Pemberi
+            'W' => 25,  // Kuasa Penerima
+            'X' => 20,  // Kuasa Start
+            'Y' => 20,  // Kuasa End
+            'Z' => 18,  // Financial Impact
+            'AA' => 20, // Payment Type
+            'AB' => 30, // Recurring
+            'AC' => 18, // TAT Legal
+            'AD' => 30, // PreDone Q1
+            'AE' => 30, // PreDone Q2
+            'AF' => 30, // PreDone Q3
+            'AG' => 40, // PreDone Remarks
+            'AH' => 20, // Contract Number
+            'AI' => 30, // Rejection Reason
+            'AJ' => 30, // Termination Reason
         ];
     }
 

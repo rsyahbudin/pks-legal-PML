@@ -79,19 +79,17 @@ Route::middleware(['auth'])->group(function () {
         if (! auth()->user()->hasPermission('reports.export')) {
             abort(403);
         }
-        $export = new \App\Exports\TicketsExport(
-            $request->get('status'),
-            $request->get('type'),
-            $request->get('division') ? (int) $request->get('division') : null,
-            $request->get('start_date'),
-            $request->get('end_date')
-        );
-        $filename = 'tickets_'.now()->format('Y-m-d_His').'.csv';
 
-        return response($export->toCsv(), 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\TicketsExport(
+                $request->get('status'),
+                $request->get('type'),
+                $request->get('division') ? (int) $request->get('division') : null,
+                $request->get('start_date'),
+                $request->get('end_date')
+            ),
+            'tickets_'.now()->format('Y-m-d_His').'.xlsx'
+        );
     })->middleware('permission:reports.export')->name('tickets.export');
 
     // Divisions
