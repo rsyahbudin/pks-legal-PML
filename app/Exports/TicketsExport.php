@@ -108,6 +108,13 @@ class TicketsExport
                 },
                 'Recurring' => $ticket->recurring_description ?? '-',
                 'TAT Legal Compliance' => $ticket->tat_legal_compliance ? 'Ya' : 'Tidak',
+
+                // Pre-Done Questions (Checklist)
+                'Sudah lengkapi semua persyaratan?' => $ticket->pre_done_question_1 ? 'Ya' : 'Tidak',
+                'Stakeholder sudah setuju?' => $ticket->pre_done_question_2 ? 'Ya' : 'Tidak',
+                'Project sudah berjalan?' => $ticket->pre_done_question_3 ? 'Ya' : 'Tidak',
+                'Catatan PreDone' => $ticket->pre_done_remarks ?? '-',
+
                 'No. Kontrak' => $ticket->contract?->contract_number ?? '-',
                 'Alasan Penolakan' => $ticket->rejection_reason ?? '-',
                 'Alasan Terminasi' => $ticket->contract?->termination_reason ?? '-',
@@ -147,6 +154,10 @@ class TicketsExport
             'Jenis Pembayaran',
             'Recurring',
             'TAT Legal Compliance',
+            'Sudah lengkapi semua persyaratan?',
+            'Stakeholder sudah setuju?',
+            'Project sudah berjalan?',
+            'Catatan PreDone',
             'No. Kontrak',
             'Alasan Penolakan',
             'Alasan Terminasi',
