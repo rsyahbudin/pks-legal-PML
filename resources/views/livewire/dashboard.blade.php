@@ -9,9 +9,6 @@ use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app')] class extends Component
 {
-    // Filter properties
-    public $agingFilter = 'all';
-
     public function isLegalUser(): bool
     {
         $user = auth()->user();
@@ -29,11 +26,11 @@ new #[Layout('components.layouts.app')] class extends Component
 
         return [
             'total' => Ticket::count(),
-            'open' => Ticket::whereHas('status', fn($q) => $q->where('code', 'open'))->count(),
-            'on_process' => Ticket::whereHas('status', fn($q) => $q->where('code', 'on_process'))->count(),
-            'done' => Ticket::whereHas('status', fn($q) => $q->where('code', 'done'))->count(),
-            'rejected' => Ticket::whereHas('status', fn($q) => $q->where('code', 'rejected'))->count(),
-            'closed' => Ticket::whereHas('status', fn($q) => $q->where('code', 'closed'))->count(),
+            'open' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'open'))->count(),
+            'on_process' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'on_process'))->count(),
+            'done' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'done'))->count(),
+            'rejected' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'rejected'))->count(),
+            'closed' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'closed'))->count(),
         ];
     }
 
@@ -80,31 +77,11 @@ new #[Layout('components.layouts.app')] class extends Component
             return collect();
         }
 
-        $query = Ticket::with(['creator', 'division', 'contract'])
-            ->whereHas('status', fn($q) => $q->whereIn('code', ['open', 'on_process']));
-        
-        $tickets = $query->orderBy('created_at', 'asc')->get();
-
-        // Filter by aging - only consider tickets that have been processed (have aging_start_at)
-        if ($this->agingFilter !== 'all') {
-            $tickets = $tickets->filter(function ($ticket) {
-                // Only show tickets with aging_start_at for aging filters
-                if (!$ticket->aging_start_at) {
-                    return false;
-                }
-                
-                $days = now()->diffInDays($ticket->aging_start_at);
-
-                return match ($this->agingFilter) {
-                    'less_3' => $days < 3,
-                    '3_to_7' => $days >= 3 && $days <= 7,
-                    'more_7' => $days > 7,
-                    default => true,
-                };
-            });
-        }
-
-        return $tickets->take(5);
+        return Ticket::with(['creator', 'division', 'contract'])
+            ->whereHas('status', fn ($q) => $q->whereIn('code', ['open', 'on_process']))
+            ->orderBy('created_at', 'asc')
+            ->limit(5)
+            ->get();
     }
 
     // USER TICKET STATISTICS (for Regular User Dashboard)
@@ -151,16 +128,16 @@ new #[Layout('components.layouts.app')] class extends Component
 
         // Role-based filtering: regular users see contracts they created or are PIC for
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('pic_id', $user->id);
+                    ->orWhere('pic_id', $user->id);
             });
         }
 
         $total = (clone $query)->count();
         $active = (clone $query)->active()->count();
         $expired = (clone $query)->expired()->count();
-        $terminated = (clone $query)->whereHas('status', fn($q) => $q->where('code', 'terminated'))->count();
+        $terminated = (clone $query)->whereHas('status', fn ($q) => $q->where('code', 'terminated'))->count();
 
         return [
             'total' => $total,
@@ -182,9 +159,9 @@ new #[Layout('components.layouts.app')] class extends Component
 
         // Role-based filtering: regular users see contracts they created or are PIC for
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('pic_id', $user->id);
+                    ->orWhere('pic_id', $user->id);
             });
         }
 
@@ -201,15 +178,15 @@ new #[Layout('components.layouts.app')] class extends Component
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
 
         $query = Contract::with(['division', 'pic', 'ticket'])
-            ->whereHas('status', fn($q) => $q->where('code', 'active'))
+            ->whereHas('status', fn ($q) => $q->where('code', 'active'))
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->orderBy('end_date', 'asc');
 
         // Role-based filtering: regular users see contracts they created or are PIC for
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('pic_id', $user->id);
+                    ->orWhere('pic_id', $user->id);
             });
         }
 
@@ -255,23 +232,10 @@ new #[Layout('components.layouts.app')] class extends Component
 
 
     <!-- Tickets Needing Attention -->
-    @if($this->ticketsNeedingAttention->isNotEmpty() || $this->agingFilter !== 'all')
+    @if($this->ticketsNeedingAttention->isNotEmpty())
     <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
         <div class="border-b border-neutral-200 p-4 dark:border-neutral-700">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">Tickets Needing Attention</h3>
-                
-                <!-- Filter Dropdown -->
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-neutral-600 dark:text-neutral-400">Filter Aging:</label>
-                    <select wire:model.live="agingFilter" class="rounded-lg border-neutral-300 text-sm dark:border-neutral-600 dark:bg-zinc-800">
-                        <option value="all">Semua</option>
-                        <option value="less_3">< 3 Hari</option>
-                        <option value="3_to_7">3 - 7 Hari</option>
-                        <option value="more_7">> 7 Hari</option>
-                    </select>
-                </div>
-            </div>
+            <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">Tickets Needing Attention</h3>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full">
