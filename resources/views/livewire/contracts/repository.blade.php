@@ -11,14 +11,20 @@ new #[Layout('components.layouts.app')] class extends Component
     use WithPagination;
 
     public string $search = '';
+
     public string $statusFilter = '';
+
     public string $typeFilter = '';
+
     public string $divisionFilter = '';
+
     public int $perPage = 10;
 
     // Folder Link Modal
-    public bool $showFolderLinkModal =false;
+    public bool $showFolderLinkModal = false;
+
     public $selectedContract = null;
+
     public string $folder_link = '';
 
     public function updatedSearch(): void
@@ -61,17 +67,17 @@ new #[Layout('components.layouts.app')] class extends Component
                 } elseif ($this->statusFilter === 'expired') {
                     $q->expired();
                 } else {
-                    $q->whereHas('status', fn($sq) => $sq->where('code', $this->statusFilter));
+                    $q->whereHas('status', fn ($sq) => $sq->where('code', $this->statusFilter));
                 }
             })
-            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn($sq) => $sq->where('code', $this->typeFilter)))
+            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter));
 
         // Role-based filtering (Pic sees only their contracts, Legal/Admin sees all)
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('created_by', $user->id)
-                  ->orWhere('pic_id', $user->id);
+                    ->orWhere('pic_id', $user->id);
             });
         }
 
@@ -92,9 +98,19 @@ new #[Layout('components.layouts.app')] class extends Component
             'folder_link' => ['nullable', 'url', 'max:500'],
         ]);
 
+        $oldLink = $this->selectedContract->folder_link;
+
         $this->selectedContract->update([
             'folder_link' => $this->folder_link ?: null,
         ]);
+
+        // Log activity to the ticket
+        if ($this->selectedContract->ticket) {
+            $message = $oldLink
+                ? 'Folder link diperbarui'
+                : 'Folder link ditambahkan';
+            $this->selectedContract->ticket->logActivity($message);
+        }
 
         $this->showFolderLinkModal = false;
         $this->dispatch('notify', type: 'success', message: 'Folder link berhasil disimpan');

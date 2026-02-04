@@ -10,7 +10,6 @@ use Livewire\WithPagination;
 new #[Layout('components.layouts.app')] class extends Component
 {
     use WithPagination;
-    
 
     public string $search = '';
 
@@ -24,12 +23,13 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public string $typeFilter = '';
 
-
     public int $perPage = 10;
 
     // Folder Link Modal
     public bool $showFolderLinkModal = false;
+
     public $selectedContract = null;
+
     public string $folder_link = '';
 
     public function updatedSearch(): void
@@ -76,9 +76,9 @@ new #[Layout('components.layouts.app')] class extends Component
                 $q->where('ticket_number', 'like', "%{$this->search}%")
                     ->orWhere('proposed_document_title', 'like', "%{$this->search}%");
             }))
-            ->when($this->statusFilter, fn ($q) => $q->whereHas('status', fn($sq) => $sq->where('code', $this->statusFilter)))
+            ->when($this->statusFilter, fn ($q) => $q->whereHas('status', fn ($sq) => $sq->where('code', $this->statusFilter)))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
-            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn($sq) => $sq->where('code', $this->typeFilter)))
+            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
             ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
             ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate));
 
@@ -116,15 +116,19 @@ new #[Layout('components.layouts.app')] class extends Component
             'folder_link' => ['nullable', 'url', 'max:500'],
         ]);
 
+        $oldLink = $this->selectedContract->folder_link;
+
         $this->selectedContract->update([
             'folder_link' => $this->folder_link ?: null,
         ]);
 
-        \App\Models\ActivityLog::logActivity(
-            $this->selectedContract,
-            'updated',
-            'Folder link updated'
-        );
+        // Log activity to the ticket
+        if ($this->selectedContract->ticket) {
+            $message = $oldLink
+                ? 'Folder link diperbarui'
+                : 'Folder link ditambahkan';
+            $this->selectedContract->ticket->logActivity($message);
+        }
 
         $this->showFolderLinkModal = false;
         $this->dispatch('notify', type: 'success', message: 'Folder link berhasil disimpan');
