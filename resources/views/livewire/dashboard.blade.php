@@ -155,7 +155,7 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         $query = Contract::with(['division', 'pic', 'ticket'])
-            ->orderBy('end_date', 'asc');
+            ->orderBy('created_at', 'desc');
 
         // Role-based filtering: regular users see contracts they created or are PIC for
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
@@ -165,7 +165,7 @@ new #[Layout('components.layouts.app')] class extends Component
             });
         }
 
-        return $query->limit(5)->get();
+        return $query->limit(7)->get();
     }
 
     public function getExpiringContractsProperty(): Collection

@@ -238,10 +238,7 @@ class Contract extends Model
      */
     public function scopeExpired(Builder $query): Builder
     {
-        return $query->where(function ($q) {
-            $q->whereHas('status', fn ($sq) => $sq->where('code', 'expired'))
-                ->orWhereDate('end_date', '<', now());
-        });
+        return $query->whereHas('status', fn ($q) => $q->where('code', 'expired'));
     }
 
     /**

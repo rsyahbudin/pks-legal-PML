@@ -1,10 +1,11 @@
 <?php
 
 use App\Models\Notification;
-use Livewire\Volt\Component;
 use Livewire\Attributes\On;
+use Livewire\Volt\Component;
 
-new class extends Component {
+new class extends Component
+{
     public bool $showDropdown = false;
 
     public function getNotificationsProperty()
@@ -100,10 +101,23 @@ new class extends Component {
                 }
 
                 // Determine URL
-                if ($notification->notifiable_type === 'App\Models\Contract') {
+                if ($notification->notifiable_type === 'App\\Models\\Contract' && $notification->notifiable_id) {
+                    // For contract notifications, link to the related ticket if it exists
+                    $contract = \App\Models\Contract::find($notification->notifiable_id);
+                    $url = $contract && $contract->ticket_id 
+                        ? route('tickets.show', $contract->ticket_id) 
+                        : '#';
+                } elseif ($notification->notifiable_type === 'App\\Models\\Ticket' && $notification->notifiable_id) {
+                    // Direct ticket notification
                     $url = route('tickets.show', $notification->notifiable_id);
+                } elseif (isset($notification->data['ticket_id'])) {
+                    $url = route('tickets.show', $notification->data['ticket_id']);
                 } elseif (isset($notification->data['contract_id'])) {
-                    $url = route('tickets.show', $notification->data['contract_id']);
+                    // Fallback for contract_id in data
+                    $contract = \App\Models\Contract::find($notification->data['contract_id']);
+                    $url = $contract && $contract->ticket_id 
+                        ? route('tickets.show', $contract->ticket_id) 
+                        : '#';
                 }
             @endphp
 
@@ -115,7 +129,7 @@ new class extends Component {
                     <flux:icon :name="$icon" class="h-4 w-4 {{ $iconColor }}" />
                 </div>
                 
-                <a href="{{ $url }}" class="flex-1 min-w-0 focus:outline-none">
+                <a href="{{ $url }}" wire:navigate class="flex-1 min-w-0 focus:outline-none">
                     <span class="absolute inset-0" aria-hidden="true"></span>
                     <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ $notification->title }}</p>
                     <p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 md:line-clamp-none">{{ $notification->message }}</p>
