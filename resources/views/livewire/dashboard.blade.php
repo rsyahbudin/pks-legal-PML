@@ -93,12 +93,12 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         return [
-            'total' => Ticket::where('created_by', $user->id)->count(),
-            'open' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('open'))->count(),
-            'on_process' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('on_process'))->count(),
-            'done' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('done'))->count(),
-            'rejected' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('rejected'))->count(),
-            'closed' => Ticket::where('created_by', $user->id)->where('status_id', \App\Models\TicketStatus::getIdByCode('closed'))->count(),
+            'total' => Ticket::where('department_id', $user->department_id)->count(),
+            'open' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('open'))->count(),
+            'on_process' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('on_process'))->count(),
+            'done' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('done'))->count(),
+            'rejected' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('rejected'))->count(),
+            'closed' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('closed'))->count(),
         ];
     }
 
@@ -110,7 +110,7 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         return Ticket::with(['division', 'department', 'contract'])
-            ->where('created_by', $user->id)
+            ->where('department_id', $user->department_id)
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
@@ -126,12 +126,9 @@ new #[Layout('components.layouts.app')] class extends Component
 
         $query = Contract::query();
 
-        // Role-based filtering: regular users see contracts they created or are PIC for
+        // Role-based filtering: regular users see contracts from their department
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                    ->orWhere('pic_id', $user->id);
-            });
+            $query->where('department_id', $user->department_id);
         }
 
         $total = (clone $query)->count();
@@ -157,12 +154,9 @@ new #[Layout('components.layouts.app')] class extends Component
         $query = Contract::with(['division', 'pic', 'ticket'])
             ->orderBy('created_at', 'desc');
 
-        // Role-based filtering: regular users see contracts they created or are PIC for
+        // Role-based filtering: regular users see contracts from their department
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                    ->orWhere('pic_id', $user->id);
-            });
+            $query->where('department_id', $user->department_id);
         }
 
         return $query->limit(7)->get();
@@ -182,12 +176,9 @@ new #[Layout('components.layouts.app')] class extends Component
             ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
             ->orderBy('end_date', 'asc');
 
-        // Role-based filtering: regular users see contracts they created or are PIC for
+        // Role-based filtering: regular users see contracts from their department
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                    ->orWhere('pic_id', $user->id);
-            });
+            $query->where('department_id', $user->department_id);
         }
 
         return $query->limit(5)->get();

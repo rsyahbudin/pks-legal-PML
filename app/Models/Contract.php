@@ -55,12 +55,27 @@ class Contract extends Model
     }
 
     /**
-     * Generate unique contract number: CTR-YYYY-MM-XXXX
+     * Generate unique contract number: CTR-{DIV_CODE}-{YYMM}{9999}
+     * Resets sequence yearly per division
      */
-    public static function generateContractNumber(): string
+    public static function generateContractNumber(int $divisionId): string
     {
-        $prefix = 'CTR-'.now()->format('Y-m');
-        $lastContract = static::where('contract_number', 'like', $prefix.'-%')
+        $division = \App\Models\Division::find($divisionId);
+
+        if (! $division) {
+            throw new \Exception("Division not found for ID: {$divisionId}");
+        }
+
+        // Truncate division code to max 3 characters
+        $divCode = strtoupper(substr($division->code, 0, 3));
+
+        // Format: CTR-DIV-YYMM (e.g., CTR-LEG-2602)
+        $year = now()->format('y');
+        $month = now()->format('m');
+        $prefix = "CTR-{$divCode}-{$year}{$month}";
+
+        // Find last contract for this division and year
+        $lastContract = static::where('contract_number', 'like', "CTR-{$divCode}-{$year}%")
             ->orderBy('contract_number', 'desc')
             ->first();
 
@@ -71,7 +86,8 @@ class Contract extends Model
             $newNumber = '0001';
         }
 
-        return $prefix.'-'.$newNumber;
+        // Final format: CTR-DIV-YYMM9999 (e.g., CTR-LEG-26020001)
+        return $prefix.$newNumber;
     }
 
     /**

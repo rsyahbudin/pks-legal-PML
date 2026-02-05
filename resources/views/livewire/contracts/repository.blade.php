@@ -73,12 +73,9 @@ new #[Layout('components.layouts.app')] class extends Component
             ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
             ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter));
 
-        // Role-based filtering (Pic sees only their contracts, Legal/Admin sees all)
+        // Role-based filtering (Users see only their department contracts, Legal/Admin sees all)
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)
-                    ->orWhere('pic_id', $user->id);
-            });
+            $query->where('department_id', $user->department_id);
         }
 
         return $query->orderBy('created_at', 'desc')->paginate($this->perPage);

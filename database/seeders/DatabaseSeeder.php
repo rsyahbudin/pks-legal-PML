@@ -40,7 +40,6 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Admin User',
                 'password' => Hash::make('password'),
-                'email_verified_at' => now(),
                 'role_id' => $adminRole->id,
                 'division_id' => $legalDivision->id,
                 'department_id' => $legalDepartment->id,
@@ -53,7 +52,6 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Legal User',
                 'password' => Hash::make('password'),
-                'email_verified_at' => now(),
                 'role_id' => $legalRole?->id,
                 'division_id' => $legalDivision?->id,
                 'department_id' => $legalDepartment?->id,

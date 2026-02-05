@@ -86,7 +86,7 @@ class Ticket extends Model
         static::creating(function ($ticket) {
             // Auto-generate ticket number
             if (! $ticket->ticket_number) {
-                $ticket->ticket_number = static::generateTicketNumber();
+                $ticket->ticket_number = static::generateTicketNumber($ticket->division_id);
             }
 
             // Adjust created_at if ticket created after cutoff time
@@ -104,10 +104,28 @@ class Ticket extends Model
     /**
      * Generate unique ticket number: TKT-YYYY-MM-XXXX
      */
-    public static function generateTicketNumber(): string
+    /**
+     * Generate unique ticket number: TIC-{DIV_CODE}-{YYMM}{9999}
+     * Resets sequence yearly per division
+     */
+    public static function generateTicketNumber(int $divisionId): string
     {
-        $prefix = 'TKT-'.now()->format('Y-m');
-        $lastTicket = static::where('ticket_number', 'like', $prefix.'-%')
+        $division = \App\Models\Division::find($divisionId);
+
+        if (! $division) {
+            throw new \Exception("Division not found for ID: {$divisionId}");
+        }
+
+        // Truncate division code to max 3 characters
+        $divCode = strtoupper(substr($division->code, 0, 3));
+
+        // Format: TIC-DIV-YYMM (e.g., TIC-LEG-2602)
+        $year = now()->format('y');
+        $month = now()->format('m');
+        $prefix = "TIC-{$divCode}-{$year}{$month}";
+
+        // Find last ticket for this division and year
+        $lastTicket = static::where('ticket_number', 'like', "TIC-{$divCode}-{$year}%")
             ->orderBy('ticket_number', 'desc')
             ->first();
 
@@ -118,7 +136,8 @@ class Ticket extends Model
             $newNumber = '0001';
         }
 
-        return $prefix.'-'.$newNumber;
+        // Final format: TIC-DIV-YYMM9999 (e.g., TIC-LEG-26020001)
+        return $prefix.$newNumber;
     }
 
     /**
@@ -366,7 +385,7 @@ class Ticket extends Model
         }
 
         return $this->contract()->create([
-            'contract_number' => Contract::generateContractNumber(),
+            'contract_number' => Contract::generateContractNumber($this->division_id),
             'agreement_name' => $this->proposed_document_title,
             'proposed_document_title' => $this->proposed_document_title,
             'document_type_id' => $this->document_type_id,

@@ -84,8 +84,8 @@ new #[Layout('components.layouts.app')] class extends Component
 
         // Role-based filtering
         if ($user && ! $user->hasAnyRole(['super-admin', 'legal'])) {
-            // Regular users: only see their own tickets
-            $query->forUser($user->id);
+            // Regular users: only see tickets from their department
+            $query->where('department_id', $user->department_id);
         }
         // Legal & super admin: see all tickets
 

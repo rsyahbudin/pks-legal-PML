@@ -14,5 +14,7 @@ Artisan::command('inspire', function () {
 Schedule::command(UpdateExpiredContracts::class)->daily();
 
 // Send contract reminders daily at configured time (default 08:00)
-$reminderTime = \App\Models\Setting::get('reminder_send_time', '08:00');
-Schedule::command(SendContractReminders::class)->dailyAt($reminderTime);
+Schedule::call(function () {
+    $reminderTime = \App\Models\Setting::get('reminder_send_time', '08:00');
+    Artisan::call(SendContractReminders::class);
+})->dailyAt('08:00')->name('send-contract-reminders');
