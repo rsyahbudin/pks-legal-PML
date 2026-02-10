@@ -61,17 +61,15 @@ Route::middleware(['auth'])->group(function () {
         if (! auth()->user()->hasPermission('reports.export')) {
             abort(403);
         }
-        $export = new \App\Exports\ContractsExport(
-            $request->get('status'),
-            $request->get('color'),
-            $request->get('division') ? (int) $request->get('division') : null
-        );
-        $filename = 'contracts_'.now()->format('Y-m-d_His').'.csv';
 
-        return response($export->toCsv(), 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\ContractsExport(
+                $request->get('status'),
+                $request->get('type'),
+                $request->get('division') ? (int) $request->get('division') : null
+            ),
+            'contracts_'.now()->format('Y-m-d_His').'.xlsx'
+        );
     })->middleware('permission:reports.export')->name('contracts.export');
 
     // Tickets Export

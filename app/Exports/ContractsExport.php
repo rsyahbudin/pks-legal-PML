@@ -3,72 +3,57 @@
 namespace App\Exports;
 
 use App\Models\Contract;
-use App\Models\Setting;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ContractsExport
+class ContractsExport implements FromCollection, WithColumnWidths, WithHeadings, WithStyles
 {
     protected ?string $statusFilter;
 
-    protected ?string $colorFilter;
+    protected ?string $typeFilter;
 
     protected ?int $divisionId;
 
     public function __construct(
         ?string $statusFilter = null,
-        ?string $colorFilter = null,
+        ?string $typeFilter = null,
         ?int $divisionId = null
     ) {
         $this->statusFilter = $statusFilter;
-        $this->colorFilter = $colorFilter;
+        $this->typeFilter = $typeFilter;
         $this->divisionId = $divisionId;
     }
 
     public function collection(): Collection
     {
-        $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
-        $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
-
-        $query = Contract::with(['division', 'pic', 'ticket'])
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->divisionId, fn ($q) => $q->where('division_id', $this->divisionId))
-            ->when($this->colorFilter, function ($q) use ($warningThreshold, $criticalThreshold) {
-                return match ($this->colorFilter) {
-                    'green' => $q->where('status', 'active')
-                        ->whereDate('end_date', '>', now()->addDays($warningThreshold)),
-                    'yellow' => $q->where('status', 'active')
-                        ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
-                        ->whereDate('end_date', '>', now()->addDays($criticalThreshold)),
-                    'red' => $q->where(function ($q) use ($criticalThreshold) {
-                        $q->where('status', 'expired')
-                            ->orWhere(function ($q) use ($criticalThreshold) {
-                                $q->where('status', 'active')
-                                    ->whereDate('end_date', '<=', now()->addDays($criticalThreshold));
-                            });
-                    }),
-                    default => $q,
-                };
+        $query = Contract::with(['division', 'department', 'ticket', 'documentType', 'status'])
+            ->when($this->statusFilter, function ($q) {
+                if ($this->statusFilter === 'active') {
+                    $q->active();
+                } elseif ($this->statusFilter === 'expired') {
+                    $q->expired();
+                } else {
+                    $q->whereHas('status', fn ($sq) => $sq->where('code', $this->statusFilter));
+                }
             })
-            ->orderBy('end_date', 'asc');
+            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
+            ->when($this->divisionId, fn ($q) => $q->where('division_id', $this->divisionId))
+            ->orderBy('created_at', 'desc');
 
         return $query->get()->map(function ($contract) {
             return [
-                'No. Kontrak' => $contract->contract_number,
-                'Counterpart/Judul' => $contract->ticket?->counterpart_name ?? $contract->proposed_document_title ?? '-',
-                'Divisi' => $contract->division->name,
-                'PIC' => $contract->pic->name,
-                'Tanggal Mulai' => $contract->start_date->format('d/m/Y'),
-                'Tanggal Berakhir' => $contract->end_date->format('d/m/Y'),
-                'Sisa Hari' => $contract->days_remaining,
-                'Status' => ucfirst($contract->status),
-                'Kondisi' => match ($contract->status_color) {
-                    'green' => 'Aman',
-                    'yellow' => 'Mendekati Expired',
-                    'red' => 'Kritis/Expired',
-                    default => '-',
-                },
-                'Deskripsi' => $contract->description,
-                'Alasan Terminasi' => $contract->termination_reason ?? '-',
+                'No. Kontrak' => $contract->contract_number ?? '-',
+                'Counterpart' => $contract->ticket?->counterpart_name ?? '-',
+                'Divisi' => $contract->division?->name ?? '-',
+                'Jenis Dokumen' => $contract->documentType?->name ?? '-',
+                'Judul' => $contract->agreement_name ?? $contract->proposed_document_title ?? '-',
+                'Tanggal Mulai' => $contract->start_date?->format('d/m/Y') ?? '-',
+                'Tanggal Berakhir' => $contract->end_date?->format('d/m/Y') ?? '-',
+                'Status' => $contract->status?->name ?? '-',
             ];
         });
     }
@@ -77,39 +62,49 @@ class ContractsExport
     {
         return [
             'No. Kontrak',
-            'Counterpart/Judul',
+            'Counterpart',
             'Divisi',
-            'PIC',
+            'Jenis Dokumen',
+            'Judul',
             'Tanggal Mulai',
             'Tanggal Berakhir',
-            'Sisa Hari',
             'Status',
-            'Kondisi',
-            'Deskripsi',
-            'Alasan Terminasi',
         ];
     }
 
-    public function toCsv(): string
+    public function styles(Worksheet $sheet): array
     {
-        $data = $this->collection();
-        $headings = $this->headings();
+        $sheet->getStyle('A1:H1')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '4472C4'],
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
+        ]);
 
-        $csv = implode(',', $headings)."\n";
+        $sheet->getRowDimension(1)->setRowHeight(25);
 
-        foreach ($data as $row) {
-            $values = array_map(function ($value) {
-                // Escape quotes and wrap in quotes if contains comma
-                $value = str_replace('"', '""', $value ?? '');
-                if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
-                    return '"'.$value.'"';
-                }
+        return [];
+    }
 
-                return $value;
-            }, $row);
-            $csv .= implode(',', $values)."\n";
-        }
-
-        return $csv;
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 22, // No. Kontrak
+            'B' => 30, // Counterpart
+            'C' => 20, // Divisi
+            'D' => 20, // Jenis Dokumen
+            'E' => 40, // Judul
+            'F' => 18, // Tanggal Mulai
+            'G' => 18, // Tanggal Berakhir
+            'H' => 18, // Status
+        ];
     }
 }

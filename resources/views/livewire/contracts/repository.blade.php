@@ -134,7 +134,17 @@ new #[Layout('components.layouts.app')] class extends Component
             </p>
         </div>
         <div class="flex gap-2">
-            <!-- Optional: CSV Export if needed later -->
+            @if(auth()->user()?->hasPermission('reports.export'))
+            <a href="{{ route('contracts.export', [
+                'status' => $statusFilter,
+                'type' => $typeFilter,
+                'division' => $divisionFilter,
+            ]) }}" class="inline-flex">
+                <flux:button variant="ghost" icon="arrow-down-tray">
+                    Export to Excel
+                </flux:button>
+            </a>
+            @endif
         </div>
     </div>
 
