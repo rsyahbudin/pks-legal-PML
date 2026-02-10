@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // Remove email verification column
             $table->dropColumn('email_verified_at');
-            
+
             // Remove two-factor authentication columns
             $table->dropColumn('two_factor_secret');
             $table->dropColumn('two_factor_recovery_codes');
@@ -30,7 +30,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // Restore email verification column
             $table->timestamp('email_verified_at')->nullable();
-            
+
             // Restore two-factor authentication columns
             $table->text('two_factor_secret')->nullable();
             $table->text('two_factor_recovery_codes')->nullable();

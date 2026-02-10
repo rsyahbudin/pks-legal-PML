@@ -279,7 +279,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     @if($this->ticketsNeedingAttention->isEmpty())
                     <tr>
                         <td colspan="5" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
-                            Tidak ada ticket yang sesuai dengan filter.
+                            No tickets match the filter.
                         </td>
                     </tr>
                     @endif
@@ -375,7 +375,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         @empty
                         <tr>
                             <td colspan="4" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
-                                Belum ada ticket. <a href="{{ route('tickets.create') }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>Buat ticket pertama</a>
+                                No invoices found. <a href="{{ route('tickets.create') }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>Create first ticket</a>
                             </td>
                         </tr>
                         @endforelse
@@ -397,7 +397,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     <flux:icon name="document-text" class="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Total Kontrak</p>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Total Contracts</p>
                     <p class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $this->statistics['total'] }}</p>
                 </div>
             </div>
@@ -410,7 +410,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     <flux:icon name="check-circle" class="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Aktif</p>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">Active</p>
                     <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $this->statistics['active'] }}</p>
                 </div>
             </div>
@@ -449,9 +449,9 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="flex items-start gap-3">
             <flux:icon name="exclamation-triangle" class="mt-0.5 h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             <div class="flex-1">
-                <h3 class="font-semibold text-yellow-800 dark:text-yellow-200">Perhatian: Kontrak Mendekati Expired</h3>
+                <h3 class="font-semibold text-yellow-800 dark:text-yellow-200">Attention: Contracts Expiring Soon</h3>
                 <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                    Ada {{ $this->expiringContracts->count() }} kontrak yang perlu diperhatikan dalam waktu dekat.
+                    There are {{ $this->expiringContracts->count() }} contracts that need attention soon.
                 </p>
             </div>
         </div>
@@ -463,10 +463,10 @@ new #[Layout('components.layouts.app')] class extends Component
         <!-- Recent Contracts Table -->
         <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
             <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
-                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Kontrak Terbaru</h2>
+                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Recent Contracts</h2>
                 @if(auth()->user()?->hasPermission('contracts.view'))
                 <a href="{{ route('contracts.repository') }}" class="text-sm text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
-                    Lihat Semua →
+                    View All →
                 </a>
                 @endif
             </div>
@@ -474,8 +474,8 @@ new #[Layout('components.layouts.app')] class extends Component
                 <table class="w-full">
                     <thead class="bg-neutral-50 text-xs uppercase text-neutral-600 dark:bg-zinc-800 dark:text-neutral-400">
                         <tr>
-                            <th class="px-4 py-3 text-left">No. Kontrak</th>
-                            <th class="px-4 py-3 text-left">Judul Kontrak</th>
+                            <th class="px-4 py-3 text-left">Contract No.</th>
+                            <th class="px-4 py-3 text-left">Contract Title</th>
                             <th class="px-4 py-3 text-left">End Date</th>
                             <th class="px-4 py-3 text-center">Status</th>
                         </tr>
@@ -504,14 +504,14 @@ new #[Layout('components.layouts.app')] class extends Component
                                 @endphp
                                 <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $color === 'green' ? 'bg-green-500' : ($color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500') }}"></span>
-                                    {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
+                                    {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' days' : 'Expired') }}
                                 </span>
                             </td>
                         </tr>
                         @empty
                         <tr>
                             <td colspan="4" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
-                                Belum ada kontrak
+                                No contracts found
                             </td>
                         </tr>
                         @endforelse
@@ -523,7 +523,7 @@ new #[Layout('components.layouts.app')] class extends Component
         <!-- Contracts Needing Attention -->
         <div class="rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
             <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
-                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Perlu Perhatian</h2>
+                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Needs Attention</h2>
             </div>
             <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
                 @forelse($this->expiringContracts as $contract)
@@ -541,7 +541,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     </div>
                     <div class="text-right">
                         <p class="font-medium {{ $contract->status_color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400' }}">
-                            {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' hari' : 'Expired') }}
+                            {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' days' : 'Expired') }}
                         </p>
                         <p class="text-xs text-neutral-500 dark:text-neutral-400">
                             {{ $contract->end_date?->format('d M Y') ?? '-' }}
@@ -553,9 +553,9 @@ new #[Layout('components.layouts.app')] class extends Component
                     <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
                         <flux:icon name="check-circle" class="h-8 w-8 text-green-600 dark:text-green-400" />
                     </div>
-                    <p class="mt-4 font-medium text-neutral-900 dark:text-white">Semua Aman!</p>
+                    <p class="mt-4 font-medium text-neutral-900 dark:text-white">All Good!</p>
                     <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                        Tidak ada kontrak yang perlu perhatian segera.
+                        No contracts need immediate attention.
                     </p>
                 </div>
                 @endforelse

@@ -34,7 +34,7 @@ new #[Layout('components.layouts.app')] class extends Component
     public function save(): void
     {
         if (! auth()->user()?->hasPermission('settings.edit')) {
-            session()->flash('error', 'Anda tidak memiliki akses untuk mengubah pengaturan.');
+            session()->flash('error', 'You do not have access to modify settings.');
 
             return;
         }
@@ -56,7 +56,7 @@ new #[Layout('components.layouts.app')] class extends Component
         Setting::set('company_name', $this->company_name, 'string');
         Setting::set('reminder_days', json_encode(array_values($this->reminder_days)), 'string');
 
-        session()->flash('success', 'Pengaturan berhasil disimpan.');
+        session()->flash('success', 'Settings saved successfully.');
     }
 
     public function addReminderDay(): void
@@ -73,8 +73,8 @@ new #[Layout('components.layouts.app')] class extends Component
 
 <div class="mx-auto max-w-3xl space-y-6">
     <div>
-        <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Pengaturan Sistem</h1>
-        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Konfigurasi threshold reminder dan email</p>
+        <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">System Settings</h1>
+        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Configure reminder thresholds and email settings</p>
     </div>
 
     @if(session('success'))
@@ -86,14 +86,14 @@ new #[Layout('components.layouts.app')] class extends Component
     <form wire:submit="save" class="space-y-6">
         <!-- General Settings -->
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Umum</h2>
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">General</h2>
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
-                    <flux:label>Nama Aplikasi</flux:label>
+                    <flux:label>Application Name</flux:label>
                     <flux:input wire:model="app_name" required />
                 </flux:field>
                 <flux:field>
-                    <flux:label>Nama Perusahaan</flux:label>
+                    <flux:label>Company Name</flux:label>
                     <flux:input wire:model="company_name" />
                 </flux:field>
             </div>
@@ -103,18 +103,18 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
             <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Email Reminder</h2>
             <div class="space-y-4">
-                <flux:switch wire:model="reminder_email_enabled" label="Aktifkan email reminder otomatis" />
+                <flux:switch wire:model="reminder_email_enabled" label="Enable automatic email reminders" />
                 
                 <div class="grid gap-4 pt-4">
                     <flux:field>
-                        <flux:label>Waktu Kirim Harian</flux:label>
+                        <flux:label>Daily Send Time</flux:label>
                         <flux:input type="time" wire:model="reminder_send_time" />
-                        <flux:description>Email reminder akan dikirim otomatis pada waktu ini setiap hari. Email akan dikirim ke email Department Legal.</flux:description>
+                        <flux:description>Reminder emails will be sent automatically at this time every day. Emails will be sent to the Legal Department email.</flux:description>
                     </flux:field>
                 </div>
 
                 <flux:field class="pt-4">
-                    <flux:label>Reminder Days (H- hari sebelum berakhir)</flux:label>
+                    <flux:label>Reminder Days (days before expiration)</flux:label>
                     <div class="flex flex-wrap gap-2">
                         @foreach($reminder_days as $index => $day)
                             <div class="flex items-center gap-1">
@@ -130,10 +130,10 @@ new #[Layout('components.layouts.app')] class extends Component
                                 @endif
                             </div>
                         @endforeach
-                        <flux:button type="button" wire:click="addReminderDay" variant="ghost" size="sm">+ Tambah</flux:button>
+                        <flux:button type="button" wire:click="addReminderDay" variant="ghost" size="sm">+ Add</flux:button>
                     </div>
                     <flux:description>
-                        Email reminder otomatis akan dikirim tepat pada H- hari ini. Default: 60, 30, 7 hari sebelum contract berakhir.
+                        Automatic reminder emails will be sent exactly on these days before expiration. Default: 60, 30, 7 days before contract ends.
                     </flux:description>
                     <flux:error name="reminder_days" />
                 </flux:field>
@@ -154,7 +154,7 @@ new #[Layout('components.layouts.app')] class extends Component
         </div>
 
         <div class="flex justify-end">
-            <flux:button type="submit" variant="primary">Simpan Pengaturan</flux:button>
+            <flux:button type="submit" variant="primary">Save Settings</flux:button>
         </div>
     </form>
 </div>

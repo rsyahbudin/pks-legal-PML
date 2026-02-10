@@ -6,6 +6,14 @@
     <title>Reminder Kontrak</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="text-align: center; border-bottom: 2px solid #e5e5e5; padding-bottom: 20px; margin-bottom: 20px;">
+        @if(isset($logoPath) && file_exists($logoPath))
+            <img src="{{ $message->embed($logoPath) }}" alt="{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}" style="max-width: 200px; height: auto;">
+        @else
+            <h2 style="margin: 0; color: #333;">{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}</h2>
+        @endif
+    </div>
+    
     {{-- Dynamic email body from settings --}}
     <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 20px; white-space: pre-wrap;">
         {!! nl2br(e($emailBody)) !!}

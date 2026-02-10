@@ -46,13 +46,13 @@ class ContractsExport implements FromCollection, WithColumnWidths, WithHeadings,
 
         return $query->get()->map(function ($contract) {
             return [
-                'No. Kontrak' => $contract->contract_number ?? '-',
+                'Contract Number' => $contract->contract_number ?? '-',
                 'Counterpart' => $contract->ticket?->counterpart_name ?? '-',
-                'Divisi' => $contract->division?->name ?? '-',
-                'Jenis Dokumen' => $contract->documentType?->name ?? '-',
-                'Judul' => $contract->agreement_name ?? $contract->proposed_document_title ?? '-',
-                'Tanggal Mulai' => $contract->start_date?->format('d/m/Y') ?? '-',
-                'Tanggal Berakhir' => $contract->end_date?->format('d/m/Y') ?? '-',
+                'Division' => $contract->division?->name ?? '-',
+                'Document Type' => $contract->documentType?->name ?? '-',
+                'Title' => $contract->agreement_name ?? $contract->proposed_document_title ?? '-',
+                'Start Date' => $contract->start_date?->format('d/m/Y') ?? '-',
+                'End Date' => $contract->end_date?->format('d/m/Y') ?? '-',
                 'Status' => $contract->status?->name ?? '-',
             ];
         });
@@ -61,13 +61,13 @@ class ContractsExport implements FromCollection, WithColumnWidths, WithHeadings,
     public function headings(): array
     {
         return [
-            'No. Kontrak',
+            'Contract Number',
             'Counterpart',
-            'Divisi',
-            'Jenis Dokumen',
-            'Judul',
-            'Tanggal Mulai',
-            'Tanggal Berakhir',
+            'Division',
+            'Document Type',
+            'Title',
+            'Start Date',
+            'End Date',
             'Status',
         ];
     }

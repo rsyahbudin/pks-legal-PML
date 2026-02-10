@@ -54,6 +54,7 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function getContractsProperty(): LengthAwarePaginator
     {
+        /** @var \App\Models\User $user */
         $user = auth()->user();
 
         $query = Contract::with(['department', 'division'])
@@ -104,13 +105,13 @@ new #[Layout('components.layouts.app')] class extends Component
         // Log activity to the ticket
         if ($this->selectedContract->ticket) {
             $message = $oldLink
-                ? 'Folder link diperbarui'
-                : 'Folder link ditambahkan';
+                ? 'Folder link updated'
+                : 'Folder link added';
             $this->selectedContract->ticket->logActivity($message);
         }
 
         $this->showFolderLinkModal = false;
-        $this->dispatch('notify', type: 'success', message: 'Folder link berhasil disimpan');
+        $this->dispatch('notify', type: 'success', message: 'Folder link saved successfully');
     }
 
     public function getDivisionsProperty()
@@ -128,9 +129,9 @@ new #[Layout('components.layouts.app')] class extends Component
     <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Repository Kontrak</h1>
+            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Contract Repository</h1>
             <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                Daftar semua kontrak yang telah terbentuk dari tiket.
+                List of all contracts created from tickets.
             </p>
         </div>
         <div class="flex gap-2">
@@ -151,19 +152,19 @@ new #[Layout('components.layouts.app')] class extends Component
     <!-- Filters -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center bg-white p-4 rounded-xl border border-neutral-200 dark:bg-zinc-900 dark:border-neutral-700 shadow-sm">
         <div class="flex-1">
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Cari Contracts..." />
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search Contracts..." />
         </div>
         <div class="w-full sm:w-48">
-            <flux:select wire:model.live="typeFilter" placeholder="Jenis Dokumen">
-                <flux:select.option value="">Semua Jenis</flux:select.option>
-                <flux:select.option value="perjanjian">Perjanjian</flux:select.option>
+            <flux:select wire:model.live="typeFilter" placeholder="Document Type">
+                <flux:select.option value="">All Types</flux:select.option>
+                <flux:select.option value="perjanjian">Agreement</flux:select.option>
                 <flux:select.option value="nda">NDA</flux:select.option>
-                <flux:select.option value="surat_kuasa">Surat Kuasa</flux:select.option>
+                <flux:select.option value="surat_kuasa">Power of Attorney</flux:select.option>
             </flux:select>
         </div>
         <div class="w-full sm:w-48">
             <flux:select wire:model.live="statusFilter" placeholder="Filter Status">
-                <flux:select.option value="">Semua Status</flux:select.option>
+                <flux:select.option value="">All Statuses</flux:select.option>
                 @foreach($this->contractStatuses as $status)
                     <flux:select.option value="{{ $status->code }}">{{ $status->name }}</flux:select.option>
                 @endforeach
@@ -172,7 +173,7 @@ new #[Layout('components.layouts.app')] class extends Component
         @if(auth()->user()->hasAnyRole(['super-admin', 'legal']))
         <div class="w-full sm:w-48">
             <flux:select wire:model.live="divisionFilter" placeholder="Filter Division">
-                <flux:select.option value="">Semua Division</flux:select.option>
+                <flux:select.option value="">All Divisions</flux:select.option>
                 @foreach($this->divisions as $division)
                     <flux:select.option value="{{ $division->id }}">{{ $division->name }}</flux:select.option>
                 @endforeach
@@ -250,7 +251,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     @empty
                     <tr>
                         <td colspan="6" class="px-6 py-8 text-center text-neutral-500">
-                            Tidak ada kontrak yang ditemukan
+                            No contracts found
                         </td>
                     </tr>
                     @endforelse
@@ -283,7 +284,7 @@ new #[Layout('components.layouts.app')] class extends Component
                 type="url"
                 placeholder="https://..."
             />
-            <flux:description>Masukkan link folder sharing internal (network drive, SharePoint, dll)</flux:description>
+            <flux:description>Enter internal sharing folder link (network drive, SharePoint, etc.)</flux:description>
             <flux:error name="folder_link" />
         </flux:field>
 

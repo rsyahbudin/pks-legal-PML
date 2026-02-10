@@ -65,10 +65,10 @@ new class extends Component
         class="absolute right-0 top-full z-[1000] mt-2 w-80 rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-zinc-900"
     >
         <div class="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-700">
-            <h3 class="font-semibold text-neutral-900 dark:text-white">Notifikasi</h3>
+            <h3 class="font-semibold text-neutral-900 dark:text-white">Notifications</h3>
             @if($this->unreadCount > 0)
             <button wire:click="markAllAsRead" class="text-xs text-blue-600 hover:underline dark:text-blue-400">
-                Tandai semua dibaca
+                Mark all as read
             </button>
             @endif
         </div>
@@ -140,7 +140,7 @@ new class extends Component
                 <button 
                     wire:click="markAsRead({{ $notification->id }})" 
                     class="relative z-10 shrink-0 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400"
-                    title="Tandai sudah dibaca"
+                    title="Mark as read"
                 >
                     <flux:icon name="check" class="h-4 w-4" />
                 </button>
@@ -149,7 +149,7 @@ new class extends Component
             @empty
             <div class="p-8 text-center text-neutral-500 dark:text-neutral-400">
                 <flux:icon name="bell-slash" class="mx-auto h-8 w-8 text-neutral-300 dark:text-neutral-600" />
-                <p class="mt-2">Belum ada notifikasi</p>
+                <p class="mt-2">No notifications</p>
             </div>
             @endforelse
         </div>

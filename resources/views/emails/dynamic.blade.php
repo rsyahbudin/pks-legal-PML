@@ -48,18 +48,8 @@
 <body>
     <div class="email-wrapper">
         <div class="email-header">
-            @php
-                $logoPath = \App\Models\Setting::get('company_logo');
-                $logoUrl = null;
-                
-                if ($logoPath && file_exists(storage_path('app/public/' . $logoPath))) {
-                    // Use absolute URL for email compatibility
-                    $logoUrl = config('app.url') . '/storage/' . $logoPath;
-                }
-            @endphp
-            
-            @if($logoUrl)
-                <img src="{{ $logoUrl }}" alt="{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}" class="email-logo">
+            @if(isset($logoPath) && file_exists($logoPath))
+                <img src="{{ $message->embed($logoPath) }}" alt="{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}" class="email-logo">
             @else
                 <h2 style="margin: 0; color: #333333;">{{ \App\Models\Setting::get('app_name', 'PKS Tracking System') }}</h2>
             @endif

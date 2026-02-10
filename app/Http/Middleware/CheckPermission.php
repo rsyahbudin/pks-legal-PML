@@ -28,6 +28,6 @@ class CheckPermission
             }
         }
 
-        abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+        abort(403, 'You do not have access to this page.');
     }
 }

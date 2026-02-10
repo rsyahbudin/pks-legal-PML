@@ -69,6 +69,7 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function getTicketsProperty(): LengthAwarePaginator
     {
+        /** @var \App\Models\User $user */
         $user = auth()->user();
 
         $query = Ticket::with(['division', 'department', 'creator', 'contract', 'status', 'documentType'])
@@ -125,13 +126,13 @@ new #[Layout('components.layouts.app')] class extends Component
         // Log activity to the ticket
         if ($this->selectedContract->ticket) {
             $message = $oldLink
-                ? 'Folder link diperbarui'
-                : 'Folder link ditambahkan';
+                ? 'Folder link updated'
+                : 'Folder link added';
             $this->selectedContract->ticket->logActivity($message);
         }
 
         $this->showFolderLinkModal = false;
-        $this->dispatch('notify', type: 'success', message: 'Folder link berhasil disimpan');
+        $this->dispatch('notify', type: 'success', message: 'Folder link saved successfully');
     }
 }; ?>
 
@@ -139,12 +140,12 @@ new #[Layout('components.layouts.app')] class extends Component
     <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Daftar Tickets</h1>
+            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Ticket List</h1>
             <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                 @if(auth()->user()->hasAnyRole(['super-admin', 'legal']))
-                    Manage semua tickets dari seluruh departemen
+                    Manage all tickets from all departments
                 @else
-                    Tickets yang Anda buat
+                    Tickets you have created
                 @endif
             </p>
         </div>
@@ -165,7 +166,7 @@ new #[Layout('components.layouts.app')] class extends Component
             @if(auth()->user()?->hasPermission('tickets.create'))
             <a href="{{ route('tickets.create') }}" wire:navigate>
                 <flux:button variant="primary" icon="plus">
-                    Buat Ticket Baru
+                    Create New Ticket
                 </flux:button>
             </a>
             @endif
@@ -174,46 +175,46 @@ new #[Layout('components.layouts.app')] class extends Component
 
     <!-- Filters -->
     <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <flux:input 
                 wire:model.live.debounce.300ms="search" 
-                placeholder="Cari nomor ticket..." 
+                placeholder="Search ticket number..." 
                 icon="magnifying-glass"
             />
             
             <flux:input 
                 type="date" 
                 wire:model.live="startDate" 
-                placeholder="Tanggal Mulai"
+                placeholder="Start Date"
                 icon="calendar-days"
             />
             
             <flux:input 
                 type="date" 
                 wire:model.live="endDate" 
-                placeholder="Tanggal Akhir"
+                placeholder="End Date"
                 icon="calendar-days"
             />
             
             <flux:select wire:model.live="statusFilter">
-                <option value="">Semua Status Ticket</option>
+                <option value="">All Ticket Statuses</option>
                 @foreach($this->ticketStatuses as $status)
                     <option value="{{ $status->code }}">{{ $status->name }}</option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="typeFilter" placeholder="Jenis Dokumen">
-                <flux:select.option value="">Semua Jenis</flux:select.option>
-                <flux:select.option value="perjanjian">Perjanjian</flux:select.option>
+            <flux:select wire:model.live="typeFilter" placeholder="Document Type">
+                <flux:select.option value="">All Types</flux:select.option>
+                <flux:select.option value="perjanjian">Agreement</flux:select.option>
                 <flux:select.option value="nda">NDA</flux:select.option>
-                <flux:select.option value="surat_kuasa">Surat Kuasa</flux:select.option>
-                <flux:select.option value="pendapat_hukum">Pendapat Hukum</flux:select.option>
-                <flux:select.option value="surat_pernyataan">Surat Pernyataan</flux:select.option>
-                <flux:select.option value="surat_lainnya">Surat Lainnya</flux:select.option>
+                <flux:select.option value="surat_kuasa">Power of Attorney</flux:select.option>
+                <flux:select.option value="pendapat_hukum">Legal Opinion</flux:select.option>
+                <flux:select.option value="surat_pernyataan">Statement Letter</flux:select.option>
+                <flux:select.option value="surat_lainnya">Other Letters</flux:select.option>
             </flux:select>
 
             <flux:select wire:model.live="divisionFilter">
-                <option value="">Semua Divisi</option>
+                <option value="">All Divisions</option>
                 @foreach($this->divisions as $division)
                 <option value="{{ $division->id }}">{{ $division->name }}</option>
                 @endforeach
@@ -227,15 +228,15 @@ new #[Layout('components.layouts.app')] class extends Component
             <table class="w-full">
                 <thead class="bg-neutral-50 text-xs uppercase text-neutral-600 dark:bg-zinc-800 dark:text-neutral-400">
                     <tr>
-                        <th class="px-4 py-3 text-left">No. Ticket</th>
-                        <th class="px-4 py-3 text-left">Judul Dokumen</th>
+                        <th class="px-4 py-3 text-left">Ticket No.</th>
+                        <th class="px-4 py-3 text-left">Document Title</th>
                         <!-- <th class="px-4 py-3 text-left">Divisi</th> -->
-                        <th class="px-4 py-3 text-left">Departement</th>
+                        <th class="px-4 py-3 text-left">Department</th>
                         <th class="px-4 py-3 text-center">Status</th>
-                        <th class="px-4 py-3 text-center">Dibuat</th>
+                        <th class="px-4 py-3 text-center">Created</th>
                         <th class="px-4 py-3 text-center">Updated</th>
                         <th class="px-4 py-3 text-center">Aging</th>
-                        <th class="px-4 py-3 text-center">Aksi</th>
+                        <th class="px-4 py-3 text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
@@ -286,10 +287,10 @@ new #[Layout('components.layouts.app')] class extends Component
                         <td colspan="7" class="px-4 py-12 text-center">
                             <div class="flex flex-col items-center">
                                 <flux:icon name="ticket" class="h-12 w-12 text-neutral-300 dark:text-neutral-600" />
-                                <p class="mt-4 text-neutral-500 dark:text-neutral-400">Belum ada ticket</p>
+                                <p class="mt-4 text-neutral-500 dark:text-neutral-400">No tickets yet</p>
                                 @if(auth()->user()?->hasPermission('tickets.create'))
                                 <a href="{{ route('tickets.create') }}" class="mt-2" wire:navigate>
-                                    <flux:button variant="primary" size="sm">Buat Ticket Pertama</flux:button>
+                                    <flux:button variant="primary" size="sm">Create First Ticket</flux:button>
                                 </a>
                                 @endif
                             </div>

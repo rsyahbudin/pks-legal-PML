@@ -107,11 +107,11 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         if ($this->editingId) {
             User::findOrFail($this->editingId)->update($data);
-            session()->flash('success', 'Pengguna berhasil diperbarui.');
+            session()->flash('success', 'User successfully updated.');
         } else {
             $data['email_verified_at'] = now();
             User::create($data);
-            session()->flash('success', 'Pengguna berhasil ditambahkan.');
+            session()->flash('success', 'User successfully added.');
         }
 
         $this->showModal = false;
@@ -120,27 +120,27 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function delete(int $id): void
     {
         if ($id === auth()->id()) {
-            session()->flash('error', 'Tidak dapat menghapus akun sendiri.');
+            session()->flash('error', 'Cannot delete your own account.');
             return;
         }
         User::findOrFail($id)->delete();
-        session()->flash('success', 'Pengguna berhasil dihapus.');
+        session()->flash('success', 'User successfully deleted.');
     }
 }; ?>
 
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Pengguna</h1>
-            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Kelola pengguna sistem</p>
+            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Users</h1>
+            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage system users</p>
         </div>
         @if(auth()->user()?->hasPermission('users.manage'))
-        <flux:button variant="primary" icon="plus" wire:click="create">Tambah Pengguna</flux:button>
+        <flux:button variant="primary" icon="plus" wire:click="create">Add User</flux:button>
         @endif
     </div>
 
     <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
-        <flux:input wire:model.live.debounce.300ms="search" placeholder="Cari nama atau email..." icon="magnifying-glass" />
+        <flux:input wire:model.live.debounce.300ms="search" placeholder="Search name or email..." icon="magnifying-glass" />
     </div>
 
     <div class="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-zinc-900">
@@ -148,13 +148,13 @@ new #[Layout('components.layouts.app')] class extends Component {
             <table class="w-full">
                 <thead class="bg-neutral-50 text-xs uppercase text-neutral-600 dark:bg-zinc-800 dark:text-neutral-400">
                     <tr>
-                        <th class="px-4 py-3 text-left">Nama</th>
+                        <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Email</th>
-                        <th class="px-4 py-3 text-left">NIK</th>
+                        <th class="px-4 py-3 text-left">ID</th>
                         <th class="px-4 py-3 text-left">Role</th>
-                        <th class="px-4 py-3 text-left">Divisi</th>
-                        <th class="px-4 py-3 text-left">Departemen</th>
-                        <th class="px-4 py-3 text-center">Aksi</th>
+                        <th class="px-4 py-3 text-left">Division</th>
+                        <th class="px-4 py-3 text-left">Department</th>
+                        <th class="px-4 py-3 text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
@@ -177,7 +177,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 @if(auth()->user()?->hasPermission('users.manage'))
                                 <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $user->id }})" />
                                 @if($user->id !== auth()->id())
-                                <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $user->id }})" wire:confirm="Apakah Anda yakin?" />
+                                <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $user->id }})" wire:confirm="Are you sure?" />
                                 @endif
                                 @endif
                             </div>
@@ -185,7 +185,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-12 text-center text-neutral-500">Belum ada pengguna</td>
+                        <td colspan="7" class="px-4 py-12 text-center text-neutral-500">No users found</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -198,10 +198,10 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <form wire:submit="save" class="space-y-4">
-            <flux:heading>{{ $editingId ? 'Edit Pengguna' : 'Tambah Pengguna' }}</flux:heading>
+            <flux:heading>{{ $editingId ? 'Edit User' : 'Add User' }}</flux:heading>
             
             <flux:field>
-                <flux:label>Nama</flux:label>
+                <flux:label>Name</flux:label>
                 <flux:input wire:model="name" required />
                 <flux:error name="name" />
             </flux:field>
@@ -213,20 +213,20 @@ new #[Layout('components.layouts.app')] class extends Component {
             </flux:field>
             
             <flux:field>
-                <flux:label>NIK / User ID</flux:label>
+                <flux:label>ID / User ID</flux:label>
                 <flux:input 
                     type="text" 
                     wire:model="user_id" 
                     maxlength="10"
                     pattern="[0-9]*"
                     inputmode="numeric"
-                    placeholder="Enter 10-digit NIK"
+                    placeholder="Enter 10-digit ID"
                 />
                 <flux:error name="user_id" />
             </flux:field>
             
             <flux:field>
-                <flux:label>Password {{ $editingId ? '(kosongkan jika tidak diubah)' : '' }}</flux:label>
+                <flux:label>Password {{ $editingId ? '(leave blank to keep current)' : '' }}</flux:label>
                 <flux:input type="password" wire:model="password" :required="!$editingId" />
                 <flux:error name="password" />
             </flux:field>
@@ -234,7 +234,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             <flux:field>
                 <flux:label>Role</flux:label>
                 <flux:select wire:model="role_id">
-                    <option value="">Pilih Role</option>
+                    <option value="">Select Role</option>
                     @foreach($this->roles as $role)
                     <option value="{{ $role->id }}">{{ $role->name }}</option>
                     @endforeach
@@ -243,9 +243,9 @@ new #[Layout('components.layouts.app')] class extends Component {
             </flux:field>
             
             <flux:field>
-                <flux:label>Divisi</flux:label>
+                <flux:label>Division</flux:label>
                 <flux:select wire:model.live="division_id">
-                    <option value="">Pilih Divisi</option>
+                    <option value="">Select Division</option>
                     @foreach($this->divisions as $division)
                     <option value="{{ $division->id }}">{{ $division->name }}</option>
                     @endforeach
@@ -255,15 +255,15 @@ new #[Layout('components.layouts.app')] class extends Component {
 
             @if($this->division_id)
             <flux:field>
-                <flux:label>Departemen</flux:label>
+                <flux:label>Department</flux:label>
                 <flux:select wire:model="department_id">
-                    <option value="">Pilih Departemen (Opsional)</option>
+                    <option value="">Select Department (Optional)</option>
                     @if($this->departments->isNotEmpty())
                         @foreach($this->departments as $dept)
                         <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                         @endforeach
                     @else
-                        <option value="" disabled>Belum ada departemen</option>
+                        <option value="" disabled>No departments</option>
                     @endif
                 </flux:select>
                 <flux:error name="department_id" />
@@ -271,8 +271,8 @@ new #[Layout('components.layouts.app')] class extends Component {
             @endif
             
             <div class="flex justify-end gap-3 pt-4">
-                <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Batal</flux:button>
-                <flux:button type="submit" variant="primary">Simpan</flux:button>
+                <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Cancel</flux:button>
+                <flux:button type="submit" variant="primary">Save</flux:button>
             </div>
         </form>
     </flux:modal>

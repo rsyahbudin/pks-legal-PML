@@ -3,6 +3,7 @@
 use App\Models\{Department, Division};
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
+use Illuminate\Support\Facades\Log;
 
 new #[Layout('components.layouts.app')] class extends Component {
     public $departments;
@@ -101,11 +102,11 @@ new #[Layout('components.layouts.app')] class extends Component {
                 'cc_emails_cast' => $dept->cc_emails,
             ]);
             
-            $this->dispatch('notify', type: 'success', message: 'Department berhasil diupdate!');
+            $this->dispatch('notify', type: 'success', message: 'Department updated successfully!');
         } else {
             $dept = Department::create($data);
             \Log::info('Department created', ['id' => $dept->id, 'cc_emails' => $dept->cc_emails]);
-            $this->dispatch('notify', type: 'success', message: 'Department berhasil ditambahkan!');
+            $this->dispatch('notify', type: 'success', message: 'Department added successfully!');
         }
         
         $this->showModal = false;
@@ -114,8 +115,15 @@ new #[Layout('components.layouts.app')] class extends Component {
     
     public function delete(int $id): void
     {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+
+        if (!$user?->hasPermission('departments.manage')) {
+            return;
+        }
+
         Department::findOrFail($id)->delete();
-        $this->dispatch('notify', type: 'success', message: 'Department berhasil dihapus!');
+        $this->dispatch('notify', type: 'success', message: 'Department deleted successfully!');
         $this->loadDepartments();
     }
 } ?>
@@ -188,7 +196,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 @endif
                                 
                                 @if(auth()->user()?->hasPermission('departments.manage'))
-                                <flux:button wire:click="delete({{ $dept->id }})" wire:confirm="Yakin ingin menghapus department ini?" size="sm" variant="ghost" icon="trash" class="text-red-600 hover:text-red-700" />
+                                <flux:button wire:click="delete({{ $dept->id }})" wire:confirm="Are you sure you want to delete this department?" size="sm" variant="ghost" icon="trash" class="text-red-600 hover:text-red-700" />
                                 @endif
                             </div>
                         </td>

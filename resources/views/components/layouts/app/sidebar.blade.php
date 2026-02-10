@@ -23,7 +23,7 @@
                     <flux:navlist.item icon="ticket" :href="route('tickets.index')" :current="request()->routeIs('tickets.*')" wire:navigate>{{ __('Tickets') }}</flux:navlist.item>
                     <flux:navlist.item icon="document-text" :href="route('contracts.repository')" :current="request()->routeIs('contracts.repository')" wire:navigate>{{ __('Contracts') }}</flux:navlist.item>
                     @if(auth()->user()->hasPermission('divisions.view'))
-                    <flux:navlist.item icon="rectangle-group" :href="route('divisions.index')" :current="request()->routeIs('divisions.*')" wire:navigate>{{ __('Divisi') }}</flux:navlist.item>
+                    <flux:navlist.item icon="rectangle-group" :href="route('divisions.index')" :current="request()->routeIs('divisions.*')" wire:navigate>{{ __('Divisions') }}</flux:navlist.item>
                     @endif
                 </flux:navlist.group>
                 @endif
@@ -31,13 +31,13 @@
                 @if(auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('roles.view') || auth()->user()->hasPermission('settings.view'))
                 <flux:navlist.group :heading="__('Admin')" class="grid">
                     @if(auth()->user()->hasPermission('users.view'))
-                    <flux:navlist.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>{{ __('Pengguna') }}</flux:navlist.item>
+                    <flux:navlist.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*')" wire:navigate>{{ __('Users') }}</flux:navlist.item>
                     @endif
                     @if(auth()->user()->hasPermission('roles.view'))
-                    <flux:navlist.item icon="shield-check" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>{{ __('Role & Permission') }}</flux:navlist.item>
+                    <flux:navlist.item icon="shield-check" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>{{ __('Roles & Permissions') }}</flux:navlist.item>
                     @endif
                     @if(auth()->user()->hasPermission('settings.view'))
-                    <flux:navlist.item icon="cog-6-tooth" :href="route('admin.settings.index')" :current="request()->routeIs('admin.settings.*')" wire:navigate>{{ __('Pengaturan') }}</flux:navlist.item>
+                    <flux:navlist.item icon="cog-6-tooth" :href="route('admin.settings.index')" :current="request()->routeIs('admin.settings.*')" wire:navigate>{{ __('Settings') }}</flux:navlist.item>
                     @endif
                     @if(auth()->user()->hasPermission('email_templates.edit'))
                     <flux:navlist.item icon="envelope" :href="route('admin.email-templates')" :current="request()->routeIs('admin.email-templates')" wire:navigate>{{ __('Email Templates') }}</flux:navlist.item>

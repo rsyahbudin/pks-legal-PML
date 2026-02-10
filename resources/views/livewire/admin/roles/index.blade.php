@@ -56,10 +56,10 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         if ($this->editingId) {
             Role::findOrFail($this->editingId)->update($validated);
-            session()->flash('success', 'Role berhasil diperbarui.');
+            session()->flash('success', 'Role successfully updated.');
         } else {
             Role::create($validated);
-            session()->flash('success', 'Role berhasil ditambahkan.');
+            session()->flash('success', 'Role successfully added.');
         }
 
         $this->showModal = false;
@@ -69,11 +69,11 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         $role = Role::findOrFail($id);
         if ($role->is_system) {
-            session()->flash('error', 'Role sistem tidak dapat dihapus.');
+            session()->flash('error', 'System role cannot be deleted.');
             return;
         }
         $role->delete();
-        session()->flash('success', 'Role berhasil dihapus.');
+        session()->flash('success', 'Role successfully deleted.');
     }
 
     public function editPermissions(int $id): void
@@ -87,7 +87,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         if ($this->editingRole) {
             $this->editingRole->syncPermissions($this->selectedPermissions);
-            session()->flash('success', 'Permissions berhasil diperbarui.');
+            session()->flash('success', 'Permissions successfully updated.');
         }
         $this->showPermissionModal = false;
         $this->editingRole = null;
@@ -97,16 +97,16 @@ new #[Layout('components.layouts.app')] class extends Component {
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Role & Permission</h1>
-            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Kelola role dan akses permission</p>
+            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Roles & Permissions</h1>
+            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage roles and permissions access</p>
         </div>
         @if(auth()->user()?->hasPermission('roles.manage'))
-        <flux:button variant="primary" icon="plus" wire:click="create">Tambah Role</flux:button>
+        <flux:button variant="primary" icon="plus" wire:click="create">Add Role</flux:button>
         @endif
     </div>
 
     <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900">
-        <flux:input wire:model.live.debounce.300ms="search" placeholder="Cari role..." icon="magnifying-glass" />
+        <flux:input wire:model.live.debounce.300ms="search" placeholder="Search roles..." icon="magnifying-glass" />
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -131,7 +131,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <flux:button size="sm" variant="ghost" icon="shield-check" wire:click="editPermissions({{ $role->id }})" title="Edit Permissions" />
                     <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $role->id }})" />
                     @if(!$role->is_system)
-                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $role->id }})" wire:confirm="Apakah Anda yakin?" />
+                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $role->id }})" wire:confirm="Are you sure?" />
                     @endif
                 </div>
                 @endif
@@ -143,23 +143,23 @@ new #[Layout('components.layouts.app')] class extends Component {
     <!-- Role Modal -->
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <form wire:submit="save" class="space-y-4">
-            <flux:heading>{{ $editingId ? 'Edit Role' : 'Tambah Role' }}</flux:heading>
+            <flux:heading>{{ $editingId ? 'Edit Role' : 'Add Role' }}</flux:heading>
             <flux:field>
-                <flux:label>Nama</flux:label>
+                <flux:label>Name</flux:label>
                 <flux:input wire:model="name" required />
             </flux:field>
             <flux:field>
                 <flux:label>Slug</flux:label>
-                <flux:input wire:model="slug" placeholder="contoh: manager" required />
-                <flux:description>Identifier unik, gunakan huruf kecil dan strip</flux:description>
+                <flux:input wire:model="slug" placeholder="example: manager" required />
+                <flux:description>Unique identifier, use lowercase and dashes</flux:description>
             </flux:field>
             <flux:field>
-                <flux:label>Deskripsi</flux:label>
+                <flux:label>Description</flux:label>
                 <flux:textarea wire:model="description" rows="2" />
             </flux:field>
             <div class="flex justify-end gap-3 pt-4">
-                <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Batal</flux:button>
-                <flux:button type="submit" variant="primary">Simpan</flux:button>
+                <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Cancel</flux:button>
+                <flux:button type="submit" variant="primary">Save</flux:button>
             </div>
         </form>
     </flux:modal>
@@ -184,8 +184,8 @@ new #[Layout('components.layouts.app')] class extends Component {
                 @endforeach
             </div>
             <div class="flex justify-end gap-3 pt-4">
-                <flux:button type="button" variant="ghost" wire:click="$set('showPermissionModal', false)">Batal</flux:button>
-                <flux:button type="button" variant="primary" wire:click="savePermissions">Simpan Permissions</flux:button>
+                <flux:button type="button" variant="ghost" wire:click="$set('showPermissionModal', false)">Cancel</flux:button>
+                <flux:button type="button" variant="primary" wire:click="savePermissions">Save Permissions</flux:button>
             </div>
         </div>
     </flux:modal>

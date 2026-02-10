@@ -61,10 +61,10 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         if ($this->editingId) {
             Division::findOrFail($this->editingId)->update($validated);
-            session()->flash('success', 'Divisi berhasil diperbarui.');
+            session()->flash('success', 'Division successfully updated.');
         } else {
             Division::create($validated);
-            session()->flash('success', 'Divisi berhasil ditambahkan.');
+            session()->flash('success', 'Division successfully added.');
         }
 
         $this->showModal = false;
@@ -72,29 +72,32 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function delete(int $id): void
     {
-        if (!auth()->user()?->hasPermission('divisions.manage')) {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+
+        if (!$user?->hasPermission('divisions.manage')) {
             return;
         }
         Division::findOrFail($id)->delete();
-        session()->flash('success', 'Divisi berhasil dihapus.');
+        session()->flash('success', 'Division successfully deleted.');
     }
 }; ?>
 
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Divisi</h1>
-            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Kelola daftar divisi internal</p>
+            <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Divisions</h1>
+            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage internal divisions list</p>
         </div>
         @if(auth()->user()?->hasPermission('divisions.manage'))
-        <flux:button variant="primary" icon="plus" wire:click="create">Tambah Divisi</flux:button>
+        <flux:button variant="primary" icon="plus" wire:click="create">Add Division</flux:button>
         @endif
     </div>
 
     <!-- Filters -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center bg-white p-4 rounded-xl border border-neutral-200 dark:bg-zinc-900 dark:border-neutral-700 shadow-sm">
         <div class="flex-1">
-            <flux:input wire:model.live.debounce.300ms="search" placeholder="Cari divisi..." icon="magnifying-glass" />
+            <flux:input wire:model.live.debounce.300ms="search" placeholder="Search divisions..." icon="magnifying-glass" />
         </div>
         <!-- <div class="w-full sm:w-32">
              <flux:select wire:model.live="perPage">
@@ -111,14 +114,14 @@ new #[Layout('components.layouts.app')] class extends Component {
             <table class="w-full text-left text-sm text-neutral-600 dark:text-neutral-400">
                 <thead class="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-zinc-800 dark:text-neutral-400">
                     <tr>
-                        <th class="px-6 py-3 font-medium">Kode</th>
-                        <th class="px-6 py-3 font-medium">Nama</th>
-                        <th class="px-6 py-3 font-medium">Deskripsi</th>
+                        <th class="px-6 py-3 font-medium">Code</th>
+                        <th class="px-6 py-3 font-medium">Name</th>
+                        <th class="px-6 py-3 font-medium">Description</th>
                         <!-- <th class="px-6 py-3 font-medium text-center">Users</th> -->
                         <th class="px-6 py-3 font-medium text-center">Ticket</th>
-                        <th class="px-6 py-3 font-medium text-center">Kontrak</th>
+                        <th class="px-6 py-3 font-medium text-center">Contracts</th>
                         <th class="px-6 py-3 font-medium text-center">Status</th>
-                        <th class="px-6 py-3 font-medium text-end">Aksi</th>
+                        <th class="px-6 py-3 font-medium text-end">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
@@ -144,9 +147,9 @@ new #[Layout('components.layouts.app')] class extends Component {
                         </td>
                         <td class="px-6 py-4 text-center">
                             @if($division->is_active)
-                            <flux:badge size="sm" color="green" inset="top bottom">Aktif</flux:badge>
+                            <flux:badge size="sm" color="green" inset="top bottom">Active</flux:badge>
                             @else
-                            <flux:badge size="sm" color="zinc" inset="top bottom">Nonaktif</flux:badge>
+                            <flux:badge size="sm" color="zinc" inset="top bottom">Inactive</flux:badge>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-end">
@@ -155,9 +158,9 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 <flux:menu>
                                     @if(auth()->user()?->hasPermission('divisions.manage'))
                                     <flux:menu.item icon="pencil" wire:click="edit({{ $division->id }})">Edit</flux:menu.item>
-                                    <flux:menu.item icon="squares-plus" wire:click="$dispatch('manage-sub-divisions', { divisionId: {{ $division->id }} })">Kelola Dept</flux:menu.item>
+                                    <flux:menu.item icon="squares-plus" wire:click="$dispatch('manage-sub-divisions', { divisionId: {{ $division->id }} })">Manage Dept</flux:menu.item>
                                     <flux:menu.separator />
-                                    <flux:menu.item icon="trash" wire:click="delete({{ $division->id }})" wire:confirm="Apakah Anda yakin?" variant="danger">Hapus</flux:menu.item>
+                                    <flux:menu.item icon="trash" wire:click="delete({{ $division->id }})" wire:confirm="Are you sure?" variant="danger">Delete</flux:menu.item>
                                     @endif
                                 </flux:menu>
                             </flux:dropdown>
@@ -166,7 +169,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     @empty
                     <tr>
                         <td colspan="7" class="px-6 py-8 text-center text-neutral-500">
-                            Belum ada divisi
+                            No divisions yet
                         </td>
                     </tr>
                     @endforelse
@@ -187,28 +190,28 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     <flux:modal wire:model="showModal" class="w-full max-w-md">
         <form wire:submit="save" class="space-y-4">
-            <flux:heading>{{ $editingId ? 'Edit Divisi' : 'Tambah Divisi' }}</flux:heading>
+            <flux:heading>{{ $editingId ? 'Edit Division' : 'Add Division' }}</flux:heading>
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
-                    <flux:label>Kode</flux:label>
+                    <flux:label>Code</flux:label>
                     <flux:input wire:model="code" placeholder="IT" required />
                     <flux:error name="code" />
                 </flux:field>
                 <flux:field>
-                    <flux:label>Nama</flux:label>
+                    <flux:label>Name</flux:label>
                     <flux:input wire:model="name" required />
                     <flux:error name="name" />
                 </flux:field>
             </div>
             <flux:field>
-                <flux:label>Deskripsi</flux:label>
+                <flux:label>Description</flux:label>
                 <flux:textarea wire:model="description" rows="2" />
             </flux:field>
 
-            <flux:switch wire:model="is_active" label="Aktif" />
+            <flux:switch wire:model="is_active" label="Active" />
             <div class="flex justify-end gap-3 pt-4">
-                <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Batal</flux:button>
-                <flux:button type="submit" variant="primary">Simpan</flux:button>
+                <flux:button type="button" variant="ghost" wire:click="$set('showModal', false)">Cancel</flux:button>
+                <flux:button type="submit" variant="primary">Save</flux:button>
             </div>
         </form>
     </flux:modal>

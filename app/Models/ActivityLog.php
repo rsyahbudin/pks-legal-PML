@@ -88,14 +88,14 @@ class ActivityLog extends Model
     }
 
     /**
-     * Get action label in Indonesian.
+     * Get action label in English.
      */
     public function getActionLabelAttribute(): string
     {
         return match ($this->action) {
-            'created' => 'Dibuat',
-            'updated' => 'Diperbarui',
-            'deleted' => 'Dihapus',
+            'created' => 'Created',
+            'updated' => 'Updated',
+            'deleted' => 'Deleted',
             default => $this->action,
         };
     }
@@ -111,23 +111,23 @@ class ActivityLog extends Model
 
         $changes = [];
         $fieldLabels = [
-            'contract_number' => 'Nomor Kontrak',
-            'division_id' => 'Divisi',
-            'department_id' => 'Departemen',
+            'contract_number' => 'Contract Number',
+            'division_id' => 'Division',
+            'department_id' => 'Department',
             'pic_id' => 'PIC',
-            'pic_name' => 'Nama PIC',
-            'pic_email' => 'Email PIC',
-            'start_date' => 'Tanggal Mulai',
-            'end_date' => 'Tanggal Berakhir',
+            'pic_name' => 'PIC Name',
+            'pic_email' => 'PIC Email',
+            'start_date' => 'Start Date',
+            'end_date' => 'End Date',
             'is_auto_renewal' => 'Auto Renewal',
-            'description' => 'Deskripsi',
+            'description' => 'Description',
             'status' => 'Status',
-            'document_path' => 'Dokumen',
+            'document_path' => 'Document',
         ];
 
         $statusLabels = [
             'draft' => 'Draft',
-            'active' => 'Aktif',
+            'active' => 'Active',
             'expired' => 'Expired',
             'terminated' => 'Terminated',
         ];
@@ -142,8 +142,8 @@ class ActivityLog extends Model
                     $oldValue = $statusLabels[$oldValue] ?? $oldValue;
                     $newValue = $statusLabels[$newValue] ?? $newValue;
                 } elseif ($field === 'is_auto_renewal') {
-                    $oldValue = $oldValue ? 'Ya' : 'Tidak';
-                    $newValue = $newValue ? 'Ya' : 'Tidak';
+                    $oldValue = $oldValue ? 'Yes' : 'No';
+                    $newValue = $newValue ? 'Yes' : 'No';
                 } elseif (in_array($field, ['start_date', 'end_date'])) {
                     if ($oldValue) {
                         $oldValue = \Carbon\Carbon::parse($oldValue)->format('d F Y');
@@ -152,13 +152,13 @@ class ActivityLog extends Model
                         $newValue = \Carbon\Carbon::parse($newValue)->format('d F Y');
                     }
                 } elseif ($field === 'document_path') {
-                    $oldValue = $oldValue ? 'Ada' : 'Tidak ada';
-                    $newValue = $newValue ? 'Ada' : 'Tidak ada';
+                    $oldValue = $oldValue ? 'Exists' : 'None';
+                    $newValue = $newValue ? 'Exists' : 'None';
                 }
 
                 if ($oldValue || $newValue) {
                     $changes[] = sprintf(
-                        '%s diubah dari "%s" ke "%s"',
+                        '%s changed from "%s" to "%s"',
                         $label,
                         $oldValue ?: '-',
                         $newValue ?: '-'

@@ -161,7 +161,7 @@ class SendContractReminders extends Command
                         'loggable_id' => $contract->id,
                         'user_id' => null, // System action
                         'action' => "Email reminder dikirim ke {$recipient->email}",
-                        'description' => "Email pengingat otomatis berhasil dikirim ({$daysRemaining} hari lagi sebelum berakhir)",
+                        'description' => "Automatic reminder email sent successfully ({$daysRemaining} days remaining before expiration)",
                     ]);
 
                     $sentCount++;
@@ -192,8 +192,8 @@ class SendContractReminders extends Command
                         'loggable_type' => Contract::class,
                         'loggable_id' => $contract->id,
                         'user_id' => null,
-                        'action' => "Gagal mengirim email reminder ke {$recipient->email}",
-                        'description' => "Email pengingat gagal dikirim: {$e->getMessage()}",
+                        'action' => "Failed to send reminder email to {$recipient->email}",
+                        'description' => "Reminder email failed to send: {$e->getMessage()}",
                     ]);
                 }
             }

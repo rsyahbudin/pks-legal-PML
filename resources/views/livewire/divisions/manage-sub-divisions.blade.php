@@ -95,7 +95,7 @@ new class extends Component {
 <flux:modal name="sub-divisions-modal" class="min-h-[500px] md:w-[600px]" wire:model="showModal">
     <div class="space-y-6">
         <div>
-            <h2 class="text-lg font-bold">Kelola Departemen</h2>
+            <h2 class="text-lg font-bold">Manage Departments</h2>
             @if($division)
             <p class="text-sm text-neutral-500">{{ $division->name }}</p>
             @endif
@@ -106,43 +106,43 @@ new class extends Component {
             <form wire:submit="save" class="space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <flux:field>
-                        <flux:label>Nama Departemen</flux:label>
-                        <flux:input wire:model="name" placeholder="Contoh: IT Support" required />
+                        <flux:label>Department Name</flux:label>
+                        <flux:input wire:model="name" placeholder="Example: IT Support" required />
                         <flux:error name="name" />
                     </flux:field>
                     
                     <flux:field>
-                        <flux:label>Kode</flux:label>
+                        <flux:label>Code</flux:label>
                         <flux:input wire:model="code" placeholder="ITS" />
                         <flux:error name="code" />
                     </flux:field>
                 </div>
 
                 <flux:field>
-                    <flux:label>Email Departemen</flux:label>
+                    <flux:label>Department Email</flux:label>
                     <flux:input wire:model="email" type="email" placeholder="department@example.com" />
                     <flux:error name="email" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>CC Emails (untuk reminder)</flux:label>
+                    <flux:label>CC Emails (for reminders)</flux:label>
                     <flux:textarea wire:model="cc_emails" rows="2" placeholder="email1@example.com, email2@example.com" />
-                    <flux:description>Pisahkan dengan koma.</flux:description>
+                    <flux:description>Separate with commas.</flux:description>
                     <flux:error name="cc_emails" />
                 </flux:field>
 
                 <div class="flex justify-end gap-2">
                     @if($editingId)
-                    <flux:button wire:click="resetForm" size="sm" variant="ghost">Batal</flux:button>
+                    <flux:button wire:click="resetForm" size="sm" variant="ghost">Cancel</flux:button>
                     @endif
-                    <flux:button type="submit" size="sm" variant="primary">{{ $editingId ? 'Update' : 'Tambah' }}</flux:button>
+                    <flux:button type="submit" size="sm" variant="primary">{{ $editingId ? 'Update' : 'Add' }}</flux:button>
                 </div>
             </form>
         </div>
 
         <!-- List -->
         <div class="space-y-2">
-            <h3 class="font-medium">Daftar Departemen</h3>
+            <h3 class="font-medium">Department List</h3>
             @if(count($departments) > 0)
             <div class="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-700 dark:border-neutral-700 dark:bg-zinc-900">
                 @foreach($departments as $dept)
@@ -155,13 +155,13 @@ new class extends Component {
                     </div>
                     <div class="flex gap-2">
                         <flux:button icon="pencil" size="xs" variant="ghost" wire:click="edit({{ $dept->id }})" />
-                        <flux:button icon="trash" size="xs" variant="danger" wire:click="delete({{ $dept->id }})" wire:confirm="Hapus departemen ini?" />
+                        <flux:button icon="trash" size="xs" variant="danger" wire:click="delete({{ $dept->id }})" wire:confirm="Delete this department?" />
                     </div>
                 </div>
                 @endforeach
             </div>
             @else
-            <div class="p-4 text-center text-sm text-neutral-500">Belum ada departemen.</div>
+            <div class="p-4 text-center text-sm text-neutral-500">No departments yet.</div>
             @endif
         </div>
     </div>

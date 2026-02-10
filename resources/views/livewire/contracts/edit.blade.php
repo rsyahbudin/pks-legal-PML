@@ -129,7 +129,7 @@ new #[Layout('components.layouts.app')] class extends Component
         $user = auth()->user();
 
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $this->dispatch('notify', type: 'error', message: 'Hanya legal team yang dapat mengedit ticket.');
+            $this->dispatch('notify', type: 'error', message: 'Only legal team can edit tickets.');
 
             return;
         }
@@ -246,7 +246,7 @@ new #[Layout('components.layouts.app')] class extends Component
             ],
         ]);
 
-        session()->flash('success', 'Ticket berhasil diupdate.');
+        session()->flash('success', 'Ticket updated successfully.');
         $this->redirect(route('tickets.show', $this->ticket->id), navigate: true);
     }
 }; ?>
@@ -256,45 +256,45 @@ new #[Layout('components.layouts.app')] class extends Component
     <div class="mb-6">
         <a href="{{ route('tickets.index') }}" class="mb-2 inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200" wire:navigate>
             <flux:icon name="arrow-left" class="h-4 w-4" />
-            Kembali ke Daftar
+            Back to List
         </a>
         <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Edit Ticket</h1>
-        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">Update informasi ticket. File upload bersifat opsional (hanya jika ingin mengganti dokumen).</p>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">Update ticket information. File upload is optional (only if you want to replace documents).</p>
     </div>
 
     <!-- Form -->
     <form wire:submit="save" class="space-y-6">
         <!-- Informasi Dasar -->
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">1. Informasi Dasar</h2>
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">1. Basic Information</h2>
             
             <div class="grid gap-4 sm:grid-cols-2">
                 <!-- Division (readonly, auto-filled) -->
                 <flux:field>
-                    <flux:label>User Directorate (Divisi)</flux:label>
+                    <flux:label>User Directorate (Division)</flux:label>
                     <flux:select wire:model="division_id" disabled>
                         @foreach($this->divisions as $division)
                         <option value="{{ $division->id }}" {{ $division->id == $this->division_id ? 'selected' : '' }}>{{ $division->name }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:description>Auto-filled dari akun Anda</flux:description>
+                    <flux:description>Auto-filled from your account</flux:description>
                 </flux:field>
 
                 <!-- Department (readonly, auto-filled) -->
                 <flux:field>
-                    <flux:label>Departement</flux:label>
+                    <flux:label>Department</flux:label>
                     <flux:select wire:model="department_id" disabled>
                         <option value="">-</option>
                         @foreach($this->departments as $dept)
                         <option value="{{ $dept->id }}" {{ $dept->id == $this->department_id ? 'selected' : '' }}>{{ $dept->name }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:description>Auto-filled dari akun Anda</flux:description>
+                    <flux:description>Auto-filled from your account</flux:description>
                 </flux:field>
 
                 <!-- Financial Impact -->
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Financial Impact (Income-Pemasukan/Expenditure-Pengeluaran) *</flux:label>
+                    <flux:label>Financial Impact (Income/Expenditure) *</flux:label>
                     <flux:radio.group wire:model.live="has_financial_impact" variant="segmented" required>
                         <flux:radio value="1" label="Yes" />
                         <flux:radio value="0" label="No" />
@@ -305,10 +305,10 @@ new #[Layout('components.layouts.app')] class extends Component
                 <!-- Payment Type (conditional) -->
                 @if($has_financial_impact)
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Jenis Pembayaran *</flux:label>
+                    <flux:label>Payment Type *</flux:label>
                     <flux:radio.group wire:model.live="payment_type" variant="segmented" required>
-                        <flux:radio value="pay" label="Pay (Bayar)" />
-                        <flux:radio value="receive_payment" label="Receive Payment (Terima)" />
+                        <flux:radio value="pay" label="Pay" />
+                        <flux:radio value="receive_payment" label="Receive Payment" />
                     </flux:radio.group>
                     <flux:error name="payment_type" />
                 </flux:field>
@@ -317,10 +317,10 @@ new #[Layout('components.layouts.app')] class extends Component
                 <!-- Recurring Description (conditional on payment_type = 'pay') -->
                 @if($has_financial_impact && $payment_type === 'pay')
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Deskripsi Recurring (Opsional)</flux:label>
+                    <flux:label>Recurring Description (Optional)</flux:label>
                     <flux:input 
                         wire:model="recurring_description" 
-                        placeholder="Contoh: Setiap bulan, Per 3 bulan, dll"
+                        placeholder="Example: Monthly, Every 3 months, etc"
                     />
                     <flux:error name="recurring_description" />
                 </flux:field>
@@ -328,33 +328,33 @@ new #[Layout('components.layouts.app')] class extends Component
 
                 <!-- Usulan Judul Dokumen -->
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Usulan Judul Dokumen *</flux:label>
-                    <flux:input wire:model="proposed_document_title" placeholder="Masukkan judul dokumen yang diusulkan" required />
+                    <flux:label>Proposed Document Title *</flux:label>
+                    <flux:input wire:model="proposed_document_title" placeholder="Enter proposed document title" required />
                     <flux:error name="proposed_document_title" />
                 </flux:field>
 
                 <!-- Draft Usulan Dokumen -->
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Draft Usulan Dokumen (Opsional)</flux:label>
+                    <flux:label>Draft Document (Optional)</flux:label>
                     <input type="file" wire:model="draft_document" accept=".pdf,.doc,.docx" class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-neutral-400 dark:file:bg-blue-900/30 dark:file:text-blue-400" />
-                    <flux:description>PDF atau Word, maksimal 10MB</flux:description>
+                    <flux:description>PDF or Word, max 10MB</flux:description>
                     <flux:error name="draft_document" />
                     <div wire:loading wire:target="draft_document" class="mt-2 text-sm text-blue-600">
-                        Mengupload draft...
+                        Uploading draft...
                     </div>
                 </flux:field>
 
                 <!-- Jenis Dokumen -->
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Jenis Dokumen *</flux:label>
+                    <flux:label>Document Type *</flux:label>
                     <flux:select wire:model.live="document_type" required>
-                        <option value="">Pilih Jenis Dokumen</option>
-                        <option value="perjanjian">Perjanjian/Adendum/Amandemen</option>
-                        <option value="nda">Perjanjian Kerahasiaan (NDA)</option>
-                        <option value="surat_kuasa">Surat Kuasa</option>
-                        <option value="pendapat_hukum">Pendapat Hukum</option>
-                        <option value="surat_pernyataan">Surat Pernyataan</option>
-                        <option value="surat_lainnya">Surat Lainnya</option>
+                        <option value="">Select Document Type</option>
+                        <option value="perjanjian">Agreement/Addendum/Amendment</option>
+                        <option value="nda">Non-Disclosure Agreement (NDA)</option>
+                        <option value="surat_kuasa">Power of Attorney (Surat Kuasa)</option>
+                        <option value="pendapat_hukum">Legal Opinion (Pendapat Hukum)</option>
+                        <option value="surat_pernyataan">Statement Letter (Surat Pernyataan)</option>
+                        <option value="surat_lainnya">Other Letter (Surat Lainnya)</option>
                     </flux:select>
                     <flux:error name="document_type" />
                 </flux:field>
@@ -364,29 +364,29 @@ new #[Layout('components.layouts.app')] class extends Component
         <!-- Conditional Fields: Perjanjian/NDA -->
         @if(in_array($this->document_type, ['perjanjian', 'nda']))
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">2. Detail {{ $this->document_type === 'nda' ? 'NDA' : 'Perjanjian' }}</h2>
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">2. {{ $this->document_type === 'nda' ? 'NDA' : 'Agreement' }} Details</h2>
             
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Counterpart / Nama Pihak Lainnya *</flux:label>
-                    <flux:input wire:model="counterpart_name" placeholder="Nama pihak lain dalam perjanjian" required />
+                    <flux:label>Counterpart / Other Party Name *</flux:label>
+                    <flux:input wire:model="counterpart_name" placeholder="Name of other party" required />
                     <flux:error name="counterpart_name" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Tanggal Perkiraan Mulainya {{ $this->document_type === 'nda' ? 'NDA' : 'Perjanjian' }} *</flux:label>
+                    <flux:label>Estimated Start Date of {{ $this->document_type === 'nda' ? 'NDA' : 'Agreement' }} *</flux:label>
                     <flux:input type="date" wire:model="agreement_start_date" required />
                     <flux:error name="agreement_start_date" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Jangka Waktu {{ $this->document_type === 'nda' ? 'NDA' : 'Perjanjian' }} *</flux:label>
-                    <flux:input wire:model="agreement_duration" placeholder="Contoh: 2 tahun, 12 bulan" required />
+                    <flux:label>Duration of {{ $this->document_type === 'nda' ? 'NDA' : 'Agreement' }} *</flux:label>
+                    <flux:input wire:model="agreement_duration" placeholder="Example: 2 years, 12 months" required />
                     <flux:error name="agreement_duration" />
                 </flux:field>
 
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Pembaruan Otomatis *</flux:label>
+                    <flux:label>Auto Renewal *</flux:label>
                     <flux:radio.group wire:model.live="is_auto_renewal" variant="segmented" required>
                         <flux:radio value="1" label="Yes" />
                         <flux:radio value="0" label="No" />
@@ -396,35 +396,35 @@ new #[Layout('components.layouts.app')] class extends Component
 
                 @if($this->is_auto_renewal)
                 <flux:field>
-                    <flux:label>Periode Pembaruan Otomatis *</flux:label>
+                    <flux:label>Auto Renewal Period *</flux:label>
                     <flux:select wire:model="renewal_period" required>
-                        <option value="">Pilih Periode</option>
-                        <option value="yearly">Per Tahun</option>
-                        <option value="monthly">Per Bulan</option>
-                        <option value="weekly">Per Minggu</option>
+                        <option value="">Select Period</option>
+                        <option value="yearly">Yearly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="weekly">Weekly</option>
                     </flux:select>
                     <flux:error name="renewal_period" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Jangka Waktu Notifikasi Sebelum Pembaruan Otomatis (Hari) *</flux:label>
-                    <flux:input type="number" wire:model="renewal_notification_days" placeholder="Contoh: 30" required />
+                    <flux:label>Notification Period Before Renewal (Days) *</flux:label>
+                    <flux:input type="number" wire:model="renewal_notification_days" placeholder="Example: 30" required />
                     <flux:error name="renewal_notification_days" />
                 </flux:field>
                 @endif
 
                 @if(!$this->is_auto_renewal)
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Tanggal Berakhirnya {{ $this->document_type === 'nda' ? 'NDA' : 'Perjanjian' }} *</flux:label>
+                    <flux:label>End Date of {{ $this->document_type === 'nda' ? 'NDA' : 'Agreement' }} *</flux:label>
                     <flux:input type="date" wire:model="agreement_end_date" required />
                     <flux:error name="agreement_end_date" />
                 </flux:field>
                 @endif
 
                 <flux:field class="sm:col-span-2">
-                    <flux:label>Jangka Waktu Notifikasi Sebelum Pengakhiran (Hari)</flux:label>
-                    <flux:input type="number" wire:model="termination_notification_days" placeholder="Contoh: 60" />
-                    <flux:description>Opsional - sistem akan mengirim notifikasi sebelum tanggal berakhir</flux:description>
+                    <flux:label>Notification Period Before Termination (Days)</flux:label>
+                    <flux:input type="number" wire:model="termination_notification_days" placeholder="Example: 60" />
+                    <flux:description>Optional - system will send notification before end date</flux:description>
                     <flux:error name="termination_notification_days" />
                 </flux:field>
             </div>
@@ -434,29 +434,29 @@ new #[Layout('components.layouts.app')] class extends Component
         <!-- Conditional Fields: Surat Kuasa -->
         @if($this->document_type === 'surat_kuasa')
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">2. Detail Surat Kuasa</h2>
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">2. Power of Attorney Details</h2>
             
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
-                    <flux:label>Pemberi Kuasa *</flux:label>
-                    <flux:input wire:model="kuasa_pemberi" placeholder="Nama pemberi kuasa" required />
+                    <flux:label>Grantor (Pemberi Kuasa) *</flux:label>
+                    <flux:input wire:model="kuasa_pemberi" placeholder="Name of grantor" required />
                     <flux:error name="kuasa_pemberi" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Penerima Kuasa *</flux:label>
-                    <flux:input wire:model="kuasa_penerima" placeholder="Nama penerima kuasa" required />
+                    <flux:label>Grantee (Penerima Kuasa) *</flux:label>
+                    <flux:input wire:model="kuasa_penerima" placeholder="Name of grantee" required />
                     <flux:error name="kuasa_penerima" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Tanggal Perkiraan Mulainya Pemberian Kuasa *</flux:label>
+                    <flux:label>Estimated Start Date of Power of Attorney *</flux:label>
                     <flux:input type="date" wire:model="kuasa_start_date" required />
                     <flux:error name="kuasa_start_date" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Tanggal Berakhirnya Kuasa *</flux:label>
+                    <flux:label>Power of Attorney End Date *</flux:label>
                     <flux:input type="date" wire:model="kuasa_end_date" required />
                     <flux:error name="kuasa_end_date" />
                 </flux:field>
@@ -467,35 +467,35 @@ new #[Layout('components.layouts.app')] class extends Component
         <!-- Common Fields for All Types -->
         @if($this->document_type)
         <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
-            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">{{ in_array($this->document_type, ['perjanjian', 'nda']) || $this->document_type === 'surat_kuasa' ? '3' : '2' }}. Dokumen Pendukung</h2>
+            <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">{{ in_array($this->document_type, ['perjanjian', 'nda']) || $this->document_type === 'surat_kuasa' ? '3' : '2' }}. Supporting Documents</h2>
             
             <div class="grid gap-4">
                 <flux:field>
-                    <flux:label>Kesesuaian dengan Turn-Around-Time Legal *</flux:label>
+                    <flux:label>Legal Turn-Around-Time Compliance *</flux:label>
                     <flux:radio.group wire:model="tat_legal_compliance" variant="segmented" required>
-                        <flux:radio value="1" label="Ya" />
-                        <flux:radio value="0" label="Tidak" />
+                        <flux:radio value="1" label="Yes" />
+                        <flux:radio value="0" label="No" />
                     </flux:radio.group>
                     <flux:error name="tat_legal_compliance" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Dokumen Wajib *</flux:label>
+                    <flux:label>Mandatory Documents *</flux:label>
                     <input type="file" wire:model="mandatory_documents" multiple class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-purple-700 hover:file:bg-purple-100 dark:text-neutral-400 dark:file:bg-purple-900/30 dark:file:text-purple-400" />
-                    <flux:description>Akta Pendirian, Akta Susunan Direktur Komisaris, Akta Perubahan Terakhir, KTP, dll. (Maksimal 10MB per file, bisa upload multiple)</flux:description>
+                    <flux:description>Deed of Incorporation, Board of Directors Composition, Last Amendment, ID Card, etc. (Max 10MB per file, multiple uploads allowed)</flux:description>
                     <flux:error name="mandatory_documents" />
                     <div wire:loading wire:target="mandatory_documents" class="mt-2 text-sm text-purple-600">
-                        Mengupload dokumen wajib...
+                        Uploading mandatory documents...
                     </div>
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>Legal Request Permit/Approval dari Head atau Leader Terkait *</flux:label>
+                    <flux:label>Legal Request Permit/Approval from related Head or Leader *</flux:label>
                     <input type="file" wire:model="approval_document" accept=".pdf,.jpg,.jpeg,.png" class="block w-full text-sm text-neutral-500 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-orange-700 hover:file:bg-orange-100 dark:text-neutral-400 dark:file:bg-orange-900/30 dark:file:text-orange-400" />
-                    <flux:description>Screenshot email/korespondensi approval (PDF atau gambar, maksimal 5MB)</flux:description>
+                    <flux:description>Screenshot of email/correspondence approval (PDF or image, max 5MB)</flux:description>
                     <flux:error name="approval_document" />
                     <div wire:loading wire:target="approval_document" class="mt-2 text-sm text-orange-600">
-                        Mengupload approval document...
+                        Uploading approval document...
                     </div>
                 </flux:field>
             </div>
@@ -549,7 +549,7 @@ new #[Layout('components.layouts.app')] class extends Component
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3">
             <a href="{{ route('tickets.index') }}" wire:navigate>
-                <flux:button variant="ghost">Batal</flux:button>
+                <flux:button variant="ghost">Cancel</flux:button>
             </a>
             <flux:button type="submit" variant="primary">
                 Update Ticket
