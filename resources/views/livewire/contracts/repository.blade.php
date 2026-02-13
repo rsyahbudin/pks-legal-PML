@@ -71,7 +71,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     $q->whereHas('status', fn ($sq) => $sq->where('LOV_VALUE', $this->statusFilter));
                 }
             })
-            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
+            ->when($this->typeFilter, fn ($q) => $q->where('CONTR_DOC_TYPE_ID', $this->typeFilter))
             ->when($this->divisionFilter, fn ($q) => $q->where('CONTR_DIV_ID', $this->divisionFilter));
 
         // Role-based filtering (Users see only their department contracts, Legal/Admin sees all)
@@ -123,6 +123,14 @@ new #[Layout('components.layouts.app')] class extends Component
     {
         return \App\Models\ContractStatus::active()->orderBy('LOV_SEQ_NO')->get();
     }
+
+    public function getDocumentTypesProperty()
+    {
+        return \App\Models\DocumentType::active()
+            ->where('requires_contract', 1)
+            ->orderBy('LGL_ROW_ID')
+            ->get();
+    }
 }; ?>
 
 <div class="space-y-6">
@@ -157,9 +165,9 @@ new #[Layout('components.layouts.app')] class extends Component
         <div class="w-full sm:w-48">
             <flux:select wire:model.live="typeFilter" placeholder="Document Type">
                 <flux:select.option value="">All Types</flux:select.option>
-                <flux:select.option value="perjanjian">Agreement</flux:select.option>
-                <flux:select.option value="nda">NDA</flux:select.option>
-                <flux:select.option value="surat_kuasa">Power of Attorney</flux:select.option>
+                @foreach($this->documentTypes as $type)
+                    <flux:select.option value="{{ $type->LGL_ROW_ID }}">{{ $type->REF_DOC_TYPE_NAME }}</flux:select.option>
+                @endforeach
             </flux:select>
         </div>
         <div class="w-full sm:w-48">

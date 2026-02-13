@@ -60,45 +60,6 @@ class Contract extends Model
     }
 
     /**
-     * Generate unique contract number: CTR-{DIV_CODE}-{YYMM}{9999}
-     * Resets sequence yearly per division
-     */
-    public static function generateContractNumber(int $divisionId): string
-    {
-        $division = \App\Models\Division::find($divisionId);
-
-        if (! $division) {
-            throw new \Exception("Division not found for ID: {$divisionId}");
-        }
-
-        // Truncate division code to max 3 characters
-        // Division table LGL_DIVISION. Check Division model later for column name. Assuming 'code' for now.
-        // Or likely DIV_CODE if renamed. I will check Division model next. For now using attribute accessor if exists.
-        $divCode = strtoupper(substr($division->code ?? $division->DIV_CODE ?? 'UNK', 0, 3));
-
-        // Format: CTR-DIV-YYMM (e.g., CTR-LEG-2602)
-        $year = now()->format('y');
-        $month = now()->format('m');
-        $prefix = "CTR-{$divCode}-{$year}{$month}";
-
-        // Find last contract for this division and year
-        // Use CONTR_NO
-        $lastContract = static::where('CONTR_NO', 'like', "{$prefix}%")
-            ->orderBy('CONTR_NO', 'desc')
-            ->first();
-
-        if ($lastContract) {
-            $lastNumber = (int) substr($lastContract->CONTR_NO, -4);
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
-        }
-
-        // Final format: CTR-DIV-YYMM9999 (e.g., CTR-LEG-26020001)
-        return $prefix.$newNumber;
-    }
-
-    /**
      * Get the ticket that created this contract.
      */
     public function ticket(): BelongsTo
@@ -361,30 +322,5 @@ class Contract extends Model
     public function scopeTerminated(Builder $query): Builder
     {
         return $query->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'terminated'));
-    }
-
-    /**
-     * Terminate contract before end date.
-     */
-    public function terminate(string $reason): void
-    {
-        $this->update([
-            'CONTR_STS_ID' => ContractStatus::getIdByCode('terminated'),
-            'CONTR_TERMINATE_DT' => now(),
-            'CONTR_TERMINATE_REASON' => $reason,
-        ]);
-
-        // Auto-close associated ticket
-        if ($this->ticket && $this->ticket->status?->LOV_VALUE !== 'closed') {
-            $this->ticket->update(['TCKT_STS_ID' => TicketStatus::getIdByCode('closed')]);
-            $this->ticket->logActivity('Ticket ditutup otomatis karena contract terminated');
-        }
-
-        $this->activityLogs()->create([
-            'LOG_CAUSER_ID' => auth()->id(),
-            'LOG_EVENT' => 'contract_terminated',
-            'LOG_NAME' => "Contract terminated: {$reason}",
-            'LOG_DESC' => "Contract {$this->CONTR_NO} terminated at {$this->CONTR_TERMINATE_DT->toDateTimeString()}",
-        ]);
     }
 }

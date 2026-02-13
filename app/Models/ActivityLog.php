@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Support\Facades\Auth;
 
 class ActivityLog extends Model
 {
@@ -75,55 +74,6 @@ class ActivityLog extends Model
     public function loggable(): MorphTo
     {
         return $this->morphTo(null, 'LOG_SUBJECT_TYPE', 'LOG_SUBJECT_ID');
-    }
-
-    /**
-     * Log a create action.
-     */
-    public static function logCreated(Model $model, ?int $userId = null): self
-    {
-        return static::create([
-            'LOG_CAUSER_ID' => $userId ?? Auth::id(),
-            'LOG_CAUSER_TYPE' => User::class,
-            'LOG_EVENT' => 'created',
-            'LOG_SUBJECT_TYPE' => get_class($model),
-            'LOG_SUBJECT_ID' => $model->getKey(),
-            'LOG_NEW_VALUES' => $model->toArray(),
-            'LOG_NAME' => 'default',
-        ]);
-    }
-
-    /**
-     * Log an update action.
-     */
-    public static function logUpdated(Model $model, array $oldValues, ?int $userId = null): self
-    {
-        return static::create([
-            'LOG_CAUSER_ID' => $userId ?? Auth::id(),
-            'LOG_CAUSER_TYPE' => User::class,
-            'LOG_EVENT' => 'updated',
-            'LOG_SUBJECT_TYPE' => get_class($model),
-            'LOG_SUBJECT_ID' => $model->getKey(),
-            'LOG_OLD_VALUES' => $oldValues,
-            'LOG_NEW_VALUES' => $model->toArray(),
-            'LOG_NAME' => 'default',
-        ]);
-    }
-
-    /**
-     * Log a delete action.
-     */
-    public static function logDeleted(Model $model, ?int $userId = null): self
-    {
-        return static::create([
-            'LOG_CAUSER_ID' => $userId ?? Auth::id(),
-            'LOG_CAUSER_TYPE' => User::class,
-            'LOG_EVENT' => 'deleted',
-            'LOG_SUBJECT_TYPE' => get_class($model),
-            'LOG_SUBJECT_ID' => $model->getKey(),
-            'LOG_OLD_VALUES' => $model->toArray(),
-            'LOG_NAME' => 'default',
-        ]);
     }
 
     /**

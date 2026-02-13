@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ActivityLog;
 use App\Models\Contract;
+use App\Services\ActivityLogService;
 use Illuminate\Console\Command;
 
 class ExpireContracts extends Command
@@ -25,15 +25,14 @@ class ExpireContracts extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(ActivityLogService $activityLogService): int
     {
         $this->info('Checking for contracts to expire...');
 
-        // Find active contracts past their end date (excluding auto-renewal)
-        $expiredContracts = Contract::whereHas('status', fn ($q) => $q->where('code', 'active'))
-            ->where('is_auto_renewal', false)
-            ->whereNotNull('end_date')
-            ->whereDate('end_date', '<', now())
+        $expiredContracts = Contract::whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'active'))
+            ->where('CONTR_IS_AUTO_RENEW', false)
+            ->whereNotNull('CONTR_END_DT')
+            ->whereDate('CONTR_END_DT', '<', now())
             ->get();
 
         if ($expiredContracts->isEmpty()) {
@@ -46,14 +45,12 @@ class ExpireContracts extends Command
         foreach ($expiredContracts as $contract) {
             $oldValues = $contract->toArray();
 
-            // Update status to expired
-            $contract->update(['status_id' => \App\Models\ContractStatus::getIdByCode('expired')]);
+            $contract->update(['CONTR_STS_ID' => \App\Models\ContractStatus::getIdByCode('expired')]);
 
-            // Log the activity
-            ActivityLog::logUpdated($contract, $oldValues, null); // null = system user
+            $activityLogService->logUpdated($contract, $oldValues);
 
             $count++;
-            $this->line("Expired: {$contract->contract_number}");
+            $this->line("Expired: {$contract->CONTR_NO}");
         }
 
         $this->info("Successfully expired {$count} contract(s).");

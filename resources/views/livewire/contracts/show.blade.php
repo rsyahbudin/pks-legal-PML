@@ -2,7 +2,9 @@
 
 use App\Models\Contract;
 use App\Models\Ticket;
+use App\Services\ContractService;
 use App\Services\NotificationService;
+use App\Services\TicketService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -31,18 +33,16 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function mount(int $contract): void
     {
-        // Note: route parameter is called 'contract' for backward compatibility
-        // but we're actually loading a ticket
         $this->ticket = Ticket::with([
             'division',
             'department',
             'creator',
             'reviewer',
             'contract',
-            'contract.status', // Ensure contract status is loaded
+            'contract.status',
             'activityLogs.user',
-            'status', // Load ticket status
-            'documentType', // Load document type
+            'status',
+            'documentType',
         ])->findOrFail($contract);
     }
 
@@ -57,22 +57,22 @@ new #[Layout('components.layouts.app')] class extends Component
             return;
         }
 
-        if (! $this->ticket->canBeReviewed()) {
+        $ticketService = app(TicketService::class);
+
+        if (! $ticketService->canBeReviewed($this->ticket)) {
             $this->dispatch('notify', type: 'error', message: 'Ticket cannot be processed.');
 
             return;
         }
 
         $oldStatus = $this->ticket->status?->LOV_VALUE;
-        $this->ticket->moveToOnProcess($user);
+        $ticketService->moveToOnProcess($this->ticket, $user);
 
-        // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'on_process');
 
         $this->dispatch('notify', type: 'success', message: 'Ticket successfully moved to On Process status.');
 
-        // Refresh data
         $this->mount($this->ticket->LGL_ROW_ID);
     }
 
@@ -97,22 +97,19 @@ new #[Layout('components.layouts.app')] class extends Component
         ]);
 
         $oldStatus = $this->ticket->status?->LOV_VALUE;
-        $this->ticket->reject($this->rejectionReason, $user);
+        app(TicketService::class)->reject($this->ticket, $this->rejectionReason, $user);
 
-        // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'rejected');
 
         $this->showRejectModal = false;
         $this->dispatch('notify', type: 'success', message: 'Ticket successfully rejected.');
 
-        // Refresh data
         $this->mount($this->ticket->LGL_ROW_ID);
     }
 
     public function openPreDoneModal(): void
     {
-        // Pre-fill with existing values from ticket (if already answered)
         $this->preDoneQ1 = (bool) $this->ticket->TCKT_POST_QUEST_1;
         $this->preDoneQ2 = (bool) $this->ticket->TCKT_POST_QUEST_2;
         $this->preDoneQ3 = (bool) $this->ticket->TCKT_POST_QUEST_3;
@@ -138,7 +135,6 @@ new #[Layout('components.layouts.app')] class extends Component
             return;
         }
 
-        // Untuk perjanjian, validasi pre-done answers
         $preDoneAnswers = null;
         $remarks = null;
         if ($this->ticket->documentType?->code === 'perjanjian') {
@@ -158,10 +154,10 @@ new #[Layout('components.layouts.app')] class extends Component
             $remarks = $this->preDoneRemarks;
         }
 
+        $ticketService = app(TicketService::class);
         $oldStatus = $this->ticket->status?->LOV_VALUE;
-        $this->ticket->moveToDone($preDoneAnswers, $remarks);
+        $ticketService->moveToDone($this->ticket, $preDoneAnswers, $remarks);
 
-        // Refresh ticket to get updated status from database
         $this->ticket->refresh();
 
         // Create contract from ticket
@@ -170,17 +166,15 @@ new #[Layout('components.layouts.app')] class extends Component
             $this->ticket->load('contract');
         }
 
-        // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'done');
 
-        // Refresh data
         $this->ticket = $this->ticket->fresh([
             'division',
             'department',
             'creator',
             'reviewer',
-            'contract.status', // Ensure deep load of contract status
+            'contract.status',
             'activityLogs.user',
         ]);
 
@@ -188,48 +182,32 @@ new #[Layout('components.layouts.app')] class extends Component
         $this->mount($this->ticket->LGL_ROW_ID);
     }
 
-    public function generateContract()
+    public function generateContract(): void
     {
-        Log::info('=== GENERATE CONTRACT: START ===', [
-            'ticket_id' => $this->ticket->LGL_ROW_ID,
-            'document_type' => $this->ticket->documentType?->code,
-            'status' => $this->ticket->status?->LOV_VALUE,
-        ]);
-
-        // Only allow contract creation for specific document types
         $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
 
         if (! in_array($this->ticket->documentType?->code, $contractableTypes)) {
-            Log::warning('Document type not contractable', ['type' => $this->ticket->documentType?->code]);
             $this->dispatch('notify', type: 'error', message: 'This document type does not require a contract.');
 
             return;
         }
 
         if ($this->ticket->status?->LOV_VALUE !== 'done') {
-            Log::warning('Ticket status not done', ['status' => $this->ticket->status?->LOV_VALUE]);
             $this->dispatch('notify', type: 'error', message: 'Ticket must be Done to create a contract.');
 
             return;
         }
 
         if ($this->ticket->contract) {
-            Log::warning('Contract already exists');
             $this->dispatch('notify', type: 'error', message: 'Contract already created for this ticket.');
 
             return;
         }
 
         try {
-            Log::info('Calling ticket->createContract()');
-            $contract = $this->ticket->createContract();
-            Log::info('Contract created successfully', [
-                'contract_id' => $contract->LGL_ROW_ID,
-                'contract_number' => $contract->CONTR_NO,
-                'contract_status' => $contract->status?->LOV_VALUE,
-            ]);
+            $contractService = app(ContractService::class);
+            $contract = $contractService->createFromTicket($this->ticket);
 
-            // Auto-close ticket if contract is created with expired status
             if ($contract->status?->LOV_VALUE === 'expired') {
                 $this->ticket->update(['TCKT_STS_ID' => \App\Models\TicketStatus::getIdByCode('closed')]);
                 $this->ticket->logActivity('Ticket automatically closed because contract is expired');
@@ -282,16 +260,14 @@ new #[Layout('components.layouts.app')] class extends Component
         ]);
 
         $oldStatus = $this->ticket->contract->status?->LOV_VALUE;
-        $this->ticket->contract->terminate($this->terminationReason);
+        app(ContractService::class)->terminate($this->ticket->contract, $this->terminationReason);
 
-        // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyContractStatusChanged($this->ticket->contract, $oldStatus, 'terminated');
 
         $this->showTerminateModal = false;
         $this->dispatch('notify', type: 'success', message: 'Contract successfully terminated and ticket closed.');
 
-        // Refresh data
         $this->mount($this->ticket->LGL_ROW_ID);
     }
 
@@ -313,15 +289,13 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         $oldStatus = $this->ticket->status?->LOV_VALUE;
-        $this->ticket->moveToClosedDirectly();
+        app(TicketService::class)->moveToClosedDirectly($this->ticket);
 
-        // Send notification
         $notificationService = app(NotificationService::class);
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'closed');
 
         $this->dispatch('notify', type: 'success', message: 'Ticket successfully closed.');
 
-        // Refresh data
         $this->mount($this->ticket->LGL_ROW_ID);
     }
 }; ?>
