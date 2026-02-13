@@ -11,21 +11,37 @@ class DocumentType extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_DOC_TYPE_MASTER';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'REF_DOC_TYPE_CREATED_DT';
+
+    const UPDATED_AT = 'REF_DOC_TYPE_UPDATED_DT';
+
     protected $fillable = [
-        'code',
-        'name',
-        'name_en',
-        'description',
-        'requires_contract',
-        'is_active',
+        'code', // Not renamed
+        'REF_DOC_TYPE_NAME',
+        // 'name_en', dropped
+        'description', // Not renamed
+        'requires_contract', // Not renamed
+        'REF_DOC_TYPE_IS_ACTIVE',
     ];
 
     protected function casts(): array
     {
         return [
             'requires_contract' => 'boolean',
-            'is_active' => 'boolean',
+            'REF_DOC_TYPE_IS_ACTIVE' => 'boolean',
         ];
+    }
+
+    /**
+     * Get the document type name.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->REF_DOC_TYPE_NAME;
     }
 
     /**
@@ -34,7 +50,7 @@ class DocumentType extends Model
     public static function getIdByCode(string $code): ?int
     {
         return cache()->remember("document_type_{$code}", 3600, function () use ($code) {
-            return static::where('code', $code)->value('id');
+            return static::where('code', $code)->value('LGL_ROW_ID');
         });
     }
 
@@ -43,7 +59,7 @@ class DocumentType extends Model
      */
     public function tickets(): HasMany
     {
-        return $this->hasMany(Ticket::class);
+        return $this->hasMany(Ticket::class, 'TCKT_DOC_TYPE_ID');
     }
 
     /**
@@ -51,7 +67,7 @@ class DocumentType extends Model
      */
     public function contracts(): HasMany
     {
-        return $this->hasMany(Contract::class);
+        return $this->hasMany(Contract::class, 'CONTR_DOC_TYPE_ID');
     }
 
     /**
@@ -59,7 +75,7 @@ class DocumentType extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('is_active', true)->orderBy('name');
+        return $query->where('REF_DOC_TYPE_IS_ACTIVE', true)->orderBy('REF_DOC_TYPE_NAME');
     }
 
     /**

@@ -37,16 +37,16 @@ class SendContractReminders extends Command
         $includedTypes = ['perjanjian', 'adendum', 'amandemen'];
 
         // Get Document Type IDs for included types
-        $documentTypeIds = \App\Models\DocumentType::whereIn('code', $includedTypes)->pluck('id')->toArray();
+        $documentTypeIds = \App\Models\DocumentType::whereIn('LOV_VALUE', $includedTypes)->pluck('LGL_ROW_ID')->toArray();
         $activeStatusId = \App\Models\ContractStatus::getIdByCode('active');
 
         // Get all active contracts with these document types
         $maxDays = max($reminderDays);
         $contracts = Contract::with(['division', 'pic', 'ticket', 'ticket.creator'])
-            ->where('status_id', $activeStatusId) // Only active contracts
-            ->whereIn('document_type_id', $documentTypeIds)
-            ->whereDate('end_date', '>=', now()) // Not expired
-            ->whereDate('end_date', '<=', now()->addDays($maxDays)) // Within max reminder range
+            ->where('CONTR_STS_ID', $activeStatusId) // Only active contracts
+            ->whereIn('CONTR_DOC_TYPE_ID', $documentTypeIds)
+            ->whereDate('CONTR_END_DT', '>=', now()) // Not expired
+            ->whereDate('CONTR_END_DT', '<=', now()->addDays($maxDays)) // Within max reminder range
             ->get();
 
         // Filter to only contracts with exact match on reminder days
@@ -79,7 +79,7 @@ class SendContractReminders extends Command
 
             foreach ($recipients as $recipient) {
                 // Check if we already sent a reminder today for THIS contract to THIS user
-                if ($recipient instanceof User && ReminderLog::wasSentToday($contract->id, $recipient->id, 'email')) {
+                if ($recipient instanceof User && ReminderLog::wasSentToday($contract->LGL_ROW_ID, $recipient->LGL_ROW_ID, 'email')) {
                     continue;
                 }
 
@@ -92,7 +92,7 @@ class SendContractReminders extends Command
 
                     // Get legal department email and CC emails
                     $legalEmail = Department::getLegalEmail();
-                    $legalDept = Department::where('code', 'LEGAL')->orWhere('name', 'LIKE', '%Legal%')->first();
+                    $legalDept = Department::where('REF_DEPT_ID', 'LEGAL')->orWhere('REF_DEPT_NAME', 'LIKE', '%Legal%')->first();
 
                     if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
                         $cc[] = $legalEmail;
@@ -144,12 +144,12 @@ class SendContractReminders extends Command
                     $adminUsers = User::getAdminAndLegalUsers();
                     foreach ($adminUsers as $admin) {
                         Notification::create([
-                            'user_id' => $admin->id,
+                            'user_id' => $admin->LGL_ROW_ID,
                             'title' => 'Reminder Email Sent',
-                            'message' => "Auto reminder sent for contract {$contract->contract_number} to {$recipient->email}",
+                            'message' => "Auto reminder sent for contract {$contract->CONTR_NO} to {$recipient->email}",
                             'type' => 'info',
                             'data' => [
-                                'contract_id' => $contract->id,
+                                'contract_id' => $contract->LGL_ROW_ID,
                                 'recipient_email' => $recipient->email,
                             ],
                         ]);
@@ -157,17 +157,18 @@ class SendContractReminders extends Command
 
                     // Log activity
                     ActivityLog::create([
-                        'loggable_type' => Contract::class,
-                        'loggable_id' => $contract->id,
-                        'user_id' => null, // System action
-                        'action' => "Email reminder dikirim ke {$recipient->email}",
-                        'description' => "Automatic reminder email sent successfully ({$daysRemaining} days remaining before expiration)",
+                        'LOG_SUBJECT_TYPE' => Contract::class,
+                        'LOG_SUBJECT_ID' => $contract->LGL_ROW_ID,
+                        'LOG_CAUSER_ID' => null, // System action
+                        'LOG_EVENT' => 'reminder_sent',
+                        'LOG_NAME' => "Email reminder dikirim ke {$recipient->email}",
+                        'LOG_DESC' => "Automatic reminder email sent successfully ({$daysRemaining} days remaining before expiration)",
                     ]);
 
                     $sentCount++;
 
                     $ccInfo = ! empty($ccEmails) ? ' (CC: '.implode(', ', $ccEmails).')' : '';
-                    $this->info("Sent reminder to {$recipient->email}{$ccInfo} for contract {$contract->contract_number}");
+                    $this->info("Sent reminder to {$recipient->email}{$ccInfo} for contract {$contract->CONTR_NO}");
                 } catch (\Exception $e) {
                     $this->error("Failed to send to {$recipient->email}: {$e->getMessage()}");
 
@@ -175,12 +176,12 @@ class SendContractReminders extends Command
                     $adminUsers = User::getAdminAndLegalUsers();
                     foreach ($adminUsers as $admin) {
                         Notification::create([
-                            'user_id' => $admin->id,
+                            'user_id' => $admin->LGL_ROW_ID,
                             'title' => 'Reminder Email Failed',
-                            'message' => "Failed to send auto reminder for contract {$contract->contract_number} to {$recipient->email}",
+                            'message' => "Failed to send auto reminder for contract {$contract->CONTR_NO} to {$recipient->email}",
                             'type' => 'critical',
                             'data' => [
-                                'contract_id' => $contract->id,
+                                'contract_id' => $contract->LGL_ROW_ID,
                                 'recipient_email' => $recipient->email,
                                 'error' => $e->getMessage(),
                             ],
@@ -189,11 +190,12 @@ class SendContractReminders extends Command
 
                     // Log failure activity
                     ActivityLog::create([
-                        'loggable_type' => Contract::class,
-                        'loggable_id' => $contract->id,
-                        'user_id' => null,
-                        'action' => "Failed to send reminder email to {$recipient->email}",
-                        'description' => "Reminder email failed to send: {$e->getMessage()}",
+                        'LOG_SUBJECT_TYPE' => Contract::class,
+                        'LOG_SUBJECT_ID' => $contract->LGL_ROW_ID,
+                        'LOG_CAUSER_ID' => null,
+                        'LOG_EVENT' => 'reminder_failed',
+                        'LOG_NAME' => "Failed to send reminder email to {$recipient->email}",
+                        'LOG_DESC' => "Reminder email failed to send: {$e->getMessage()}",
                     ]);
                 }
             }

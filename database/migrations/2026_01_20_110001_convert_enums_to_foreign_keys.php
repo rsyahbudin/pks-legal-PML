@@ -37,13 +37,41 @@ return new class extends Migration
         $this->migrateReminderTypes();
 
         // Drop old ENUM columns
+        try {
+            Schema::table('tickets', function (Blueprint $table) {
+                $table->dropIndex(['status']);
+            });
+        } catch (\Exception $e) {
+        }
+
         Schema::table('tickets', function (Blueprint $table) {
             $table->dropColumn('status');
         });
 
+        try {
+            Schema::table('contracts', function (Blueprint $table) {
+                $table->dropIndex(['status']);
+            });
+        } catch (\Exception $e) {
+        }
+
+        try {
+            Schema::table('contracts', function (Blueprint $table) {
+                $table->dropIndex(['financial_impact']);
+            });
+        } catch (\Exception $e) {
+        }
+
         Schema::table('contracts', function (Blueprint $table) {
             $table->dropColumn(['status', 'financial_impact']);
         });
+
+        try {
+            Schema::table('reminder_logs', function (Blueprint $table) {
+                $table->dropIndex(['type']);
+            });
+        } catch (\Exception $e) {
+        }
 
         Schema::table('reminder_logs', function (Blueprint $table) {
             $table->dropColumn('type');

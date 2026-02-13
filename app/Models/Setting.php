@@ -10,11 +10,19 @@ class Setting extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_SYS_CONFIG';
+
+    protected $primaryKey = 'CONFIG_ID'; // Migration renamed 'id' to 'CONFIG_ID'
+
+    const CREATED_AT = 'REF_CONFIG_CREATED_DT';
+
+    const UPDATED_AT = 'REF_CONFIG_UPDATED_DT';
+
     protected $fillable = [
-        'key',
-        'value',
-        'type',
-        'description',
+        'CONFIG_KEY',
+        'CONFIG_VALUE',
+        'type', // Not renamed in migration check
+        'description', // Not renamed in migration check
     ];
 
     /**
@@ -23,14 +31,14 @@ class Setting extends Model
     public static function get(string $key, mixed $default = null): mixed
     {
         $setting = Cache::remember("setting.{$key}", 3600, function () use ($key) {
-            return static::where('key', $key)->first();
+            return static::where('CONFIG_KEY', $key)->first();
         });
 
         if (! $setting) {
             return $default;
         }
 
-        return static::castValue($setting->value, $setting->type);
+        return static::castValue($setting->CONFIG_VALUE, $setting->type);
     }
 
     /**
@@ -39,9 +47,9 @@ class Setting extends Model
     public static function set(string $key, mixed $value, ?string $type = null, ?string $description = null): self
     {
         $setting = static::updateOrCreate(
-            ['key' => $key],
+            ['CONFIG_KEY' => $key],
             [
-                'value' => is_array($value) || is_object($value) ? json_encode($value) : (string) $value,
+                'CONFIG_VALUE' => is_array($value) || is_object($value) ? json_encode($value) : (string) $value,
                 'type' => $type ?? static::guessType($value),
                 'description' => $description,
             ]
@@ -55,7 +63,7 @@ class Setting extends Model
     /**
      * Cast value based on type.
      */
-    protected static function castValue(string $value, string $type): mixed
+    protected static function castValue(string $value, ?string $type): mixed
     {
         return match ($type) {
             'integer', 'int' => (int) $value,
@@ -98,7 +106,7 @@ class Setting extends Model
     public static function allAsArray(): array
     {
         return static::all()->mapWithKeys(function ($setting) {
-            return [$setting->key => static::castValue($setting->value, $setting->type)];
+            return [$setting->CONFIG_KEY => static::castValue($setting->CONFIG_VALUE, $setting->type)];
         })->toArray();
     }
 }

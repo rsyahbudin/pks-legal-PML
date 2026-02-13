@@ -37,23 +37,23 @@ class ContractsExport implements FromCollection, WithColumnWidths, WithHeadings,
                 } elseif ($this->statusFilter === 'expired') {
                     $q->expired();
                 } else {
-                    $q->whereHas('status', fn ($sq) => $sq->where('code', $this->statusFilter));
+                    $q->whereHas('status', fn ($sq) => $sq->where('LOV_VALUE', $this->statusFilter));
                 }
             })
             ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
-            ->when($this->divisionId, fn ($q) => $q->where('division_id', $this->divisionId))
-            ->orderBy('created_at', 'desc');
+            ->when($this->divisionId, fn ($q) => $q->where('CONTR_DIV_ID', $this->divisionId))
+            ->orderBy('CONTR_CREATED_DT', 'desc');
 
         return $query->get()->map(function ($contract) {
             return [
-                'Contract Number' => $contract->contract_number ?? '-',
-                'Counterpart' => $contract->ticket?->counterpart_name ?? '-',
-                'Division' => $contract->division?->name ?? '-',
-                'Document Type' => $contract->documentType?->name ?? '-',
-                'Title' => $contract->agreement_name ?? $contract->proposed_document_title ?? '-',
-                'Start Date' => $contract->start_date?->format('d/m/Y') ?? '-',
-                'End Date' => $contract->end_date?->format('d/m/Y') ?? '-',
-                'Status' => $contract->status?->name ?? '-',
+                'Contract Number' => $contract->CONTR_NO ?? '-',
+                'Counterpart' => $contract->ticket?->TCKT_COUNTERPART_NAME ?? '-',
+                'Division' => $contract->division?->REF_DIV_NAME ?? '-',
+                'Document Type' => $contract->documentType?->REF_DOC_TYPE_NAME ?? '-',
+                'Title' => $contract->CONTR_AGREE_NAME ?? $contract->CONTR_PROP_DOC_TITLE ?? '-',
+                'Start Date' => $contract->CONTR_START_DT?->format('d/m/Y') ?? '-',
+                'End Date' => $contract->CONTR_END_DT?->format('d/m/Y') ?? '-',
+                'Status' => $contract->status?->LOV_DISPLAY_NAME ?? '-',
             ];
         });
     }

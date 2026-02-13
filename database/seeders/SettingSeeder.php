@@ -11,19 +11,19 @@ class SettingSeeder extends Seeder
     {
         $settings = [
             // Application settings
-            ['key' => 'app_name', 'value' => 'PKS Tracking System', 'type' => 'string'],
-            ['key' => 'company_name', 'value' => 'PFI Mega Life', 'type' => 'string'],
+            ['CONFIG_KEY' => 'app_name', 'CONFIG_VALUE' => 'PKS Tracking System', 'type' => 'string'],
+            ['CONFIG_KEY' => 'company_name', 'CONFIG_VALUE' => 'PFI Mega Life', 'type' => 'string'],
 
             // Email reminder settings
-            ['key' => 'reminder_email_enabled', 'value' => 'true', 'type' => 'boolean'],
-            ['key' => 'legal_team_email', 'value' => 'muhammad.syahbudin@pfimegalife.co.id', 'type' => 'string'],
-            ['key' => 'reminder_send_time', 'value' => '08:00', 'type' => 'string'],
-            ['key' => 'reminder_days', 'value' => json_encode([60, 30, 7]), 'type' => 'string'],
+            ['CONFIG_KEY' => 'reminder_email_enabled', 'CONFIG_VALUE' => 'true', 'type' => 'boolean'],
+            ['CONFIG_KEY' => 'legal_team_email', 'CONFIG_VALUE' => 'muhammad.syahbudin@pfimegalife.co.id', 'type' => 'string'],
+            ['CONFIG_KEY' => 'reminder_send_time', 'CONFIG_VALUE' => '08:00', 'type' => 'string'],
+            ['CONFIG_KEY' => 'reminder_days', 'CONFIG_VALUE' => json_encode([60, 30, 7]), 'type' => 'string'],
         ];
 
         foreach ($settings as $setting) {
             Setting::updateOrCreate(
-                ['key' => $setting['key']],
+                ['CONFIG_KEY' => $setting['CONFIG_KEY']],
                 $setting
             );
         }

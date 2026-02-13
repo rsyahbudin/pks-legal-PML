@@ -1,22 +1,32 @@
 <?php
 
-use App\Models\Ticket;
-use Illuminate\Support\Facades\Log;
 use App\Models\Contract;
+use App\Models\Ticket;
 use App\Services\NotificationService;
-use Livewire\Volt\Component;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
+use Livewire\Volt\Component;
 
-new #[Layout('components.layouts.app')] class extends Component {
+new #[Layout('components.layouts.app')] class extends Component
+{
     public Ticket $ticket;
+
     public bool $showRejectModal = false;
+
     public bool $showTerminateModal = false;
+
     public bool $showPreDoneModal = false;
+
     public string $rejectionReason = '';
+
     public string $terminationReason = '';
+
     public bool $preDoneQ1 = false;
+
     public bool $preDoneQ2 = false;
+
     public bool $preDoneQ3 = false;
+
     public string $preDoneRemarks = '';
 
     public function mount(int $contract): void
@@ -24,9 +34,9 @@ new #[Layout('components.layouts.app')] class extends Component {
         // Note: route parameter is called 'contract' for backward compatibility
         // but we're actually loading a ticket
         $this->ticket = Ticket::with([
-            'division', 
-            'department', 
-            'creator', 
+            'division',
+            'department',
+            'creator',
             'reviewer',
             'contract',
             'contract.status', // Ensure contract status is loaded
@@ -40,18 +50,20 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        
-        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
             $this->dispatch('notify', type: 'error', message: 'Only the legal team can process tickets.');
+
             return;
         }
 
-        if (!$this->ticket->canBeReviewed()) {
+        if (! $this->ticket->canBeReviewed()) {
             $this->dispatch('notify', type: 'error', message: 'Ticket cannot be processed.');
+
             return;
         }
 
-        $oldStatus = $this->ticket->status?->code;
+        $oldStatus = $this->ticket->status?->LOV_VALUE;
         $this->ticket->moveToOnProcess($user);
 
         // Send notification
@@ -61,7 +73,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->dispatch('notify', type: 'success', message: 'Ticket successfully moved to On Process status.');
 
         // Refresh data
-        $this->mount($this->ticket->id);
+        $this->mount($this->ticket->LGL_ROW_ID);
     }
 
     public function openRejectModal(): void
@@ -73,9 +85,10 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        
-        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
             $this->dispatch('notify', type: 'error', message: 'Only the legal team can reject tickets.');
+
             return;
         }
 
@@ -83,7 +96,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'rejectionReason' => ['required', 'string', 'min:10'],
         ]);
 
-        $oldStatus = $this->ticket->status?->code;
+        $oldStatus = $this->ticket->status?->LOV_VALUE;
         $this->ticket->reject($this->rejectionReason, $user);
 
         // Send notification
@@ -94,7 +107,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->dispatch('notify', type: 'success', message: 'Ticket successfully rejected.');
 
         // Refresh data
-        $this->mount($this->ticket->id);
+        $this->mount($this->ticket->LGL_ROW_ID);
     }
 
     public function openPreDoneModal(): void
@@ -104,7 +117,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->preDoneQ2 = false;
         $this->preDoneQ3 = false;
         $this->preDoneRemarks = '';
-        
+
         $this->showPreDoneModal = true;
     }
 
@@ -112,14 +125,16 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        
-        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
             $this->dispatch('notify', type: 'error', message: 'Only the legal team can complete tickets.');
+
             return;
         }
 
-        if ($this->ticket->status?->code !== 'on_process') {
+        if ($this->ticket->status?->LOV_VALUE !== 'on_process') {
             $this->dispatch('notify', type: 'error', message: 'Only tickets with On Process status can be completed.');
+
             return;
         }
 
@@ -143,14 +158,14 @@ new #[Layout('components.layouts.app')] class extends Component {
             $remarks = $this->preDoneRemarks;
         }
 
-        $oldStatus = $this->ticket->status?->code;
+        $oldStatus = $this->ticket->status?->LOV_VALUE;
         $this->ticket->moveToDone($preDoneAnswers, $remarks);
-        
+
         // Refresh ticket to get updated status from database
         $this->ticket->refresh();
 
         // Create contract from ticket
-        if (!$this->ticket->contract && $this->canCreateContract()) {
+        if (! $this->ticket->contract && $this->canCreateContract()) {
             $this->generateContract();
             $this->ticket->load('contract');
         }
@@ -161,44 +176,47 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         // Refresh data
         $this->ticket = $this->ticket->fresh([
-            'division', 
-            'department', 
-            'creator', 
+            'division',
+            'department',
+            'creator',
             'reviewer',
             'contract.status', // Ensure deep load of contract status
-            'activityLogs.user'
+            'activityLogs.user',
         ]);
-        
+
         $this->showPreDoneModal = false;
-        $this->mount($this->ticket->id);
+        $this->mount($this->ticket->LGL_ROW_ID);
     }
 
     public function generateContract()
     {
         Log::info('=== GENERATE CONTRACT: START ===', [
-            'ticket_id' => $this->ticket->id,
+            'ticket_id' => $this->ticket->LGL_ROW_ID,
             'document_type' => $this->ticket->documentType?->code,
-            'status' => $this->ticket->status?->code,
+            'status' => $this->ticket->status?->LOV_VALUE,
         ]);
-        
+
         // Only allow contract creation for specific document types
         $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
-        
-        if (!in_array($this->ticket->documentType?->code, $contractableTypes)) {
+
+        if (! in_array($this->ticket->documentType?->code, $contractableTypes)) {
             Log::warning('Document type not contractable', ['type' => $this->ticket->documentType?->code]);
             $this->dispatch('notify', type: 'error', message: 'This document type does not require a contract.');
+
             return;
         }
 
-        if ($this->ticket->status?->code !== 'done') {
-            Log::warning('Ticket status not done', ['status' => $this->ticket->status?->code]);
+        if ($this->ticket->status?->LOV_VALUE !== 'done') {
+            Log::warning('Ticket status not done', ['status' => $this->ticket->status?->LOV_VALUE]);
             $this->dispatch('notify', type: 'error', message: 'Ticket must be Done to create a contract.');
+
             return;
         }
 
         if ($this->ticket->contract) {
             Log::warning('Contract already exists');
             $this->dispatch('notify', type: 'error', message: 'Contract already created for this ticket.');
+
             return;
         }
 
@@ -206,34 +224,34 @@ new #[Layout('components.layouts.app')] class extends Component {
             Log::info('Calling ticket->createContract()');
             $contract = $this->ticket->createContract();
             Log::info('Contract created successfully', [
-                'contract_id' => $contract->id,
-                'contract_number' => $contract->contract_number,
-                'contract_status' => $contract->status,
+                'contract_id' => $contract->LGL_ROW_ID,
+                'contract_number' => $contract->CONTR_NO,
+                'contract_status' => $contract->status?->LOV_VALUE,
             ]);
-            
+
             // Auto-close ticket if contract is created with expired status
-            if ($contract->status?->code === 'expired') {
-                $this->ticket->update(['status' => 'closed']);
+            if ($contract->status?->LOV_VALUE === 'expired') {
+                $this->ticket->update(['TCKT_STS_ID' => \App\Models\TicketStatus::getIdByCode('closed')]);
                 $this->ticket->logActivity('Ticket automatically closed because contract is expired');
-                $this->dispatch('notify', type: 'warning', message: "Contract #{$contract->contract_number} created with Expired status. Ticket automatically closed.");
+                $this->dispatch('notify', type: 'warning', message: "Contract #{$contract->CONTR_NO} created with Expired status. Ticket automatically closed.");
             } else {
-                $this->dispatch('notify', type: 'success', message: "Contract #{$contract->contract_number} successfully created.");
+                $this->dispatch('notify', type: 'success', message: "Contract #{$contract->CONTR_NO} successfully created.");
             }
         } catch (\Exception $e) {
             Log::error('Contract creation failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            $this->dispatch('notify', type: 'error', message: 'Failed to create contract: ' . $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: 'Failed to create contract: '.$e->getMessage());
         }
     }
-    
+
     public function canCreateContract(): bool
     {
         $contractableTypes = ['perjanjian', 'nda', 'surat_kuasa'];
-        
-        return $this->ticket->status?->code === 'done' 
-            && !$this->ticket->contract
+
+        return $this->ticket->status?->LOV_VALUE === 'done'
+            && ! $this->ticket->contract
             && in_array($this->ticket->documentType?->code, $contractableTypes);
     }
 
@@ -246,14 +264,16 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        
-        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
             $this->dispatch('notify', type: 'error', message: 'Only the legal team can terminate contracts.');
+
             return;
         }
 
-        if (!$this->ticket->contract) {
+        if (! $this->ticket->contract) {
             $this->dispatch('notify', type: 'error', message: 'Ticket does not have a contract.');
+
             return;
         }
 
@@ -261,7 +281,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             'terminationReason' => ['required', 'string', 'min:10'],
         ]);
 
-        $oldStatus = $this->ticket->contract->status?->code;
+        $oldStatus = $this->ticket->contract->status?->LOV_VALUE;
         $this->ticket->contract->terminate($this->terminationReason);
 
         // Send notification
@@ -270,27 +290,29 @@ new #[Layout('components.layouts.app')] class extends Component {
 
         $this->showTerminateModal = false;
         $this->dispatch('notify', type: 'success', message: 'Contract successfully terminated and ticket closed.');
-        
+
         // Refresh data
-        $this->mount($this->ticket->id);
+        $this->mount($this->ticket->LGL_ROW_ID);
     }
 
     public function moveToClosedDirectly(): void
     {
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        
-        if (!$user->hasAnyRole(['super-admin', 'legal'])) {
+
+        if (! $user->hasAnyRole(['super-admin', 'legal'])) {
             $this->dispatch('notify', type: 'error', message: 'Only the legal team can close tickets.');
+
             return;
         }
 
-        if ($this->ticket->status?->code !== 'on_process') {
+        if ($this->ticket->status?->LOV_VALUE !== 'on_process') {
             $this->dispatch('notify', type: 'error', message: 'Only tickets with On Process status can be closed.');
+
             return;
         }
 
-        $oldStatus = $this->ticket->status?->code;
+        $oldStatus = $this->ticket->status?->LOV_VALUE;
         $this->ticket->moveToClosedDirectly();
 
         // Send notification
@@ -298,9 +320,9 @@ new #[Layout('components.layouts.app')] class extends Component {
         $notificationService->notifyTicketStatusChanged($this->ticket, $oldStatus, 'closed');
 
         $this->dispatch('notify', type: 'success', message: 'Ticket successfully closed.');
-        
+
         // Refresh data
-        $this->mount($this->ticket->id);
+        $this->mount($this->ticket->LGL_ROW_ID);
     }
 }; ?>
 
@@ -313,7 +335,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         </a>
         <div class="flex items-start justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $ticket->ticket_number }}</h1>
+                <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">{{ $ticket->TCKT_NO }}</h1>
             </div>
             @php
                 $statusBadge = match($ticket->status_color) {
@@ -345,20 +367,20 @@ new #[Layout('components.layouts.app')] class extends Component {
         <h3 class="mb-3 font-semibold text-blue-900 dark:text-blue-300">Legal Team Actions</h3>
         <div class="flex flex-wrap gap-2">
             <!-- Edit Button (visible anytime for legal) -->
-            <a href="{{ route('tickets.edit', $ticket->id) }}" wire:navigate>
+            <a href="{{ route('tickets.edit', $ticket->LGL_ROW_ID) }}" wire:navigate>
                 <flux:button variant="ghost" icon="pencil">
                     Edit Ticket
                 </flux:button>
             </a>
 
-            @if($ticket->status?->code === 'open')
+            @if($ticket->status?->LOV_VALUE === 'open')
                 <flux:button wire:click="moveToOnProcess" variant="primary" icon="play">
                     Process Ticket
                 </flux:button>
                 <flux:button wire:click="openRejectModal" variant="danger" icon="x-mark">
                     Reject Ticket
                 </flux:button>
-            @elseif($ticket->status?->code === 'on_process')
+            @elseif($ticket->status?->LOV_VALUE === 'on_process')
                 @php
                     $isContractable = in_array($ticket->documentType?->code, ['perjanjian', 'nda', 'surat_kuasa']);
                 @endphp
@@ -380,7 +402,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 @endif
             @endif
 
-            @if($ticket->contract && $ticket->contract->status?->code === 'active')
+            @if($ticket->contract && $ticket->contract->status?->LOV_VALUE === 'active')
                 <flux:button wire:click="openTerminateModal" variant="danger" icon="x-circle">
                     Terminate Contract
                 </flux:button>
@@ -396,23 +418,23 @@ new #[Layout('components.layouts.app')] class extends Component {
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Ticket Number</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->ticket_number }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_NO }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Document Type</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->document_type_label }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->documentType->REF_DOC_TYPE_NAME }}</p>
             </div>
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Document Title (Proposed)</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->proposed_document_title }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_PROP_DOC_TITLE }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Division</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->division->name }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->division->REF_DIV_NAME }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Department</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->department?->name ?? '-' }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->department?->REF_DEPT_NAME ?? '-' }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Created By</p>
@@ -420,31 +442,31 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Created Date</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->created_at->format('d M Y H:i') }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_CREATED_DT->format('d M Y H:i') }}</p>
             </div>
             
-            @if($ticket->reviewed_by)
+            @if($ticket->TCKT_REVIEWED_BY)
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Reviewed By</p>
                 <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->reviewer->name }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Review Date</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->reviewed_at->format('d M Y H:i') }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_REVIEWED_DT->format('d M Y H:i') }}</p>
             </div>
             @endif
 
-            @if($ticket->rejection_reason)
+            @if($ticket->TCKT_REJECT_REASON)
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Rejection Reason</p>
-                <p class="font-medium text-red-600 dark:text-red-400">{{ $ticket->rejection_reason }}</p>
+                <p class="font-medium text-red-600 dark:text-red-400">{{ $ticket->TCKT_REJECT_REASON }}</p>
             </div>
             @endif
 
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Financial Impact</p>
                 <p class="font-medium text-neutral-900 dark:text-white">
-                    @if($ticket->has_financial_impact)
+                    @if($ticket->TCKT_HAS_FIN_IMPACT)
                         <flux:badge color="green">Yes</flux:badge>
                     @else
                         <flux:badge color="neutral">No</flux:badge>
@@ -452,7 +474,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 </p>
             </div>
 
-            @if($ticket->has_financial_impact && $ticket->payment_type)
+            @if($ticket->TCKT_HAS_FIN_IMPACT && $ticket->payment_type)
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Payment Type</p>
                 <p class="font-medium text-neutral-900 dark:text-white">
@@ -475,7 +497,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Legal Turn Around Time</p>
                 <p class="font-medium text-neutral-900 dark:text-white">
-                    @if($ticket->tat_legal_compliance)
+                    @if($ticket->TCKT_TAT_LGL_COMPLNCE)
                         <flux:badge color="green">Yes</flux:badge>
                     @else
                         <flux:badge color="neutral">No</flux:badge>
@@ -486,26 +508,26 @@ new #[Layout('components.layouts.app')] class extends Component {
         </div>
 
         <!-- Document-specific details -->
-        @if(in_array($ticket->documentType?->code, ['perjanjian', 'nda']) && $ticket->counterpart_name)
+        @if(in_array($ticket->documentType?->code, ['perjanjian', 'nda']) && $ticket->TCKT_COUNTERPART_NAME)
         <div class="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-700">
             <h3 class="mb-3 font-semibold text-neutral-900 dark:text-white">{{ $ticket->documentType?->code === 'nda' ? 'NDA' : 'Agreement' }} Details</h3>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">Counterpart</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->counterpart_name }}</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_COUNTERPART_NAME }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">Start Date</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->agreement_start_date?->format('d M Y') ?? '-' }}</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_AGREE_START_DT?->format('d M Y') ?? '-' }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">Duration</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->agreement_duration }}</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_AGREE_DURATION }}</p>
                 </div>
-                @if(!$ticket->is_auto_renewal && $ticket->agreement_end_date)
+                @if(!$ticket->TCKT_IS_AUTO_RENEW && $ticket->TCKT_AGREE_END_DT)
                 <div>
                     <p class="text-sm text-neutral-500 dark:text-neutral-400">End Date</p>
-                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->agreement_end_date->format('d M Y') }}</p>
+                    <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_AGREE_END_DT->format('d M Y') }}</p>
                 </div>
                 @endif
             </div>
@@ -516,7 +538,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     </div>
 
     {{-- Pre-Done Questions Answers (for Perjanjian only) --}}
-    @if($ticket->documentType?->code === 'perjanjian' && $ticket->status?->code === 'done' && ($ticket->pre_done_question_1 !== null || $ticket->pre_done_question_2 !== null || $ticket->pre_done_question_3 !== null))
+    @if($ticket->documentType?->code === 'perjanjian' && $ticket->status?->LOV_VALUE === 'done' && ($ticket->TCKT_POST_QUEST_1 !== null || $ticket->TCKT_POST_QUEST_2 !== null || $ticket->TCKT_POST_QUEST_3 !== null))
     <div class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-700 dark:bg-zinc-900">
         <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Finalization Checklist</h2>
         
@@ -532,7 +554,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         Has the document been signed by both parties?
                     </p>
                     <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                        {{ $ticket->pre_done_question_1 ? 'Yes' : 'No' }}
+                        {{ $ticket->TCKT_POST_QUEST_1 ? 'Yes' : 'No' }}
                     </p>
                 </div>
             </div>
@@ -548,7 +570,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                         Has the final document been saved in the internal sharing folder?
                     </p>
                     <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                        {{ $ticket->pre_done_question_2 ? 'Yes' : 'No' }}
+                        {{ $ticket->TCKT_POST_QUEST_2 ? 'Yes' : 'No' }}
                     </p>
                 </div>
             </div>
@@ -564,15 +586,15 @@ new #[Layout('components.layouts.app')] class extends Component {
                         Are all mandatory attachments complete?
                     </p>
                     <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                        {{ $ticket->pre_done_question_3 ? 'Yes' : 'No' }}
+                        {{ $ticket->TCKT_POST_QUEST_3 ? 'Yes' : 'No' }}
                     </p>
                 </div>
             </div>
 
-            @if($ticket->pre_done_remarks)
+            @if($ticket->TCKT_POST_RMK)
             <div class="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-800">
                 <p class="mb-1 text-xs font-medium text-neutral-500 dark:text-neutral-400">Remarks:</p>
-                <p class="text-sm text-neutral-900 dark:text-white whitespace-pre-wrap">{{ $ticket->pre_done_remarks }}</p>
+                <p class="text-sm text-neutral-900 dark:text-white whitespace-pre-wrap">{{ $ticket->TCKT_POST_RMK }}</p>
             </div>
             @endif
         </div>
@@ -587,40 +609,40 @@ new #[Layout('components.layouts.app')] class extends Component {
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Contract Number</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->contract_number }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->CONTR_NO }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Contract Status</p>
                 @php
                     $color = $ticket->contract->status?->color ?? 'neutral';
                 @endphp
-                <flux:badge :color="$color" size="sm" inset="top bottom">{{ $ticket->contract->status?->name ?? 'Unknown' }}</flux:badge>
+                <flux:badge :color="$color" size="sm" inset="top bottom">{{ $ticket->contract->status?->LOV_DISPLAY_NAME ?? 'Unknown' }}</flux:badge>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Start Date</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->start_date?->format('d M Y') ?? '-' }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->CONTR_START_DT?->format('d M Y') ?? '-' }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">End Date</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->end_date?->format('d M Y') ?? '-' }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->CONTR_END_DT?->format('d M Y') ?? '-' }}</p>
             </div>
 
-            @if($ticket->documentType?->code === 'surat_kuasa' && $ticket->kuasa_pemberi)
+            @if($ticket->documentType?->code === 'surat_kuasa' && $ticket->TCKT_GRANTOR)
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Grantor (Pemberi Kuasa)</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_pemberi }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_GRANTOR }}</p>
             </div>
             <div>
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Grantee (Penerima Kuasa)</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->kuasa_penerima }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_GRANTEE }}</p>
             </div>
             @endif
             
-            @if($ticket->contract->folder_link)
+            @if($ticket->contract->CONTR_DIR_SHARE_LINK)
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Document Folder</p>
                 <a 
-                    href="{{ $ticket->contract->folder_link }}" 
+                    href="{{ $ticket->contract->CONTR_DIR_SHARE_LINK }}" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
@@ -632,14 +654,14 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
             
-            @if($ticket->contract->terminated_at)
+            @if($ticket->contract->CONTR_TERMINATE_DT)
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Terminated At</p>
-                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->terminated_at->format('d M Y H:i') }}</p>
+                <p class="font-medium text-neutral-900 dark:text-white">{{ $ticket->contract->CONTR_TERMINATE_DT->format('d M Y H:i') }}</p>
             </div>
             <div class="sm:col-span-2">
                 <p class="text-sm text-neutral-500 dark:text-neutral-400">Termination Reason</p>
-                <p class="font-medium text-red-600 dark:text-red-400">{{ $ticket->contract->termination_reason }}</p>
+                <p class="font-medium text-red-600 dark:text-red-400">{{ $ticket->contract->CONTR_TERMINATE_REASON }}</p>
             </div>
             @endif
         </div>
@@ -651,10 +673,10 @@ new #[Layout('components.layouts.app')] class extends Component {
         <h2 class="mb-4 text-lg font-semibold text-neutral-900 dark:text-white">Uploaded Documents</h2>
         
         <div class="space-y-4">
-            @if($ticket->draft_document_path)
+            @if($ticket->TCKT_DOC_PATH)
             <div>
                 <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Draft Document</p>
-                <a href="{{ Storage::url($ticket->draft_document_path) }}" download target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
+                <a href="{{ Storage::url($ticket->TCKT_DOC_PATH) }}" download target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50">
                     <flux:icon name="document-text" class="h-4 w-4" />
                     <span>Download Draft</span>
                     <flux:icon name="arrow-down-tray" class="h-4 w-4" />
@@ -662,11 +684,11 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
 
-            @if($ticket->mandatory_documents_path && count($ticket->mandatory_documents_path) > 0)
+            @if($ticket->TCKT_DOC_REQUIRED_PATH && count($ticket->TCKT_DOC_REQUIRED_PATH) > 0)
             <div>
-                <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Mandatory Documents ({{ count($ticket->mandatory_documents_path) }} files)</p>
+                <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Mandatory Documents ({{ count($ticket->TCKT_DOC_REQUIRED_PATH) }} files)</p>
                 <div class="space-y-2">
-                    @foreach($ticket->mandatory_documents_path as $index => $doc)
+                    @foreach($ticket->TCKT_DOC_REQUIRED_PATH as $index => $doc)
                     <a href="{{ Storage::url($doc['path']) }}" download target="_blank" class="flex items-center gap-2 rounded-lg bg-purple-50 px-3 py-2 text-sm text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50">
                         <flux:icon name="document" class="h-4 w-4" />
                         <span class="flex-1">{{ $doc['name'] }}</span>
@@ -677,10 +699,10 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
 
-            @if($ticket->approval_document_path)
+            @if($ticket->TCKT_DOC_APPROVAL_PATH)
             <div>
                 <p class="mb-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">Approval Document</p>
-                <a href="{{ Storage::url($ticket->approval_document_path) }}" download target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50">
+                <a href="{{ Storage::url($ticket->TCKT_DOC_APPROVAL_PATH) }}" download target="_blank" class="inline-flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:hover:bg-orange-900/50">
                     <flux:icon name="document-check" class="h-4 w-4" />
                     <span>Download Approval</span>
                     <flux:icon name="arrow-down-tray" class="h-4 w-4" />
@@ -688,7 +710,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             @endif
 
-            @if(!$ticket->draft_document_path && (!$ticket->mandatory_documents_path || count($ticket->mandatory_documents_path) == 0) && !$ticket->approval_document_path)
+            @if(!$ticket->TCKT_DOC_PATH && (!$ticket->TCKT_DOC_REQUIRED_PATH || count($ticket->TCKT_DOC_REQUIRED_PATH) == 0) && !$ticket->TCKT_DOC_APPROVAL_PATH)
             <p class="text-center text-sm text-neutral-500 dark:text-neutral-400">No uploaded documents</p>
             @endif
         </div>

@@ -79,40 +79,46 @@ new #[Layout('components.layouts.app')] class extends Component
         $this->ticket = Ticket::findOrFail($contract);
 
         // Populate form with ticket data
-        $this->division_id = $this->ticket->division_id;
-        $this->department_id = $this->ticket->department_id;
-        $this->has_financial_impact = $this->ticket->has_financial_impact;
+        $this->division_id = $this->ticket->DIV_ID;
+        $this->department_id = $this->ticket->DEPT_ID;
+        $this->has_financial_impact = $this->ticket->TCKT_HAS_FIN_IMPACT;
         $this->payment_type = $this->ticket->payment_type ?? '';
         $this->recurring_description = $this->ticket->recurring_description ?? '';
-        $this->proposed_document_title = $this->ticket->proposed_document_title;
-        $this->document_type = $this->ticket->documentType?->code ?? '';
-        $this->tat_legal_compliance = $this->ticket->tat_legal_compliance;
+        $this->proposed_document_title = $this->ticket->TCKT_PROP_DOC_TITLE;
+        $this->document_type = $this->ticket->documentType?->LOV_VALUE ?? '';
+        $this->tat_legal_compliance = $this->ticket->TCKT_TAT_LGL_COMPLNCE;
 
         // Conditional fields
-        $this->counterpart_name = $this->ticket->counterpart_name ?? '';
-        $this->agreement_start_date = $this->ticket->agreement_start_date?->format('Y-m-d') ?? '';
-        $this->agreement_duration = $this->ticket->agreement_duration ?? '';
-        $this->is_auto_renewal = $this->ticket->is_auto_renewal;
-        $this->renewal_period = $this->ticket->renewal_period ?? '';
-        $this->renewal_notification_days = $this->ticket->renewal_notification_days ?? '';
-        $this->agreement_end_date = $this->ticket->agreement_end_date?->format('Y-m-d') ?? '';
-        $this->termination_notification_days = $this->ticket->termination_notification_days ?? '';
+        $this->counterpart_name = $this->ticket->TCKT_COUNTERPART_NAME ?? '';
+        $this->agreement_start_date = $this->ticket->TCKT_AGREE_START_DT?->format('Y-m-d') ?? '';
+        $this->agreement_duration = $this->ticket->TCKT_AGREE_DURATION ?? '';
+        $this->is_auto_renewal = $this->ticket->TCKT_IS_AUTO_RENEW;
+        $this->renewal_period = $this->ticket->TCKT_RENEW_PERIOD ?? '';
+        $this->renewal_notification_days = $this->ticket->TCKT_RENEW_NOTIF_DAYS ?? '';
+        $this->agreement_end_date = $this->ticket->TCKT_AGREE_END_DT?->format('Y-m-d') ?? '';
+        
+        // Calculate termination notification days back from date
+        if ($this->ticket->TCKT_AGREE_END_DT && $this->ticket->TCKT_TERMINATE_NOTIF_DT) {
+            $this->termination_notification_days = (string) $this->ticket->TCKT_AGREE_END_DT->diffInDays($this->ticket->TCKT_TERMINATE_NOTIF_DT);
+        } else {
+            $this->termination_notification_days = '';
+        }
 
-        $this->kuasa_pemberi = $this->ticket->kuasa_pemberi ?? '';
-        $this->kuasa_penerima = $this->ticket->kuasa_penerima ?? '';
-        $this->kuasa_start_date = $this->ticket->kuasa_start_date?->format('Y-m-d') ?? '';
-        $this->kuasa_end_date = $this->ticket->kuasa_end_date?->format('Y-m-d') ?? '';
+        $this->kuasa_pemberi = $this->ticket->TCKT_GRANTOR ?? '';
+        $this->kuasa_penerima = $this->ticket->TCKT_GRANTEE ?? '';
+        $this->kuasa_start_date = $this->ticket->TCKT_GRANT_START_DT?->format('Y-m-d') ?? '';
+        $this->kuasa_end_date = $this->ticket->TCKT_GRANT_END_DT?->format('Y-m-d') ?? '';
 
         // Pre-done questions - convert to integer for radio button compatibility
-        $this->pre_done_question_1 = $this->ticket->pre_done_question_1 !== null ? (int) $this->ticket->pre_done_question_1 : null;
-        $this->pre_done_question_2 = $this->ticket->pre_done_question_2 !== null ? (int) $this->ticket->pre_done_question_2 : null;
-        $this->pre_done_question_3 = $this->ticket->pre_done_question_3 !== null ? (int) $this->ticket->pre_done_question_3 : null;
-        $this->pre_done_remarks = $this->ticket->pre_done_remarks ?? '';
+        $this->pre_done_question_1 = $this->ticket->TCKT_POST_QUEST_1 !== null ? (int) $this->ticket->TCKT_POST_QUEST_1 : null;
+        $this->pre_done_question_2 = $this->ticket->TCKT_POST_QUEST_2 !== null ? (int) $this->ticket->TCKT_POST_QUEST_2 : null;
+        $this->pre_done_question_3 = $this->ticket->TCKT_POST_QUEST_3 !== null ? (int) $this->ticket->TCKT_POST_QUEST_3 : null;
+        $this->pre_done_remarks = $this->ticket->TCKT_POST_RMK ?? '';
     }
 
     public function getDivisionsProperty()
     {
-        return Division::active()->orderBy('name')->get();
+        return Division::active()->orderBy('REF_DIV_NAME')->get();
     }
 
     public function getDepartmentsProperty()
@@ -121,7 +127,7 @@ new #[Layout('components.layouts.app')] class extends Component
             return collect();
         }
 
-        return Department::where('division_id', $this->division_id)->orderBy('name')->get();
+        return Department::where('DIV_ID', $this->division_id)->orderBy('REF_DEPT_NAME')->get();
     }
 
     public function save(): void
@@ -168,7 +174,7 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         // Pre-done questions validation (for Perjanjian when status = done)
-        if ($this->document_type === 'perjanjian' && $this->ticket->status?->code === 'done') {
+        if ($this->document_type === 'perjanjian' && $this->ticket->status?->LOV_VALUE === 'done') {
             $rules['pre_done_question_1'] = ['required', 'boolean'];
             $rules['pre_done_question_2'] = ['required', 'boolean'];
             $rules['pre_done_question_3'] = ['required', 'boolean'];
@@ -177,68 +183,75 @@ new #[Layout('components.layouts.app')] class extends Component
 
         $validated = $this->validate($rules);
 
+        // Calculate termination notification date
+        $terminationNotifDt = null;
+        if ($this->agreement_end_date && $this->termination_notification_days) {
+            $terminationNotifDt = \Illuminate\Support\Carbon::parse($this->agreement_end_date)
+                ->subDays((int)$this->termination_notification_days);
+        }
+
         // Update ticket
         $this->ticket->update([
-            'division_id' => $this->division_id,
-            'department_id' => $this->department_id,
-            'has_financial_impact' => $validated['has_financial_impact'],
-            'proposed_document_title' => $validated['proposed_document_title'],
-            'document_type_id' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
+            'DIV_ID' => $this->division_id,
+            'DEPT_ID' => $this->department_id,
+            'TCKT_HAS_FIN_IMPACT' => $validated['has_financial_impact'],
+            'TCKT_PROP_DOC_TITLE' => $validated['proposed_document_title'],
+            'TCKT_DOC_TYPE_ID' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
             // Conditional fields
-            'counterpart_name' => $this->counterpart_name ?: null,
-            'agreement_start_date' => $this->agreement_start_date ?: null,
-            'agreement_duration' => $this->agreement_duration ?: null,
-            'is_auto_renewal' => $this->is_auto_renewal,
-            'renewal_period' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
-            'renewal_notification_days' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
-            'agreement_end_date' => (! $this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
-            'termination_notification_days' => $this->termination_notification_days ?: null,
-            'kuasa_pemberi' => $this->kuasa_pemberi ?: null,
-            'kuasa_penerima' => $this->kuasa_penerima ?: null,
-            'kuasa_start_date' => $this->kuasa_start_date ?: null,
-            'kuasa_end_date' => $this->kuasa_end_date ?: null,
-            'tat_legal_compliance' => $validated['tat_legal_compliance'],
+            'TCKT_COUNTERPART_NAME' => $this->counterpart_name ?: null,
+            'TCKT_AGREE_START_DT' => $this->agreement_start_date ?: null,
+            'TCKT_AGREE_DURATION' => $this->agreement_duration ?: null,
+            'TCKT_IS_AUTO_RENEW' => $this->is_auto_renewal,
+            'TCKT_RENEW_PERIOD' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
+            'TCKT_RENEW_NOTIF_DAYS' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
+            'TCKT_AGREE_END_DT' => (! $this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
+            'TCKT_TERMINATE_NOTIF_DT' => $terminationNotifDt,
+            'TCKT_GRANTOR' => $this->kuasa_pemberi ?: null,
+            'TCKT_GRANTEE' => $this->kuasa_penerima ?: null,
+            'TCKT_GRANT_START_DT' => $this->kuasa_start_date ?: null,
+            'TCKT_GRANT_END_DT' => $this->kuasa_end_date ?: null,
+            'TCKT_TAT_LGL_COMPLNCE' => $validated['tat_legal_compliance'],
             // Pre-done questions (if applicable)
-            'pre_done_question_1' => $this->pre_done_question_1,
-            'pre_done_question_2' => $this->pre_done_question_2,
-            'pre_done_question_3' => $this->pre_done_question_3,
-            'pre_done_remarks' => $this->pre_done_remarks,
+            'TCKT_POST_QUEST_1' => $this->pre_done_question_1,
+            'TCKT_POST_QUEST_2' => $this->pre_done_question_2,
+            'TCKT_POST_QUEST_3' => $this->pre_done_question_3,
+            'TCKT_POST_RMK' => $this->pre_done_remarks,
         ]);
 
         // Handle file uploads (only if new files uploaded)
         if ($this->draft_document) {
-            $draftPath = $this->draft_document->store("tickets/{$this->ticket->id}/draft", 'public');
-            $this->ticket->update(['draft_document_path' => $draftPath]);
+            $draftPath = $this->draft_document->store("tickets/{$this->ticket->LGL_ROW_ID}/draft", 'public');
+            $this->ticket->update(['TCKT_DOC_PATH' => $draftPath]);
         }
 
         if ($this->mandatory_documents && count($this->mandatory_documents) > 0) {
             // Append to existing documents
-            $existingDocs = $this->ticket->mandatory_documents_path ?? [];
+            $existingDocs = $this->ticket->TCKT_DOC_REQUIRED_PATH ?? [];
             $mandatoryPaths = $existingDocs;
 
             foreach ($this->mandatory_documents as $file) {
-                $path = $file->store("tickets/{$this->ticket->id}/mandatory", 'public');
+                $path = $file->store("tickets/{$this->ticket->LGL_ROW_ID}/mandatory", 'public');
                 $mandatoryPaths[] = [
                     'name' => $file->getClientOriginalName(),
                     'path' => $path,
                 ];
             }
-            $this->ticket->update(['mandatory_documents_path' => $mandatoryPaths]);
+            $this->ticket->update(['TCKT_DOC_REQUIRED_PATH' => $mandatoryPaths]);
         }
 
         if ($this->approval_document) {
-            $approvalPath = $this->approval_document->store("tickets/{$this->ticket->id}/approval", 'public');
-            $this->ticket->update(['approval_document_path' => $approvalPath]);
+            $approvalPath = $this->approval_document->store("tickets/{$this->ticket->LGL_ROW_ID}/approval", 'public');
+            $this->ticket->update(['TCKT_DOC_APPROVAL_PATH' => $approvalPath]);
         }
 
         // Log activity
         $logMessage = 'updated ticket details';
-        if ($this->document_type === 'perjanjian' && $this->ticket->status?->code === 'done') {
+        if ($this->document_type === 'perjanjian' && $this->ticket->status?->LOV_VALUE === 'done') {
             $logMessage .= ' (including pre-done answers)';
         }
 
         $this->ticket->activityLogs()->create([
-            'user_id' => $user->id,
+            'user_id' => $user->LGL_ROW_ID,
             'action' => $logMessage,
             'metadata' => [
                 'updated_at' => now(),
@@ -247,7 +260,7 @@ new #[Layout('components.layouts.app')] class extends Component
         ]);
 
         session()->flash('success', 'Ticket updated successfully.');
-        $this->redirect(route('tickets.show', $this->ticket->id), navigate: true);
+        $this->redirect(route('tickets.show', $this->ticket->LGL_ROW_ID), navigate: true);
     }
 }; ?>
 
@@ -274,7 +287,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     <flux:label>User Directorate (Division)</flux:label>
                     <flux:select wire:model="division_id" disabled>
                         @foreach($this->divisions as $division)
-                        <option value="{{ $division->id }}" {{ $division->id == $this->division_id ? 'selected' : '' }}>{{ $division->name }}</option>
+                        <option value="{{ $division->LGL_ROW_ID }}" {{ $division->LGL_ROW_ID == $this->division_id ? 'selected' : '' }}>{{ $division->REF_DIV_NAME }}</option>
                         @endforeach
                     </flux:select>
                     <flux:description>Auto-filled from your account</flux:description>
@@ -286,7 +299,7 @@ new #[Layout('components.layouts.app')] class extends Component
                     <flux:select wire:model="department_id" disabled>
                         <option value="">-</option>
                         @foreach($this->departments as $dept)
-                        <option value="{{ $dept->id }}" {{ $dept->id == $this->department_id ? 'selected' : '' }}>{{ $dept->name }}</option>
+                        <option value="{{ $dept->LGL_ROW_ID }}" {{ $dept->LGL_ROW_ID == $this->department_id ? 'selected' : '' }}>{{ $dept->REF_DEPT_NAME }}</option>
                         @endforeach
                     </flux:select>
                     <flux:description>Auto-filled from your account</flux:description>
@@ -503,7 +516,7 @@ new #[Layout('components.layouts.app')] class extends Component
         @endif
 
         {{-- Pre-Done Questions Section (for Perjanjian with done status only) --}}
-        @if($this->document_type === 'perjanjian' && $ticket->status?->code === 'done')
+        @if($this->document_type === 'perjanjian' && $ticket->status?->LOV_VALUE === 'done')
         <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-900 dark:bg-green-950/30">
             <h2 class="mb-4 text-lg font-semibold text-green-900 dark:text-green-300">Finalization Checklist</h2>
             <p class="mb-4 text-sm text-green-700 dark:text-green-400">Answers to finalization questions. You can update them if needed.</p>

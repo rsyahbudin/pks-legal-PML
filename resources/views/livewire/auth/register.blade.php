@@ -16,7 +16,7 @@
                 required
                 autofocus
                 autocomplete="name"
-                :placeholder="__('Full name')"
+                :placeholder="__('Name')"
             />
 
             <!-- Email Address -->
@@ -26,7 +26,7 @@
                 :value="old('email')"
                 type="email"
                 required
-                autocomplete="email"
+                autocomplete="username"
                 placeholder="email@example.com"
             />
 

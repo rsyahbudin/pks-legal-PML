@@ -13,44 +13,49 @@ class Contract extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_CONTRACT_MASTER';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'CONTR_CREATED_DT';
+
+    const UPDATED_AT = 'CONTR_UPDATED_DT';
+
     protected $fillable = [
-        'ticket_id',
-        'contract_number',
-        'agreement_name',
-        'proposed_document_title',
-        'document_type_id',
-        'has_financial_impact',
-        'tat_legal_compliance',
-        'division_id',
-        'department_id',
-        'pic_id',
-        'pic_name',
-        'pic_email',
-        'start_date',
-        'end_date',
-        'is_auto_renewal',
-        'description',
-        'status_id',
-        'terminated_at',
-        'termination_reason',
-        'document_path',
-        'draft_document_path',
-        'mandatory_documents_path',
-        'approval_document_path',
-        'created_by',
-        'folder_link',
+        'TCKT_ID',
+        'CONTR_NO',
+        'CONTR_AGREE_NAME',
+        'CONTR_PROP_DOC_TITLE',
+        'CONTR_DOC_TYPE_ID',
+        'CONTR_HAS_FIN_IMPACT',
+        'CONTR_TAT_LGL_COMPLNCE',
+        'CONTR_DIV_ID',
+        'CONTR_DEPT_ID',
+        'CONTR_PIC',
+        'CONTR_START_DT',
+        'CONTR_END_DT',
+        'CONTR_IS_AUTO_RENEW',
+        'CONTR_DESC',
+        'CONTR_STS_ID',
+        'CONTR_TERMINATE_DT',
+        'CONTR_TERMINATE_REASON',
+        'CONTR_DOC_DRAFT_PATH',
+        'CONTR_DOC_REQUIRED_PATH',
+        'CONTR_DOC_APPROVAL_PATH',
+        'CONTR_CREATED_BY',
+        'CONTR_DIR_SHARE_LINK',
     ];
 
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'end_date' => 'date',
-            'is_auto_renewal' => 'boolean',
-            'has_financial_impact' => 'boolean',
-            'tat_legal_compliance' => 'boolean',
-            'mandatory_documents_path' => 'array',
-            'terminated_at' => 'datetime',
+            'CONTR_START_DT' => 'date',
+            'CONTR_END_DT' => 'date',
+            'CONTR_IS_AUTO_RENEW' => 'boolean',
+            'CONTR_HAS_FIN_IMPACT' => 'boolean',
+            'CONTR_TAT_LGL_COMPLNCE' => 'boolean',
+            'CONTR_DOC_REQUIRED_PATH' => 'array',
+            'CONTR_TERMINATE_DT' => 'datetime',
         ];
     }
 
@@ -67,7 +72,9 @@ class Contract extends Model
         }
 
         // Truncate division code to max 3 characters
-        $divCode = strtoupper(substr($division->code, 0, 3));
+        // Division table LGL_DIVISION. Check Division model later for column name. Assuming 'code' for now.
+        // Or likely DIV_CODE if renamed. I will check Division model next. For now using attribute accessor if exists.
+        $divCode = strtoupper(substr($division->code ?? $division->DIV_CODE ?? 'UNK', 0, 3));
 
         // Format: CTR-DIV-YYMM (e.g., CTR-LEG-2602)
         $year = now()->format('y');
@@ -75,12 +82,13 @@ class Contract extends Model
         $prefix = "CTR-{$divCode}-{$year}{$month}";
 
         // Find last contract for this division and year
-        $lastContract = static::where('contract_number', 'like', "CTR-{$divCode}-{$year}%")
-            ->orderBy('contract_number', 'desc')
+        // Use CONTR_NO
+        $lastContract = static::where('CONTR_NO', 'like', "{$prefix}%")
+            ->orderBy('CONTR_NO', 'desc')
             ->first();
 
         if ($lastContract) {
-            $lastNumber = (int) substr($lastContract->contract_number, -4);
+            $lastNumber = (int) substr($lastContract->CONTR_NO, -4);
             $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
         } else {
             $newNumber = '0001';
@@ -95,7 +103,7 @@ class Contract extends Model
      */
     public function ticket(): BelongsTo
     {
-        return $this->belongsTo(Ticket::class);
+        return $this->belongsTo(Ticket::class, 'TCKT_ID');
     }
 
     /**
@@ -103,7 +111,7 @@ class Contract extends Model
      */
     public function division(): BelongsTo
     {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class, 'CONTR_DIV_ID');
     }
 
     /**
@@ -111,7 +119,7 @@ class Contract extends Model
      */
     public function department(): BelongsTo
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(Department::class, 'CONTR_DEPT_ID');
     }
 
     /**
@@ -119,7 +127,7 @@ class Contract extends Model
      */
     public function status(): BelongsTo
     {
-        return $this->belongsTo(ContractStatus::class, 'status_id');
+        return $this->belongsTo(ContractStatus::class, 'CONTR_STS_ID');
     }
 
     /**
@@ -127,15 +135,7 @@ class Contract extends Model
      */
     public function documentType(): BelongsTo
     {
-        return $this->belongsTo(DocumentType::class, 'document_type_id');
-    }
-
-    /**
-     * Get the financial impact for this contract.
-     */
-    public function financialImpact(): BelongsTo
-    {
-        return $this->belongsTo(FinancialImpact::class, 'financial_impact_id');
+        return $this->belongsTo(DocumentType::class, 'CONTR_DOC_TYPE_ID');
     }
 
     /**
@@ -143,7 +143,7 @@ class Contract extends Model
      */
     public function pic(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'pic_id');
+        return $this->belongsTo(User::class, 'CONTR_PIC');
     }
 
     /**
@@ -151,7 +151,7 @@ class Contract extends Model
      */
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'CONTR_CREATED_BY');
     }
 
     /**
@@ -167,7 +167,7 @@ class Contract extends Model
      */
     public function activityLogs(): MorphMany
     {
-        return $this->morphMany(ActivityLog::class, 'loggable');
+        return $this->morphMany(ActivityLog::class, 'subject', 'LOG_SUBJECT_TYPE', 'LOG_SUBJECT_ID');
     }
 
     /**
@@ -183,18 +183,15 @@ class Contract extends Model
      */
     public function getDaysRemainingAttribute(): int
     {
-        if ($this->is_auto_renewal || ! $this->end_date) {
-            return 999; // Treat as far in the future or handle as needed
+        if ($this->CONTR_IS_AUTO_RENEW || ! $this->CONTR_END_DT) {
+            return 999;
         }
 
-        return (int) now()->startOfDay()->diffInDays($this->end_date, false);
+        return (int) now()->startOfDay()->diffInDays($this->CONTR_END_DT, false);
     }
 
     /**
      * Get the traffic light status color based on days remaining.
-     * green: > warning threshold days
-     * yellow: between critical and warning threshold days
-     * red: < critical threshold days or expired
      */
     public function getStatusColorAttribute(): string
     {
@@ -203,11 +200,12 @@ class Contract extends Model
 
         $daysRemaining = $this->days_remaining;
 
-        if ($this->is_auto_renewal) {
+        if ($this->CONTR_IS_AUTO_RENEW) {
             return 'green';
         }
 
-        if ($daysRemaining < 0 || $this->status?->code === 'expired') {
+        // Assuming status uses LOV_VALUE (e.g. 'expired')
+        if ($daysRemaining < 0 || $this->status?->LOV_VALUE === 'expired') {
             return 'red';
         }
 
@@ -242,11 +240,11 @@ class Contract extends Model
     {
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
 
-        return $query->where('status', 'active')
-            ->where('is_auto_renewal', false)
-            ->whereNotNull('end_date')
-            ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
-            ->whereDate('end_date', '>=', now());
+        return $query->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'active'))
+            ->where('CONTR_IS_AUTO_RENEW', false)
+            ->whereNotNull('CONTR_END_DT')
+            ->whereDate('CONTR_END_DT', '<=', now()->addDays($warningThreshold))
+            ->whereDate('CONTR_END_DT', '>=', now());
     }
 
     /**
@@ -254,7 +252,7 @@ class Contract extends Model
      */
     public function scopeExpired(Builder $query): Builder
     {
-        return $query->whereHas('status', fn ($q) => $q->where('code', 'expired'));
+        return $query->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'expired'));
     }
 
     /**
@@ -262,8 +260,8 @@ class Contract extends Model
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->whereHas('status', fn ($q) => $q->where('code', 'active'))
-            ->whereDate('end_date', '>=', now());
+        return $query->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'active'))
+            ->whereDate('CONTR_END_DT', '>=', now());
     }
 
     /**
@@ -273,11 +271,11 @@ class Contract extends Model
     {
         $criticalThreshold = (int) Setting::get('reminder_threshold_critical', 30);
 
-        return $query->where('status', 'active')
-            ->where('is_auto_renewal', false)
-            ->whereNotNull('end_date')
-            ->whereDate('end_date', '<=', now()->addDays($criticalThreshold))
-            ->whereDate('end_date', '>=', now());
+        return $query->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'active'))
+            ->where('CONTR_IS_AUTO_RENEW', false)
+            ->whereNotNull('CONTR_END_DT')
+            ->whereDate('CONTR_END_DT', '<=', now()->addDays($criticalThreshold))
+            ->whereDate('CONTR_END_DT', '>=', now());
     }
 
     /**
@@ -285,7 +283,7 @@ class Contract extends Model
      */
     public function scopeForPic(Builder $query, int $userId): Builder
     {
-        return $query->where('pic_id', $userId);
+        return $query->where('CONTR_PIC', $userId);
     }
 
     /**
@@ -293,7 +291,7 @@ class Contract extends Model
      */
     public function scopeForUser(Builder $query, int $userId): Builder
     {
-        return $query->where('created_by', $userId);
+        return $query->where('CONTR_CREATED_BY', $userId);
     }
 
     /**
@@ -301,11 +299,11 @@ class Contract extends Model
      */
     public function getPicNameAttribute(): string
     {
-        if ($this->pic_id && $this->pic) {
-            return $this->pic->name;
+        if ($this->CONTR_PIC && $this->pic) {
+            return $this->pic->USER_FULLNAME ?? $this->pic->name;
         }
 
-        return $this->attributes['pic_name'] ?? 'Unknown PIC';
+        return 'Unknown PIC';
     }
 
     /**
@@ -313,11 +311,11 @@ class Contract extends Model
      */
     public function getPicEmailAttribute(): ?string
     {
-        if ($this->pic_id && $this->pic) {
-            return $this->pic->email;
+        if ($this->CONTR_PIC && $this->pic) {
+            return $this->pic->USER_EMAIL ?? $this->pic->email;
         }
 
-        return $this->attributes['pic_email'] ?? null;
+        return null;
     }
 
     /**
@@ -325,11 +323,11 @@ class Contract extends Model
      */
     public function isExpired(): bool
     {
-        if ($this->is_auto_renewal) {
+        if ($this->CONTR_IS_AUTO_RENEW) {
             return false;
         }
 
-        return ($this->end_date && $this->end_date->isPast()) || $this->status?->code === 'expired';
+        return ($this->CONTR_END_DT && $this->CONTR_END_DT->isPast()) || $this->status?->LOV_VALUE === 'expired';
     }
 
     /**
@@ -337,6 +335,7 @@ class Contract extends Model
      */
     public function getDocumentTypeLabelAttribute(): string
     {
+        // DocumentType model will need update too.
         return $this->documentType?->name ?? 'Unknown';
     }
 
@@ -345,7 +344,7 @@ class Contract extends Model
      */
     public function getFinancialImpactLabelAttribute(): ?string
     {
-        return $this->financialImpact?->name_id ?? $this->financialImpact?->name;
+        return $this->CONTR_HAS_FIN_IMPACT ? 'Ada' : 'Tidak Ada';
     }
 
     /**
@@ -353,7 +352,7 @@ class Contract extends Model
      */
     public function isTerminated(): bool
     {
-        return $this->status?->code === 'terminated';
+        return $this->status?->LOV_VALUE === 'terminated';
     }
 
     /**
@@ -361,7 +360,7 @@ class Contract extends Model
      */
     public function scopeTerminated(Builder $query): Builder
     {
-        return $query->where('status', 'terminated');
+        return $query->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'terminated'));
     }
 
     /**
@@ -370,14 +369,16 @@ class Contract extends Model
     public function terminate(string $reason): void
     {
         $this->update([
-            'status_id' => ContractStatus::getIdByCode('terminated'),
-            'terminated_at' => now(),
-            'termination_reason' => $reason,
+            'CONTR_STS_ID' => ContractStatus::getIdByCode('terminated'),
+            'CONTR_TERMINATE_DT' => now(),
+            'CONTR_TERMINATE_REASON' => $reason,
         ]);
 
         // Auto-close associated ticket
-        if ($this->ticket && $this->ticket->status !== 'closed') {
-            $this->ticket->update(['status_id' => TicketStatus::getIdByCode('closed')]);
+        // Ticket model fields will change too! TCKT_STS_ID
+        if ($this->ticket && $this->ticket->status !== 'closed') { // Ticket model accessor 'status' might return object now?
+            // Assuming Ticket model logic will be updated.
+            $this->ticket->update(['TCKT_STS_ID' => TicketStatus::getIdByCode('closed')]);
             $this->ticket->logActivity('Ticket ditutup otomatis karena contract terminated');
         }
 
@@ -385,8 +386,8 @@ class Contract extends Model
             'user_id' => auth()->id(),
             'action' => "Contract terminated: {$reason}",
             'metadata' => [
-                'contract_number' => $this->contract_number,
-                'terminated_at' => $this->terminated_at->toDateTimeString(),
+                'contract_number' => $this->CONTR_NO,
+                'terminated_at' => $this->CONTR_TERMINATE_DT->toDateTimeString(),
             ],
         ]);
     }

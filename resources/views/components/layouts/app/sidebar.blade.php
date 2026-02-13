@@ -157,6 +157,59 @@
 
         {{ $slot }}
 
+        {{-- Global Flash Toast Notifications --}}
+        @if(session('success') || session('error') || session('warning') || session('info'))
+        <div
+            x-data="{ show: true }"
+            x-init="setTimeout(() => show = false, 5000)"
+            x-show="show"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-2"
+            class="fixed bottom-6 right-6 z-[9999] max-w-sm"
+        >
+            @if(session('success'))
+            <div class="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4 shadow-lg dark:border-green-800 dark:bg-green-900/50">
+                <flux:icon name="check-circle" class="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                <p class="text-sm font-medium text-green-800 dark:text-green-200">{{ session('success') }}</p>
+                <button @click="show = false" class="ml-auto text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200">
+                    <flux:icon name="x-mark" class="h-4 w-4" />
+                </button>
+            </div>
+            @endif
+            @if(session('error'))
+            <div class="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4 shadow-lg dark:border-red-800 dark:bg-red-900/50">
+                <flux:icon name="exclamation-circle" class="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+                <p class="text-sm font-medium text-red-800 dark:text-red-200">{{ session('error') }}</p>
+                <button @click="show = false" class="ml-auto text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200">
+                    <flux:icon name="x-mark" class="h-4 w-4" />
+                </button>
+            </div>
+            @endif
+            @if(session('warning'))
+            <div class="flex items-center gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-5 py-4 shadow-lg dark:border-yellow-800 dark:bg-yellow-900/50">
+                <flux:icon name="exclamation-triangle" class="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+                <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">{{ session('warning') }}</p>
+                <button @click="show = false" class="ml-auto text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200">
+                    <flux:icon name="x-mark" class="h-4 w-4" />
+                </button>
+            </div>
+            @endif
+            @if(session('info'))
+            <div class="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 shadow-lg dark:border-blue-800 dark:bg-blue-900/50">
+                <flux:icon name="information-circle" class="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <p class="text-sm font-medium text-blue-800 dark:text-blue-200">{{ session('info') }}</p>
+                <button @click="show = false" class="ml-auto text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200">
+                    <flux:icon name="x-mark" class="h-4 w-4" />
+                </button>
+            </div>
+            @endif
+        </div>
+        @endif
+
         @fluxScripts
     </body>
 </html>

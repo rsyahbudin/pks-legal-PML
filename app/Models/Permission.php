@@ -11,11 +11,20 @@ class Permission extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_PERMISSION';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'REF_PERM_CREATED_DT';
+
+    const UPDATED_AT = 'REF_PERM_UPDATED_DT';
+
     protected $fillable = [
-        'name',
-        'slug',
-        'group',
-        'description',
+        'PERMISSION_ID', // String ID added by migration
+        'PERMISSION_NAME',
+        'PERMISSION_CODE', // Assuming code exists standard
+        'PERMISSION_GROUP', // Assuming group exists standard
+        'PERMISSION_DESC', // Assuming description exists standard
     ];
 
     /**
@@ -23,7 +32,7 @@ class Permission extends Model
      */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'role_permission');
+        return $this->belongsToMany(Role::class, 'LGL_ROLE_PERMISSION', 'PERMISSION_ID', 'ROLE_ID');
     }
 
     /**
@@ -31,7 +40,7 @@ class Permission extends Model
      */
     public function scopeByGroup(Builder $query, string $group): Builder
     {
-        return $query->where('group', $group);
+        return $query->where('PERMISSION_GROUP', $group);
     }
 
     /**
@@ -41,6 +50,6 @@ class Permission extends Model
      */
     public static function allGrouped(): \Illuminate\Support\Collection
     {
-        return static::all()->groupBy('group');
+        return static::all()->groupBy('PERMISSION_GROUP');
     }
 }

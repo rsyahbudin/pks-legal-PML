@@ -12,38 +12,38 @@ new #[Layout('components.layouts.app')] class extends Component {
     public bool $showModal = false;
     
     // Form fields
-    public ?int $division_id = null;
-    public string $name = '';
-    public string $code = '';
+    public ?int $div_id = null;
+    public string $ref_dept_name = '';
+    public string $ref_dept_id = '';
     public string $email = '';
     public string $cc_emails_input = '';
     
     public function mount(): void
     {
         $this->loadDepartments();
-        $this->divisions = Division::orderBy('name')->get();
+        $this->divisions = Division::orderBy('REF_DIV_NAME')->get();
     }
     
     public function loadDepartments(): void
     {
         $this->departments = Department::with('division')
-            ->orderBy('name')
+            ->orderBy('REF_DEPT_NAME')
             ->get();
     }
     
     public function create(): void
     {
-        $this->reset(['editingId', 'division_id', 'name', 'code', 'email', 'cc_emails_input']);
+        $this->reset(['editingId', 'div_id', 'ref_dept_name', 'ref_dept_id', 'email', 'cc_emails_input']);
         $this->showModal = true;
     }
     
     public function edit(int $id): void
     {
         $dept = Department::findOrFail($id);
-        $this->editingId = $dept->id;
-        $this->division_id = $dept->division_id;
-        $this->name = $dept->name;
-        $this->code = $dept->code;
+        $this->editingId = $dept->LGL_ROW_ID;
+        $this->div_id = $dept->DIV_ID;
+        $this->ref_dept_name = $dept->REF_DEPT_NAME;
+        $this->ref_dept_id = $dept->REF_DEPT_ID;
         $this->email = $dept->email ?? '';
         
         // Convert array to comma-separated string for editing
@@ -57,9 +57,9 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function save(): void
     {
         $validated = $this->validate([
-            'division_id' => ['required', 'exists:divisions,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:20', $this->editingId ? "unique:departments,code,{$this->editingId}" : 'unique:departments,code'],
+            'div_id' => ['required', 'exists:LGL_DIVISION,LGL_ROW_ID'],
+            'ref_dept_name' => ['required', 'string', 'max:255'],
+            'ref_dept_id' => ['required', 'string', 'max:20', $this->editingId ? "unique:LGL_DEPARTMENT,REF_DEPT_ID,{$this->editingId},LGL_ROW_ID" : 'unique:LGL_DEPARTMENT,REF_DEPT_ID'],
             'email' => ['nullable', 'email', 'max:100'],
             'cc_emails_input' => ['nullable', 'string'],
         ]);
@@ -76,9 +76,9 @@ new #[Layout('components.layouts.app')] class extends Component {
         }
         
         $data = [
-            'division_id' => $validated['division_id'],
-            'name' => $validated['name'],
-            'code' => $validated['code'],
+            'DIV_ID' => $validated['div_id'],
+            'REF_DEPT_NAME' => $validated['ref_dept_name'],
+            'REF_DEPT_ID' => $validated['ref_dept_id'],
             'email' => !empty($validated['email']) ? $validated['email'] : null,
             'cc_emails' => !empty($ccEmails) ? $ccEmails : null,
         ];
@@ -97,7 +97,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             // Verify it was saved
             $dept->refresh();
             \Log::info('Department updated', [
-                'id' => $dept->id,
+                'id' => $dept->LGL_ROW_ID,
                 'cc_emails_raw' => $dept->getRawOriginal('cc_emails'),
                 'cc_emails_cast' => $dept->cc_emails,
             ]);
@@ -105,7 +105,7 @@ new #[Layout('components.layouts.app')] class extends Component {
             $this->dispatch('notify', type: 'success', message: 'Department updated successfully!');
         } else {
             $dept = Department::create($data);
-            \Log::info('Department created', ['id' => $dept->id, 'cc_emails' => $dept->cc_emails]);
+            \Log::info('Department created', ['id' => $dept->LGL_ROW_ID, 'cc_emails' => $dept->cc_emails]);
             $this->dispatch('notify', type: 'success', message: 'Department added successfully!');
         }
         
@@ -161,13 +161,13 @@ new #[Layout('components.layouts.app')] class extends Component {
                     @forelse($departments as $dept)
                     <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
                         <td class="px-4 py-3 text-sm text-neutral-900 dark:text-white">
-                            {{ $dept->division->name }}
+                            {{ $dept->division->REF_DIV_NAME }}
                         </td>
                         <td class="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-white">
-                            {{ $dept->name }}
+                            {{ $dept->REF_DEPT_NAME }}
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                            <code class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-800">{{ $dept->code }}</code>
+                            <code class="rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-800">{{ $dept->REF_DEPT_ID }}</code>
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             @if($dept->email)
@@ -192,11 +192,11 @@ new #[Layout('components.layouts.app')] class extends Component {
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
                                 @if(auth()->user()?->hasPermission('departments.manage'))
-                                <flux:button wire:click="edit({{ $dept->id }})" size="sm" variant="ghost" icon="pencil" />
+                                <flux:button wire:click="edit({{ $dept->LGL_ROW_ID }})" size="sm" variant="ghost" icon="pencil" />
                                 @endif
                                 
                                 @if(auth()->user()?->hasPermission('departments.manage'))
-                                <flux:button wire:click="delete({{ $dept->id }})" wire:confirm="Are you sure you want to delete this department?" size="sm" variant="ghost" icon="trash" class="text-red-600 hover:text-red-700" />
+                                <flux:button wire:click="delete({{ $dept->LGL_ROW_ID }})" wire:confirm="Are you sure you want to delete this department?" size="sm" variant="ghost" icon="trash" class="text-red-600 hover:text-red-700" />
                                 @endif
                             </div>
                         </td>
@@ -223,25 +223,25 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div class="space-y-4">
                 <flux:field>
                     <flux:label>Division *</flux:label>
-                    <flux:select wire:model="division_id" name="division_id">
+                    <flux:select wire:model="div_id" name="div_id">
                         <option value="">-- Select Division --</option>
                         @foreach($divisions as $division)
-                        <option value="{{ $division->id }}">{{ $division->name }}</option>
+                        <option value="{{ $division->LGL_ROW_ID }}">{{ $division->REF_DIV_NAME }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:error name="division_id" />
+                    <flux:error name="div_id" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>Name *</flux:label>
-                    <flux:input wire:model="name" name="name" />
-                    <flux:error name="name" />
+                    <flux:input wire:model="ref_dept_name" name="ref_dept_name" />
+                    <flux:error name="ref_dept_name" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>Code *</flux:label>
-                    <flux:input wire:model="code" name="code" />
-                    <flux:error name="code" />
+                    <flux:input wire:model="ref_dept_id" name="ref_dept_id" />
+                    <flux:error name="ref_dept_id" />
                 </flux:field>
 
                 <flux:field>

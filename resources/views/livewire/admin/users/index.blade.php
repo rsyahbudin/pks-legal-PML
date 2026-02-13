@@ -7,6 +7,7 @@ use App\Models\User;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
+use Illuminate\Support\Facades\Auth;
 
 new #[Layout('components.layouts.app')] class extends Component {
     use WithPagination;
@@ -31,20 +32,20 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function getUsersProperty()
     {
         return User::with(['role', 'division', 'department'])
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('email', 'like', "%{$this->search}%"))
-            ->orderBy('name')
+            ->when($this->search, fn($q) => $q->where('USER_FULLNAME', 'like', "%{$this->search}%")
+                ->orWhere('USER_EMAIL', 'like', "%{$this->search}%"))
+            ->orderBy('USER_FULLNAME')
             ->paginate(10);
     }
 
     public function getRolesProperty()
     {
-        return Role::orderBy('name')->get();
+        return Role::orderBy('ROLE_NAME')->get();
     }
 
     public function getDivisionsProperty()
     {
-        return Division::active()->orderBy('name')->get();
+        return Division::active()->orderBy('REF_DIV_NAME')->get();
     }
 
     public function getDepartmentsProperty()
@@ -52,7 +53,7 @@ new #[Layout('components.layouts.app')] class extends Component {
         if (!$this->division_id) {
             return collect();
         }
-        return Department::where('division_id', $this->division_id)->orderBy('name')->get();
+        return Department::where('DIV_ID', $this->division_id)->orderBy('REF_DEPT_NAME')->get();
     }
 
     public function create(): void
@@ -64,14 +65,14 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function edit(int $id): void
     {
         $user = User::findOrFail($id);
-        $this->editingId = $user->id;
-        $this->name = $user->name;
-        $this->email = $user->email;
+        $this->editingId = $user->LGL_ROW_ID;
+        $this->name = $user->USER_FULLNAME;
+        $this->email = $user->USER_EMAIL;
         $this->password = '';
-        $this->user_id = $user->user_id ?? '';
-        $this->role_id = (string) ($user->role_id ?? '');
-        $this->division_id = (string) ($user->division_id ?? '');
-        $this->department_id = (string) ($user->department_id ?? '');
+        $this->user_id = $user->USER_ID_NUMBER ?? '';
+        $this->role_id = (string) ($user->USER_ROLE_ID ?? '');
+        $this->division_id = (string) ($user->DIV_ID ?? '');
+        $this->department_id = (string) ($user->DEPT_ID ?? '');
         $this->showModal = true;
     }
 
@@ -79,11 +80,11 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', $this->editingId ? "unique:users,email,{$this->editingId}" : 'unique:users,email'],
+            'email' => ['required', 'email', $this->editingId ? "unique:LGL_USER,USER_EMAIL,{$this->editingId},LGL_ROW_ID" : 'unique:LGL_USER,USER_EMAIL'],
             'user_id' => ['nullable', 'string', 'max:10', 'regex:/^[0-9]*$/'],
-            'role_id' => ['nullable', 'exists:roles,id'],
-            'division_id' => ['nullable', 'exists:divisions,id'],
-            'department_id' => ['nullable', 'exists:departments,id'],
+            'role_id' => ['nullable', 'exists:LGL_ROLE,ROLE_ID'],
+            'division_id' => ['nullable', 'exists:LGL_DIVISION,LGL_ROW_ID'],
+            'department_id' => ['nullable', 'exists:LGL_DEPARTMENT,LGL_ROW_ID'],
         ];
 
         if (!$this->editingId || $this->password) {
@@ -93,23 +94,25 @@ new #[Layout('components.layouts.app')] class extends Component {
         $validated = $this->validate($rules);
 
         $data = [
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'user_id' => $validated['user_id'] ?: null,
-            'role_id' => $validated['role_id'] ?: null,
-            'division_id' => $validated['division_id'] ?: null,
-            'department_id' => $validated['department_id'] ?: null,
+            'USER_FULLNAME' => $validated['name'],
+            'USER_EMAIL' => $validated['email'],
+            'USER_ID_NUMBER' => $validated['user_id'] ?: null,
+            'USER_ROLE_ID' => $validated['role_id'] ?: null,
+            'DIV_ID' => $validated['division_id'] ?: null,
+            'DEPT_ID' => $validated['department_id'] ?: null,
+            'USER_UPDATED_BY' => Auth::id(),
         ];
 
         if (!empty($this->password)) {
-            $data['password'] = $this->password;
+            $data['USER_PASSWORD'] = $this->password;
         }
 
         if ($this->editingId) {
             User::findOrFail($this->editingId)->update($data);
             session()->flash('success', 'User successfully updated.');
         } else {
-            $data['email_verified_at'] = now();
+            $data['USER_CREATED_BY'] = Auth::id();
+            $data['USER_EMAIL_VERIFIED_DT'] = now();
             User::create($data);
             session()->flash('success', 'User successfully added.');
         }
@@ -119,7 +122,7 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function delete(int $id): void
     {
-        if ($id === auth()->id()) {
+        if ($id === Auth::id()) {
             session()->flash('error', 'Cannot delete your own account.');
             return;
         }
@@ -159,25 +162,25 @@ new #[Layout('components.layouts.app')] class extends Component {
                 </thead>
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
                     @forelse($this->users as $user)
-                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="user-{{ $user->id }}">
-                        <td class="px-4 py-3 font-medium text-neutral-900 dark:text-white">{{ $user->name }}</td>
-                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->email }}</td>
-                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->user_id ?? '-' }}</td>
+                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="user-{{ $user->LGL_ROW_ID }}">
+                        <td class="px-4 py-3 font-medium text-neutral-900 dark:text-white">{{ $user->USER_FULLNAME }}</td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->USER_EMAIL }}</td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->USER_ID_NUMBER ?? '-' }}</td>
                         <td class="px-4 py-3">
                             @if($user->role)
-                            <flux:badge color="{{ $user->role->slug === 'super-admin' ? 'red' : ($user->role->slug === 'legal' ? 'blue' : 'zinc') }}">{{ $user->role->name }}</flux:badge>
+                            <flux:badge color="{{ $user->role->ROLE_SLUG === 'super-admin' ? 'red' : ($user->role->ROLE_SLUG === 'legal' ? 'blue' : 'zinc') }}">{{ $user->role->ROLE_NAME }}</flux:badge>
                             @else
                             <span class="text-neutral-400">-</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->division?->name ?? '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->department?->name ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->division?->REF_DIV_NAME ?? '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">{{ $user->department?->REF_DEPT_NAME ?? '-' }}</td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
                                 @if(auth()->user()?->hasPermission('users.manage'))
-                                <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $user->id }})" />
-                                @if($user->id !== auth()->id())
-                                <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $user->id }})" wire:confirm="Are you sure?" />
+                                <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $user->LGL_ROW_ID }})" />
+                                @if($user->LGL_ROW_ID !== auth()->id())
+                                <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $user->LGL_ROW_ID }})" wire:confirm="Are you sure?" />
                                 @endif
                                 @endif
                             </div>
@@ -236,7 +239,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <flux:select wire:model="role_id">
                     <option value="">Select Role</option>
                     @foreach($this->roles as $role)
-                    <option value="{{ $role->id }}">{{ $role->name }}</option>
+                    <option value="{{ $role->ROLE_ID }}">{{ $role->ROLE_NAME }}</option>
                     @endforeach
                 </flux:select>
                 <flux:error name="role_id" />
@@ -247,7 +250,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <flux:select wire:model.live="division_id">
                     <option value="">Select Division</option>
                     @foreach($this->divisions as $division)
-                    <option value="{{ $division->id }}">{{ $division->name }}</option>
+                    <option value="{{ $division->LGL_ROW_ID }}">{{ $division->REF_DIV_NAME }}</option>
                     @endforeach
                 </flux:select>
                 <flux:error name="division_id" />
@@ -260,7 +263,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <option value="">Select Department (Optional)</option>
                     @if($this->departments->isNotEmpty())
                         @foreach($this->departments as $dept)
-                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        <option value="{{ $dept->LGL_ROW_ID }}">{{ $dept->REF_DEPT_NAME }}</option>
                         @endforeach
                     @else
                         <option value="" disabled>No departments</option>

@@ -4,6 +4,7 @@ use App\Models\Contract;
 use App\Models\Setting;
 use App\Models\Ticket;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -11,7 +12,8 @@ new #[Layout('components.layouts.app')] class extends Component
 {
     public function isLegalUser(): bool
     {
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
 
         return $user && $user->hasAnyRole(['super-admin', 'legal']);
     }
@@ -19,47 +21,49 @@ new #[Layout('components.layouts.app')] class extends Component
     // TICKET STATISTICS (for Legal Dashboard)
     public function getTicketStatisticsProperty(): array
     {
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
         if (! $user || ! $user->hasPermission('dashboard.tickets.view')) {
             return [];
         }
 
         return [
             'total' => Ticket::count(),
-            'open' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'open'))->count(),
-            'on_process' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'on_process'))->count(),
-            'done' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'done'))->count(),
-            'rejected' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'rejected'))->count(),
-            'closed' => Ticket::whereHas('status', fn ($q) => $q->where('code', 'closed'))->count(),
+            'open' => Ticket::whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'open'))->count(),
+            'on_process' => Ticket::whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'on_process'))->count(),
+            'done' => Ticket::whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'done'))->count(),
+            'rejected' => Ticket::whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'rejected'))->count(),
+            'closed' => Ticket::whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'closed'))->count(),
         ];
     }
 
     public function getAgingOverviewProperty(): array
     {
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
         if (! $user || ! $user->hasPermission('dashboard.aging.view')) {
             return [];
         }
 
-        $onProcessTickets = Ticket::where('status_id', \App\Models\TicketStatus::getIdByCode('on_process'))
-            ->whereNotNull('aging_start_at')
+        $onProcessTickets = Ticket::where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('on_process'))
+            ->whereNotNull('TCKT_AGING_START_DT')
             ->get();
 
-        $doneTickets = Ticket::where('status_id', \App\Models\TicketStatus::getIdByCode('done'))
-            ->whereNotNull('aging_duration')
+        $doneTickets = Ticket::where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('done'))
+            ->whereNotNull('TCKT_AGING_DURATION')
             ->get();
 
         $avgOngoing = $onProcessTickets->avg(function ($ticket) {
-            return $ticket->aging_start_at
-                ? now()->diffInMinutes($ticket->aging_start_at)
+            return $ticket->TCKT_AGING_START_DT
+                ? now()->diffInMinutes($ticket->TCKT_AGING_START_DT)
                 : 0;
         });
 
-        $avgCompleted = $doneTickets->avg('aging_duration') ?? 0;
+        $avgCompleted = $doneTickets->avg('TCKT_AGING_DURATION') ?? 0;
 
         $longest = $onProcessTickets->sortByDesc(function ($ticket) {
-            return $ticket->aging_start_at
-                ? now()->diffInMinutes($ticket->aging_start_at)
+            return $ticket->TCKT_AGING_START_DT
+                ? now()->diffInMinutes($ticket->TCKT_AGING_START_DT)
                 : 0;
         })->first();
 
@@ -72,14 +76,15 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function getTicketsNeedingAttentionProperty(): Collection
     {
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
         if (! $user || ! $user->hasPermission('dashboard.tickets.view')) {
             return collect();
         }
 
         return Ticket::with(['creator', 'division', 'contract'])
-            ->whereHas('status', fn ($q) => $q->whereIn('code', ['open', 'on_process']))
-            ->orderBy('created_at', 'asc')
+            ->whereHas('status', fn ($q) => $q->whereIn('LOV_VALUE', ['open', 'on_process']))
+            ->orderBy('TCKT_CREATED_DT', 'asc')
             ->limit(5)
             ->get();
     }
@@ -87,18 +92,19 @@ new #[Layout('components.layouts.app')] class extends Component
     // USER TICKET STATISTICS (for Regular User Dashboard)
     public function getMyTicketStatisticsProperty(): array
     {
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
         if (! $user || ! $user->hasPermission('dashboard.my-tickets.view')) {
             return [];
         }
 
         return [
-            'total' => Ticket::where('department_id', $user->department_id)->count(),
-            'open' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('open'))->count(),
-            'on_process' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('on_process'))->count(),
-            'done' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('done'))->count(),
-            'rejected' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('rejected'))->count(),
-            'closed' => Ticket::where('department_id', $user->department_id)->where('status_id', \App\Models\TicketStatus::getIdByCode('closed'))->count(),
+            'total' => Ticket::where('DEPT_ID', $user->DEPT_ID)->count(),
+            'open' => Ticket::where('DEPT_ID', $user->DEPT_ID)->where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('open'))->count(),
+            'on_process' => Ticket::where('DEPT_ID', $user->DEPT_ID)->where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('on_process'))->count(),
+            'done' => Ticket::where('DEPT_ID', $user->DEPT_ID)->where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('done'))->count(),
+            'rejected' => Ticket::where('DEPT_ID', $user->DEPT_ID)->where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('rejected'))->count(),
+            'closed' => Ticket::where('DEPT_ID', $user->DEPT_ID)->where('TCKT_STS_ID', \App\Models\TicketStatus::getIdByCode('closed'))->count(),
         ];
     }
 
@@ -110,8 +116,8 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         return Ticket::with(['division', 'department', 'contract'])
-            ->where('department_id', $user->department_id)
-            ->orderBy('created_at', 'desc')
+            ->where('DEPT_ID', $user->DEPT_ID)
+            ->orderBy('TCKT_CREATED_DT', 'desc')
             ->limit(5)
             ->get();
     }
@@ -128,13 +134,13 @@ new #[Layout('components.layouts.app')] class extends Component
 
         // Role-based filtering: regular users see contracts from their department
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where('department_id', $user->department_id);
+            $query->where('CONTR_DEPT_ID', $user->DEPT_ID);
         }
 
         $total = (clone $query)->count();
         $active = (clone $query)->active()->count();
         $expired = (clone $query)->expired()->count();
-        $terminated = (clone $query)->whereHas('status', fn ($q) => $q->where('code', 'terminated'))->count();
+        $terminated = (clone $query)->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'terminated'))->count();
 
         return [
             'total' => $total,
@@ -152,11 +158,11 @@ new #[Layout('components.layouts.app')] class extends Component
         }
 
         $query = Contract::with(['division', 'pic', 'ticket'])
-            ->orderBy('created_at', 'desc');
+            ->orderBy('CONTR_CREATED_DT', 'desc');
 
         // Role-based filtering: regular users see contracts from their department
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where('department_id', $user->department_id);
+            $query->where('CONTR_DEPT_ID', $user->DEPT_ID);
         }
 
         return $query->limit(7)->get();
@@ -172,13 +178,13 @@ new #[Layout('components.layouts.app')] class extends Component
         $warningThreshold = (int) Setting::get('reminder_threshold_warning', 60);
 
         $query = Contract::with(['division', 'pic', 'ticket'])
-            ->whereHas('status', fn ($q) => $q->where('code', 'active'))
-            ->whereDate('end_date', '<=', now()->addDays($warningThreshold))
-            ->orderBy('end_date', 'asc');
+            ->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'active'))
+            ->whereDate('CONTR_END_DT', '<=', now()->addDays($warningThreshold))
+            ->orderBy('CONTR_END_DT', 'asc');
 
         // Role-based filtering: regular users see contracts from their department
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where('department_id', $user->department_id);
+            $query->where('CONTR_DEPT_ID', $user->DEPT_ID);
         }
 
         return $query->limit(5)->get();
@@ -244,18 +250,18 @@ new #[Layout('components.layouts.app')] class extends Component
                     @foreach($this->ticketsNeedingAttention as $ticket)
                     <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
                         <td class="px-4 py-3 text-sm font-medium">
-                            <a href="{{ route('tickets.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
-                                {{ $ticket->ticket_number }}
+                            <a href="{{ route('tickets.show', $ticket->LGL_ROW_ID) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                                {{ $ticket->TCKT_NO }}
                             </a>
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                            {{ Str::limit($ticket->proposed_document_title, 40) }}
+                            {{ Str::limit($ticket->TCKT_PROP_DOC_TITLE, 40) }}
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->document_type_label }}
                         </td>
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                            {{ $ticket->creator->name }}
+                            {{ $ticket->creator->USER_FULLNAME ?? '-' }}
                         </td>
                         <td class="px-4 py-3 text-center">
                             @php
@@ -263,7 +269,7 @@ new #[Layout('components.layouts.app')] class extends Component
                                     'open' => ['class' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', 'label' => 'Open'],
                                     'on_process' => ['class' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', 'label' => 'On Process'],
                                 ];
-                                $config = $statusConfig[$ticket->status?->code] ?? ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => ucfirst($ticket->status?->code)];
+                                $config = $statusConfig[$ticket->status?->LOV_VALUE] ?? ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => ucfirst($ticket->status?->LOV_VALUE)];
                             @endphp
                             <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $config['class'] }}">
                                 {{ $config['label'] }}
@@ -346,12 +352,12 @@ new #[Layout('components.layouts.app')] class extends Component
                         @forelse($this->myRecentTickets as $ticket)
                         <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
                             <td class="px-4 py-3 text-sm font-medium">
-                                <a href="{{ route('tickets.show', $ticket->id) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
-                                    {{ $ticket->ticket_number }}
+                                <a href="{{ route('tickets.show', $ticket->LGL_ROW_ID) }}" class="text-blue-600 hover:underline dark:text-blue-400" wire:navigate>
+                                    {{ $ticket->TCKT_NO }}
                                 </a>
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                {{ Str::limit($ticket->proposed_document_title, 50) }}
+                                {{ Str::limit($ticket->TCKT_PROP_DOC_TITLE, 50) }}
                             </td>
                             <td class="px-4 py-3 text-center">
                                 @php
@@ -362,14 +368,14 @@ new #[Layout('components.layouts.app')] class extends Component
                                         'rejected' => ['class' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', 'label' => 'Rejected'],
                                         'closed' => ['class' => 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', 'label' => 'Closed'],
                                     ];
-                                    $config = $statusConfig[$ticket->status?->code] ?? ['class' => 'bg-neutral-100 text-neutral-800', 'label' => ucfirst($ticket->status?->code)];
+                                    $config = $statusConfig[$ticket->status?->LOV_VALUE] ?? ['class' => 'bg-neutral-100 text-neutral-800', 'label' => ucfirst($ticket->status?->LOV_VALUE)];
                                 @endphp
                                 <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $config['class'] }}">
                                     {{ $config['label'] }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                {{ $ticket->created_at->format('d M Y') }}
+                                {{ $ticket->TCKT_CREATED_DT->format('d M Y') }}
                             </td>
                         </tr>
                         @empty
@@ -482,15 +488,15 @@ new #[Layout('components.layouts.app')] class extends Component
                     </thead>
                     <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
                         @forelse($this->recentContracts as $contract)
-                        <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="contract-{{ $contract->id }}">
+                        <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="contract-{{ $contract->LGL_ROW_ID }}">
                             <td class="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-white">
-                                {{ $contract->contract_number }}
+                                {{ $contract->CONTR_NO }}
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                {{ $contract->agreement_name ?? $contract->proposed_document_title ?? '-' }}
+                                {{ $contract->CONTR_AGREE_NAME ?? $contract->CONTR_PROP_DOC_TITLE ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                                {{ $contract->end_date?->format('d M Y') ?? '-' }}
+                                {{ $contract->CONTR_END_DT?->format('d M Y') ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-center">
                                 @php
@@ -504,7 +510,7 @@ new #[Layout('components.layouts.app')] class extends Component
                                 @endphp
                                 <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass }}">
                                     <span class="h-1.5 w-1.5 rounded-full {{ $color === 'green' ? 'bg-green-500' : ($color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500') }}"></span>
-                                    {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' days' : 'Expired') }}
+                                    {{ $contract->status?->LOV_VALUE === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' days' : 'Expired') }}
                                 </span>
                             </td>
                         </tr>
@@ -527,24 +533,24 @@ new #[Layout('components.layouts.app')] class extends Component
             </div>
             <div class="divide-y divide-neutral-200 dark:divide-neutral-700">
                 @forelse($this->expiringContracts as $contract)
-                <div class="flex items-center gap-4 p-4" wire:key="expiring-{{ $contract->id }}">
+                <div class="flex items-center gap-4 p-4" wire:key="expiring-{{ $contract->LGL_ROW_ID }}">
                     <div class="flex h-10 w-10 items-center justify-center rounded-full {{ $contract->status_color === 'red' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30' }}">
                         <flux:icon name="exclamation-triangle" class="h-5 w-5 {{ $contract->status_color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400' }}" />
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="truncate font-medium text-neutral-900 dark:text-white">
-                            {{ $contract->contract_number }}
+                            {{ $contract->CONTR_NO }}
                         </p>
                         <p class="truncate text-sm text-neutral-500 dark:text-neutral-400">
-                            {{ $contract->agreement_name ?? $contract->proposed_document_title ?? '-' }} • {{ $contract->division->name }}
+                            {{ $contract->CONTR_AGREE_NAME ?? $contract->CONTR_PROP_DOC_TITLE ?? '-' }} • {{ $contract->division->REF_DIV_NAME ?? '-' }}
                         </p>
                     </div>
                     <div class="text-right">
                         <p class="font-medium {{ $contract->status_color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400' }}">
-                            {{ $contract->status?->code === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' days' : 'Expired') }}
+                            {{ $contract->status?->LOV_VALUE === 'terminated' ? 'Terminated' : ($contract->days_remaining > 0 ? $contract->days_remaining . ' days' : 'Expired') }}
                         </p>
                         <p class="text-xs text-neutral-500 dark:text-neutral-400">
-                            {{ $contract->end_date?->format('d M Y') ?? '-' }}
+                            {{ $contract->CONTR_END_DT?->format('d M Y') ?? '-' }}
                         </p>
                     </div>
                 </div>

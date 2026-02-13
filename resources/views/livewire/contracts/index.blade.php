@@ -2,10 +2,12 @@
 
 use App\Models\Division;
 use App\Models\Ticket;
+use App\Models\TicketStatus;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
+
 
 new #[Layout('components.layouts.app')] class extends Component
 {
@@ -74,42 +76,53 @@ new #[Layout('components.layouts.app')] class extends Component
 
         $query = Ticket::with(['division', 'department', 'creator', 'contract', 'status', 'documentType'])
             ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('ticket_number', 'like', "%{$this->search}%")
-                    ->orWhere('proposed_document_title', 'like', "%{$this->search}%");
+                $q->where('TCKT_NO', 'like', "%{$this->search}%")
+                    ->orWhere('TCKT_PROP_DOC_TITLE', 'like', "%{$this->search}%");
             }))
-            ->when($this->statusFilter, fn ($q) => $q->whereHas('status', fn ($sq) => $sq->where('code', $this->statusFilter)))
-            ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter))
+            ->when($this->statusFilter, fn ($q) => $q->whereHas('status', fn ($sq) => $sq->where('LOV_VALUE', $this->statusFilter)))
+            ->when($this->divisionFilter, fn ($q) => $q->where('DIV_ID', $this->divisionFilter))
             ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
-            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate));
+            ->when($this->startDate, fn ($q) => $q->whereDate('TCKT_CREATED_DT', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('TCKT_CREATED_DT', '<=', $this->endDate));
 
         // Role-based filtering
         if ($user && ! $user->hasAnyRole(['super-admin', 'legal'])) {
             // Regular users: only see tickets from their department
-            $query->where('department_id', $user->department_id);
+            $query->where('DEPT_ID', $user->DEPT_ID);
         }
         // Legal & super admin: see all tickets
 
-        return $query->orderBy('created_at', 'desc')->paginate($this->perPage);
+        return $query->orderBy('TCKT_CREATED_DT', 'desc')->paginate($this->perPage);
     }
 
     public function getDivisionsProperty()
     {
-        return Division::active()->orderBy('name')->get();
+        return Division::active()->orderBy('REF_DIV_NAME')->get();
     }
 
+    // public function getTicketStatusesProperty()
+    // {
+    //     return \App\Models\TicketStatus::active()->orderBy('LOV_SEQ_NO')->get();
+    // }
+
     public function getTicketStatusesProperty()
-    {
-        return \App\Models\TicketStatus::active()->orderBy('sort_order')->get();
-    }
+{
+    return TicketStatus::where('LOV_TYPE', 'TICKET_STATUS')
+        ->where('IS_ACTIVE', 1)
+        ->orderByRaw('COALESCE(LOV_SEQ_NO, 999)')
+        ->orderBy('LOV_DISPLAY_NAME')
+        ->get();
+}
+
 
     public function editFolderLink($contractId): void
     {
         $contract = \App\Models\Contract::findOrFail($contractId);
         $this->selectedContract = $contract;
-        $this->folder_link = $contract->folder_link ?? '';
+        $this->folder_link = $contract->CONTR_DIR_SHARE_LINK ?? '';
         $this->showFolderLinkModal = true;
     }
+    
 
     public function saveFolderLink(): void
     {
@@ -117,10 +130,10 @@ new #[Layout('components.layouts.app')] class extends Component
             'folder_link' => ['nullable', 'url', 'max:500'],
         ]);
 
-        $oldLink = $this->selectedContract->folder_link;
+        $oldLink = $this->selectedContract->CONTR_DIR_SHARE_LINK;
 
         $this->selectedContract->update([
-            'folder_link' => $this->folder_link ?: null,
+            'CONTR_DIR_SHARE_LINK' => $this->folder_link ?: null,
         ]);
 
         // Log activity to the ticket
@@ -199,7 +212,7 @@ new #[Layout('components.layouts.app')] class extends Component
             <flux:select wire:model.live="statusFilter">
                 <option value="">All Ticket Statuses</option>
                 @foreach($this->ticketStatuses as $status)
-                    <option value="{{ $status->code }}">{{ $status->name }}</option>
+                    <option value="{{ $status->LOV_VALUE }}">{{ $status->LOV_DISPLAY_NAME }}</option>
                 @endforeach
             </flux:select>
 
@@ -216,7 +229,7 @@ new #[Layout('components.layouts.app')] class extends Component
             <flux:select wire:model.live="divisionFilter">
                 <option value="">All Divisions</option>
                 @foreach($this->divisions as $division)
-                <option value="{{ $division->id }}">{{ $division->name }}</option>
+                <option value="{{ $division->LGL_ROW_ID }}">{{ $division->REF_DIV_NAME }}</option>
                 @endforeach
             </flux:select>
         </div>
@@ -241,33 +254,31 @@ new #[Layout('components.layouts.app')] class extends Component
                 </thead>
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
                     @forelse($this->tickets as $ticket)
-                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="row-{{ $ticket->id }}">
+                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="row-{{ $ticket->LGL_ROW_ID }}">
                         <td class="px-4 py-3">
-                            <span class="font-medium text-neutral-900 dark:text-white">{{ $ticket->ticket_number }}</span>
+                            <span class="font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_NO }}</span>
                         </td>
                         <td class="px-4 py-3">
                             <div class="max-w-xs">
-                                <p class="truncate font-medium text-neutral-900 dark:text-white">{{ $ticket->proposed_document_title }}</p>
-                                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ $ticket->document_type_label }}</p>
+                                <p class="truncate font-medium text-neutral-900 dark:text-white">{{ $ticket->TCKT_PROP_DOC_TITLE }}</p>
+                                <p class="text-xs text-neutral-500 dark:text-neutral-400">{{ $ticket->documentType->REF_DOC_TYPE_NAME }}</p>
                             </div>
                         </td>
                         <!-- <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->division->name }}
                         </td> -->
                         <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
-                            {{ $ticket->department->name }}
+                            {{ $ticket->department?->REF_DEPT_NAME ?? '-' }}
                         </td>
                         <td class="px-4 py-3 text-center">
-                            @php
-                                $color = $ticket->status?->color ?? 'neutral';
-                            @endphp
-                            <flux:badge :color="$color" size="sm" inset="top bottom">{{ $ticket->status?->name ?? 'Unknown' }}</flux:badge>
+                            
+                            <flux:badge  size="sm" inset="top bottom">{{ $ticket->status?->name ?? 'Unknown' }}</flux:badge>
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
-                            {{ $ticket->created_at->format('d/m/Y H:i') }}
+                            {{ $ticket->TCKT_CREATED_DT->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
-                            {{ $ticket->updated_at->format('d/m/Y H:i') }}
+                            {{ $ticket->TCKT_UPDATED_DT->format('d/m/Y H:i') }}
                         </td>
                         <td class="px-4 py-3 text-center">
                             <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {{ $ticket->aging_display === '-' ? 'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }}">
@@ -276,7 +287,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-center gap-2">
-                                <a href="{{ route('tickets.show', $ticket->id) }}" wire:navigate>
+                                <a href="{{ route('tickets.show', $ticket->LGL_ROW_ID) }}" wire:navigate>
                                     <flux:button size="sm" variant="ghost" icon="eye" />
                                 </a>
                             </div>

@@ -26,9 +26,23 @@ return new class extends Migration
         $this->migrateContractDocumentTypes();
 
         // Drop old ENUM columns
+        try {
+            Schema::table('tickets', function (Blueprint $table) {
+                $table->dropIndex(['document_type']);
+            });
+        } catch (\Exception $e) {
+        }
+
         Schema::table('tickets', function (Blueprint $table) {
             $table->dropColumn('document_type');
         });
+
+        try {
+            Schema::table('contracts', function (Blueprint $table) {
+                $table->dropIndex(['document_type']);
+            });
+        } catch (\Exception $e) {
+        }
 
         Schema::table('contracts', function (Blueprint $table) {
             $table->dropColumn('document_type');
@@ -38,24 +52,32 @@ return new class extends Migration
     private function migrateTicketDocumentTypes(): void
     {
         $typeMap = DB::table('document_types')->pluck('id', 'code');
+        $isMysql = DB::getDriverName() === 'mysql';
 
         foreach ($typeMap as $code => $id) {
-            DB::table('tickets')
-                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(COALESCE(document_type, 'null'), '$')) = ?", [$code])
-                ->orWhere('document_type', $code)
-                ->update(['document_type_id' => $id]);
+            $query = DB::table('tickets');
+            if ($isMysql) {
+                $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(COALESCE(document_type, 'null'), '$')) = ?", [$code]);
+            } else {
+                $query->where('document_type', $code);
+            }
+            $query->orWhere('document_type', $code)->update(['document_type_id' => $id]);
         }
     }
 
     private function migrateContractDocumentTypes(): void
     {
         $typeMap = DB::table('document_types')->pluck('id', 'code');
+        $isMysql = DB::getDriverName() === 'mysql';
 
         foreach ($typeMap as $code => $id) {
-            DB::table('contracts')
-                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(COALESCE(document_type, 'null'), '$')) = ?", [$code])
-                ->orWhere('document_type', $code)
-                ->update(['document_type_id' => $id]);
+            $query = DB::table('contracts');
+            if ($isMysql) {
+                $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(COALESCE(document_type, 'null'), '$')) = ?", [$code]);
+            } else {
+                $query->where('document_type', $code);
+            }
+            $query->orWhere('document_type', $code)->update(['document_type_id' => $id]);
         }
     }
 

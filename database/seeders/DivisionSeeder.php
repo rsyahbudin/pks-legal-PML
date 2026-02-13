@@ -12,92 +12,92 @@ class DivisionSeeder extends Seeder
     {
         $divisions = [
             [
-                'name' => 'Distribution',
-                'code' => 'DIST',
-                'description' => 'Divisi Distribution',
+                'REF_DIV_NAME' => 'Distribution',
+                'REF_DIV_ID' => 'DIST',
+                'REF_DIV_DESC' => 'Divisi Distribution',
                 'departments' => [
-                    ['name' => 'Bancassurance Conventional', 'code' => 'BANC-CONV'],
-                    ['name' => 'Bancassurance Sharia', 'code' => 'BANC-SHAR'],
-                    ['name' => 'Credit Life Employee Benefit', 'code' => 'CLEB'],
-                    ['name' => 'Hybrid Digital Agency', 'code' => 'HDA'],
-                    ['name' => 'Business Development', 'code' => 'BIZDEV'],
-                    ['name' => 'Distribution Support', 'code' => 'DIST-SUP'],
+                    ['REF_DEPT_NAME' => 'Bancassurance Conventional', 'REF_DEPT_ID' => 'BANC-CONV'],
+                    ['REF_DEPT_NAME' => 'Bancassurance Sharia', 'REF_DEPT_ID' => 'BANC-SHAR'],
+                    ['REF_DEPT_NAME' => 'Credit Life Employee Benefit', 'REF_DEPT_ID' => 'CLEB'],
+                    ['REF_DEPT_NAME' => 'Hybrid Digital Agency', 'REF_DEPT_ID' => 'HDA'],
+                    ['REF_DEPT_NAME' => 'Business Development', 'REF_DEPT_ID' => 'BIZDEV'],
+                    ['REF_DEPT_NAME' => 'Distribution Support', 'REF_DEPT_ID' => 'DIST-SUP'],
                 ],
             ],
             [
-                'name' => 'Finance',
-                'code' => 'FIN',
-                'description' => 'Divisi Finance',
+                'REF_DIV_NAME' => 'Finance',
+                'REF_DIV_ID' => 'FIN',
+                'REF_DIV_DESC' => 'Divisi Finance',
                 'departments' => [
-                    ['name' => 'Finance and Accounting', 'code' => 'FIN-ACC'],
-                    ['name' => 'Investment', 'code' => 'INV'],
-                    ['name' => 'Financial Planning Analysis and Procurement', 'code' => 'FPAP'],
+                    ['REF_DEPT_NAME' => 'Finance and Accounting', 'REF_DEPT_ID' => 'FIN-ACC'],
+                    ['REF_DEPT_NAME' => 'Investment', 'REF_DEPT_ID' => 'INV'],
+                    ['REF_DEPT_NAME' => 'Financial Planning Analysis and Procurement', 'REF_DEPT_ID' => 'FPAP'],
                 ],
             ],
             [
-                'name' => 'Compliance',
-                'code' => 'COMP',
-                'description' => 'Divisi Compliance',
+                'REF_DIV_NAME' => 'Compliance',
+                'REF_DIV_ID' => 'COMP',
+                'REF_DIV_DESC' => 'Divisi Compliance',
                 'departments' => [
-                    ['name' => 'Compliance', 'code' => 'COMP'],
-                    ['name' => 'Risk Management', 'code' => 'RISK'],
+                    ['REF_DEPT_NAME' => 'Compliance', 'REF_DEPT_ID' => 'COMP'],
+                    ['REF_DEPT_NAME' => 'Risk Management', 'REF_DEPT_ID' => 'RISK'],
                 ],
             ],
             [
-                'name' => 'IT',
-                'code' => 'IT',
-                'description' => 'Divisi IT',
+                'REF_DIV_NAME' => 'IT',
+                'REF_DIV_ID' => 'IT',
+                'REF_DIV_DESC' => 'Divisi IT',
                 'departments' => [
-                    ['name' => 'IT Developer', 'code' => 'IT-DEV'],
-                    ['name' => 'IT Security', 'code' => 'IT-SEC'],
-                    ['name' => 'IT Infrastructure', 'code' => 'IT-INFRA'],
-                    ['name' => 'IT Business Analyst', 'code' => 'IT-BA'],
+                    ['REF_DEPT_NAME' => 'IT Developer', 'REF_DEPT_ID' => 'IT-DEV'],
+                    ['REF_DEPT_NAME' => 'IT Security', 'REF_DEPT_ID' => 'IT-SEC'],
+                    ['REF_DEPT_NAME' => 'IT Infrastructure', 'REF_DEPT_ID' => 'IT-INFRA'],
+                    ['REF_DEPT_NAME' => 'IT Business Analyst', 'REF_DEPT_ID' => 'IT-BA'],
                 ],
             ],
             [
-                'name' => 'Actuary and Product',
-                'code' => 'ACT-PRD',
-                'description' => 'Divisi Actuary and Product',
+                'REF_DIV_NAME' => 'Actuary and Product',
+                'REF_DIV_ID' => 'ACT-PRD',
+                'REF_DIV_DESC' => 'Divisi Actuary and Product',
                 'departments' => [
-                    ['name' => 'Product', 'code' => 'PRD'],
-                    ['name' => 'Actuary', 'code' => 'ACT'],
+                    ['REF_DEPT_NAME' => 'Product', 'REF_DEPT_ID' => 'PRD'],
+                    ['REF_DEPT_NAME' => 'Actuary', 'REF_DEPT_ID' => 'ACT'],
                 ],
             ],
             [
-                'name' => 'Operation',
-                'code' => 'OPS',
-                'description' => 'Divisi Operation',
+                'REF_DIV_NAME' => 'Operation',
+                'REF_DIV_ID' => 'OPS',
+                'REF_DIV_DESC' => 'Divisi Operation',
                 'departments' => [
-                    ['name' => 'Underwriting', 'code' => 'UW'],
-                    ['name' => 'Claim', 'code' => 'CLM'],
-                    ['name' => 'Policy Owner Service', 'code' => 'POS'],
-                    ['name' => 'Customer Service', 'code' => 'CS'],
+                    ['REF_DEPT_NAME' => 'Underwriting', 'REF_DEPT_ID' => 'UW'],
+                    ['REF_DEPT_NAME' => 'Claim', 'REF_DEPT_ID' => 'CLM'],
+                    ['REF_DEPT_NAME' => 'Policy Owner Service', 'REF_DEPT_ID' => 'POS'],
+                    ['REF_DEPT_NAME' => 'Customer Service', 'REF_DEPT_ID' => 'CS'],
                 ],
             ],
             [
-                'name' => 'Digital',
-                'code' => 'DIG',
-                'description' => 'Divisi Digital',
+                'REF_DIV_NAME' => 'Digital',
+                'REF_DIV_ID' => 'DIG',
+                'REF_DIV_DESC' => 'Divisi Digital',
                 'departments' => [
-                    ['name' => 'Digital Marketing', 'code' => 'DIG-MKT'],
-                    ['name' => 'Data Scientist', 'code' => 'DATA-SCI'],
-                    ['name' => 'Marketing Technology', 'code' => 'MARTECH'],
+                    ['REF_DEPT_NAME' => 'Digital Marketing', 'REF_DEPT_ID' => 'DIG-MKT'],
+                    ['REF_DEPT_NAME' => 'Data Scientist', 'REF_DEPT_ID' => 'DATA-SCI'],
+                    ['REF_DEPT_NAME' => 'Marketing Technology', 'REF_DEPT_ID' => 'MARTECH'],
                 ],
             ],
             [
-                'name' => 'Internal Audit',
-                'code' => 'AUDIT',
-                'description' => 'Divisi Internal Audit',
+                'REF_DIV_NAME' => 'Internal Audit',
+                'REF_DIV_ID' => 'AUDIT',
+                'REF_DIV_DESC' => 'Divisi Internal Audit',
                 'departments' => [
-                    ['name' => 'Audit', 'code' => 'AUDIT'],
+                    ['REF_DEPT_NAME' => 'Audit', 'REF_DEPT_ID' => 'AUDIT'],
                 ],
             ],
             [
-                'name' => 'Legal',
-                'code' => 'LEGAL',
-                'description' => 'Divisi Legal',
+                'REF_DIV_NAME' => 'Legal',
+                'REF_DIV_ID' => 'LEGAL',
+                'REF_DIV_DESC' => 'Divisi Legal',
                 'departments' => [
-                    ['name' => 'Legal', 'code' => 'LEGAL'],
+                    ['REF_DEPT_NAME' => 'Legal', 'REF_DEPT_ID' => 'LEGAL'],
                 ],
             ],
         ];
@@ -108,7 +108,7 @@ class DivisionSeeder extends Seeder
 
             // Create or update division
             $division = Division::updateOrCreate(
-                ['code' => $divisionData['code']],
+                ['REF_DIV_ID' => $divisionData['REF_DIV_ID']],
                 $divisionData
             );
 
@@ -116,11 +116,11 @@ class DivisionSeeder extends Seeder
             foreach ($departments as $departmentData) {
                 Department::updateOrCreate(
                     [
-                        'division_id' => $division->id,
-                        'code' => $departmentData['code'],
+                        'DIV_ID' => $division->LGL_ROW_ID,
+                        'REF_DEPT_ID' => $departmentData['REF_DEPT_ID'],
                     ],
                     [
-                        'name' => $departmentData['name'],
+                        'REF_DEPT_NAME' => $departmentData['REF_DEPT_NAME'],
                     ]
                 );
             }

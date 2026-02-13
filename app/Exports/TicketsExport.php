@@ -38,32 +38,32 @@ class TicketsExport implements FromCollection, WithColumnWidths, WithHeadings, W
 
     public function collection(): Collection
     {
-        $query = Ticket::with(['division', 'department', 'creator', 'contract'])
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->typeFilter, fn ($q) => $q->where('document_type', $this->typeFilter))
-            ->when($this->divisionId, fn ($q) => $q->where('division_id', $this->divisionId))
-            ->when($this->startDate, fn ($q) => $q->whereDate('created_at', '>=', $this->startDate))
-            ->when($this->endDate, fn ($q) => $q->whereDate('created_at', '<=', $this->endDate))
-            ->orderBy('created_at', 'desc');
+        $query = Ticket::with(['division', 'department', 'creator', 'contract', 'status'])
+            ->when($this->statusFilter, fn ($q) => $q->whereHas('status', fn ($sq) => $sq->where('LOV_VALUE', $this->statusFilter)))
+            ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
+            ->when($this->divisionId, fn ($q) => $q->where('DIV_ID', $this->divisionId))
+            ->when($this->startDate, fn ($q) => $q->whereDate('TCKT_CREATED_DT', '>=', $this->startDate))
+            ->when($this->endDate, fn ($q) => $q->whereDate('TCKT_CREATED_DT', '<=', $this->endDate))
+            ->orderBy('TCKT_CREATED_DT', 'desc');
 
         return $query->get()->map(function ($ticket) {
             // Calculate aging based on proper workflow timestamps
             $agingDisplay = '-';
             $totalMinutes = 0;
 
-            // Aging calculation logic based on status and aging_start_at
-            if ($ticket->aging_duration && $ticket->aging_duration > 0) {
-                // For completed tickets with stored aging_duration (already in minutes)
-                $totalMinutes = $ticket->aging_duration;
-            } elseif (in_array($ticket->status?->code, ['done', 'closed', 'rejected']) && $ticket->aging_start_at) {
-                // For completed tickets: use aging_start_at to aging_end_at (or updated_at as fallback)
-                $endTime = $ticket->aging_end_at ?? $ticket->updated_at;
-                $totalMinutes = $ticket->aging_start_at->diffInMinutes($endTime);
-            } elseif ($ticket->status?->code === 'on_process' && $ticket->aging_start_at) {
-                // For in-progress tickets: calculate from aging_start_at to now
-                $totalMinutes = $ticket->aging_start_at->diffInMinutes(now());
+            // Aging calculation logic based on status and TCKT_AGING_START_DT
+            if ($ticket->TCKT_AGING_DURATION && $ticket->TCKT_AGING_DURATION > 0) {
+                // For completed tickets with stored TCKT_AGING_DURATION (already in minutes)
+                $totalMinutes = $ticket->TCKT_AGING_DURATION;
+            } elseif (in_array($ticket->status?->LOV_VALUE, ['done', 'closed', 'rejected']) && $ticket->TCKT_AGING_START_DT) {
+                // For completed tickets: use TCKT_AGING_START_DT to TCKT_AGING_END_DT (or TCKT_UPDATED_DT as fallback)
+                $endTime = $ticket->TCKT_AGING_END_DT ?? $ticket->TCKT_UPDATED_DT;
+                $totalMinutes = $ticket->TCKT_AGING_START_DT->diffInMinutes($endTime);
+            } elseif ($ticket->status?->LOV_VALUE === 'on_process' && $ticket->TCKT_AGING_START_DT) {
+                // For in-progress tickets: calculate from TCKT_AGING_START_DT to now
+                $totalMinutes = $ticket->TCKT_AGING_START_DT->diffInMinutes(now());
             }
-            // If aging_start_at is not set, aging stays as '-' (ticket hasn't been processed yet)
+            // If TCKT_AGING_START_DT is not set, aging stays as '-' (ticket hasn't been processed yet)
 
             // Always show in hours for export
             if ($totalMinutes > 0) {
@@ -72,57 +72,57 @@ class TicketsExport implements FromCollection, WithColumnWidths, WithHeadings, W
             }
 
             return [
-                'Ticket Number' => $ticket->ticket_number,
-                'Document Title' => $ticket->proposed_document_title,
+                'Ticket Number' => $ticket->TCKT_NO,
+                'Document Title' => $ticket->TCKT_PROP_DOC_TITLE,
                 'Document Type' => $ticket->document_type_label,
-                'Division' => $ticket->division?->name ?? '-',
-                'Department' => $ticket->department?->name ?? '-',
-                'Created By' => $ticket->creator?->name ?? '-',
-                'Created Date' => $ticket->created_at->format('d/m/Y H:i'),
-                'Last Updated' => $ticket->updated_at->format('d/m/Y H:i'),
+                'Division' => $ticket->division?->REF_DIV_NAME ?? '-',
+                'Department' => $ticket->department?->REF_DEPT_NAME ?? '-',
+                'Created By' => $ticket->creator?->USER_FULLNAME ?? $ticket->creator?->name ?? '-',
+                'Created Date' => $ticket->TCKT_CREATED_DT->format('d/m/Y H:i'),
+                'Last Updated' => $ticket->TCKT_UPDATED_DT->format('d/m/Y H:i'),
                 'Status' => $ticket->status_label,
-                'Contract Status' => $ticket->contract?->status?->name ?? '-',
+                'Contract Status' => $ticket->contract?->status?->LOV_DISPLAY_NAME ?? '-',
 
                 // Aging information
-                'Process Started' => $ticket->aging_start_at?->format('d/m/Y H:i') ?? '-',
-                'Process Ended' => $ticket->aging_end_at?->format('d/m/Y H:i') ?? '-',
+                'Process Started' => $ticket->TCKT_AGING_START_DT?->format('d/m/Y H:i') ?? '-',
+                'Process Ended' => $ticket->TCKT_AGING_END_DT?->format('d/m/Y H:i') ?? '-',
                 'Aging' => $agingDisplay,
 
                 // Agreement/Perjanjian fields
-                'Counterpart' => $ticket->counterpart_name ?? '-',
-                'Agreement Start Date' => $ticket->agreement_start_date?->format('d/m/Y') ?? '-',
-                'Agreement Duration (Months)' => $ticket->agreement_duration ?? '-',
-                'Auto Renewal' => $ticket->is_auto_renewal ? 'Yes' : 'No',
-                'Renewal Period (Months)' => $ticket->renewal_period ?? '-',
-                'Renewal Notification (Days)' => $ticket->renewal_notification_days ?? '-',
-                'Agreement End Date' => $ticket->agreement_end_date?->format('d/m/Y') ?? '-',
-                'Termination Notification (Days)' => $ticket->termination_notification_days ?? '-',
+                'Counterpart' => $ticket->TCKT_COUNTERPART_NAME ?? '-',
+                'Agreement Start Date' => $ticket->TCKT_AGREE_START_DT?->format('d/m/Y') ?? '-',
+                'Agreement Duration (Months)' => $ticket->TCKT_AGREE_DURATION ?? '-',
+                'Auto Renewal' => $ticket->TCKT_IS_AUTO_RENEW ? 'Yes' : 'No',
+                'Renewal Period (Months)' => $ticket->TCKT_RENEW_PERIOD ?? '-',
+                'Renewal Notification (Days)' => $ticket->TCKT_RENEW_NOTIF_DAYS ?? '-',
+                'Agreement End Date' => $ticket->TCKT_AGREE_END_DT?->format('d/m/Y') ?? '-',
+                'Termination Notification (Days)' => $ticket->TCKT_TERMINATE_NOTIF_DT ? ($ticket->TCKT_TERMINATE_NOTIF_DT instanceof \Carbon\Carbon ? $ticket->TCKT_TERMINATE_NOTIF_DT->diffInDays($ticket->TCKT_AGREE_END_DT) : $ticket->TCKT_TERMINATE_NOTIF_DT) : '-',
 
                 // Surat Kuasa fields
-                'Grantor' => $ticket->kuasa_pemberi ?? '-',
-                'Grantee' => $ticket->kuasa_penerima ?? '-',
-                'Power of Attorney Start Date' => $ticket->kuasa_start_date?->format('d/m/Y') ?? '-',
-                'Power of Attorney End Date' => $ticket->kuasa_end_date?->format('d/m/Y') ?? '-',
+                'Grantor' => $ticket->TCKT_GRANTOR ?? '-',
+                'Grantee' => $ticket->TCKT_GRANTEE ?? '-',
+                'Power of Attorney Start Date' => $ticket->TCKT_GRANT_START_DT?->format('d/m/Y') ?? '-',
+                'Power of Attorney End Date' => $ticket->TCKT_GRANT_END_DT?->format('d/m/Y') ?? '-',
 
                 // Common fields
-                'Financial Impact' => $ticket->has_financial_impact ? 'Yes' : 'No',
+                'Financial Impact' => $ticket->TCKT_HAS_FIN_IMPACT ? 'Yes' : 'No',
                 'Payment Type' => match ($ticket->payment_type) {
                     'pay' => 'Pay',
                     'receive_payment' => 'Receive Payment',
                     default => '-'
                 },
                 'Recurring' => $ticket->recurring_description ?? '-',
-                'TAT Legal Compliance' => $ticket->tat_legal_compliance ? 'Yes' : 'No',
+                'TAT Legal Compliance' => $ticket->TCKT_TAT_LGL_COMPLNCE ? 'Yes' : 'No',
 
                 // Pre-Done Questions (Checklist)
-                'All requirements completed?' => $ticket->pre_done_question_1 ? 'Yes' : 'No',
-                'Stakeholder agreed?' => $ticket->pre_done_question_2 ? 'Yes' : 'No',
-                'Project started?' => $ticket->pre_done_question_3 ? 'Yes' : 'No',
-                'PreDone Notes' => $ticket->pre_done_remarks ?? '-',
+                'All requirements completed?' => $ticket->TCKT_POST_QUEST_1 ? 'Yes' : 'No',
+                'Stakeholder agreed?' => $ticket->TCKT_POST_QUEST_2 ? 'Yes' : 'No',
+                'Project started?' => $ticket->TCKT_POST_QUEST_3 ? 'Yes' : 'No',
+                'PreDone Notes' => $ticket->TCKT_POST_RMK ?? '-',
 
-                'Contract Number' => $ticket->contract?->contract_number ?? '-',
-                'Rejection Reason' => $ticket->rejection_reason ?? '-',
-                'Termination Reason' => $ticket->contract?->termination_reason ?? '-',
+                'Contract Number' => $ticket->contract?->CONTR_NO ?? '-',
+                'Rejection Reason' => $ticket->TCKT_REJECT_REASON ?? '-',
+                'Termination Reason' => $ticket->contract?->CONTR_TERMINATE_REASON ?? '-',
             ];
         });
     }

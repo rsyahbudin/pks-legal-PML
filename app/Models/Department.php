@@ -11,14 +11,20 @@ class Department extends Model
 {
     use HasFactory;
 
-    protected $table = 'departments';
+    protected $table = 'LGL_DEPARTMENT';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'REF_DEPT_CREATED_DT';
+
+    const UPDATED_AT = 'REF_DEPT_UPDATED_DT';
 
     protected $fillable = [
-        'division_id',
-        'name',
-        'code',
-        'email',
-        'cc_emails',
+        'DIV_ID',
+        'REF_DEPT_NAME',
+        'REF_DEPT_ID', // was code
+        'email', // Migration didn't rename email
+        'cc_emails', // Migration didn't rename cc_emails
     ];
 
     protected $casts = [
@@ -73,7 +79,7 @@ class Department extends Model
      */
     public function division(): BelongsTo
     {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class, 'DIV_ID');
     }
 
     /**
@@ -81,7 +87,15 @@ class Department extends Model
      */
     public function contracts(): HasMany
     {
-        return $this->hasMany(Contract::class, 'department_id');
+        return $this->hasMany(Contract::class, 'CONTR_DEPT_ID');
+    }
+
+    /**
+     * Get the users for this department.
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'DEPT_ID');
     }
 
     /**
@@ -89,8 +103,8 @@ class Department extends Model
      */
     public static function getLegalEmail(): ?string
     {
-        $legalDept = static::where('code', 'LEGAL')
-            ->orWhere('name', 'LIKE', '%Legal%')
+        $legalDept = static::where('REF_DEPT_ID', 'LEGAL')
+            ->orWhere('REF_DEPT_NAME', 'LIKE', '%Legal%')
             ->first();
 
         return $legalDept?->email;

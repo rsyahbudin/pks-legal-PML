@@ -12,21 +12,43 @@ class Notification extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_NOTIFICATION_MASTER';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'REF_NOTIF_CREATED_DT';
+
+    const UPDATED_AT = 'REF_NOTIF_UPDATED_DT';
+
     protected $fillable = [
         'user_id',
-        'type',
-        'title',
-        'message',
-        'notifiable_type',
-        'notifiable_id',
-        'read_at',
+        'NOTIFICATION_TYPE',
+        'NOTIF_TITLE',
+        'NOTIF_MSG',
+        'NOTIFICATION_DATA',
+        'NOTIFIABLE_TYPE',
+        'NOTIFIABLE_ID',
+        'READ_AT',
     ];
 
     protected function casts(): array
     {
         return [
-            'read_at' => 'datetime',
+            'READ_AT' => 'datetime',
+            'REF_NOTIF_CREATED_DT' => 'datetime',
+            'REF_NOTIF_UPDATED_DT' => 'datetime',
+            'NOTIFICATION_DATA' => 'array',
         ];
+    }
+
+    public function getCreatedAtAttribute()
+    {
+        return $this->REF_NOTIF_CREATED_DT;
+    }
+
+    public function getUpdatedAtAttribute()
+    {
+        return $this->REF_NOTIF_UPDATED_DT;
     }
 
     /**
@@ -34,7 +56,7 @@ class Notification extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
@@ -42,7 +64,7 @@ class Notification extends Model
      */
     public function notifiable(): MorphTo
     {
-        return $this->morphTo();
+        return $this->morphTo(null, 'NOTIFIABLE_TYPE', 'NOTIFIABLE_ID');
     }
 
     /**
@@ -50,7 +72,7 @@ class Notification extends Model
      */
     public function isRead(): bool
     {
-        return $this->read_at !== null;
+        return $this->READ_AT !== null;
     }
 
     /**
@@ -59,7 +81,7 @@ class Notification extends Model
     public function markAsRead(): void
     {
         if (! $this->isRead()) {
-            $this->update(['read_at' => now()]);
+            $this->update(['READ_AT' => now()]);
         }
     }
 
@@ -68,7 +90,7 @@ class Notification extends Model
      */
     public function markAsUnread(): void
     {
-        $this->update(['read_at' => null]);
+        $this->update(['READ_AT' => null]);
     }
 
     /**
@@ -76,7 +98,7 @@ class Notification extends Model
      */
     public function scopeUnread(Builder $query): Builder
     {
-        return $query->whereNull('read_at');
+        return $query->whereNull('READ_AT');
     }
 
     /**
@@ -84,7 +106,7 @@ class Notification extends Model
      */
     public function scopeRead(Builder $query): Builder
     {
-        return $query->whereNotNull('read_at');
+        return $query->whereNotNull('READ_AT');
     }
 
     /**
@@ -106,12 +128,12 @@ class Notification extends Model
             : "Kontrak Akan Expired dalam {$daysRemaining} Hari";
 
         return static::create([
-            'user_id' => $user->id,
-            'type' => $type,
-            'title' => $title,
-            'message' => "Kontrak {$contract->contract_number} ({$contract->agreement_name}) membutuhkan perhatian Anda.",
-            'notifiable_type' => Contract::class,
-            'notifiable_id' => $contract->id,
+            'user_id' => $user->LGL_ROW_ID,
+            'NOTIFICATION_TYPE' => $type,
+            'NOTIF_TITLE' => $title,
+            'NOTIF_MSG' => "Kontrak {$contract->CONTR_NO} ({$contract->CONTR_AGREE_NAME}) membutuhkan perhatian Anda.",
+            'NOTIFIABLE_TYPE' => Contract::class,
+            'NOTIFIABLE_ID' => $contract->LGL_ROW_ID,
         ]);
     }
 }

@@ -13,11 +13,12 @@
             <!-- Email Address -->
             <flux:input
                 name="email"
-                value="{{ request('email') }}"
-                :label="__('Email')"
+                :label="__('Email address')"
+                :value="request('email')"
                 type="email"
                 required
-                autocomplete="email"
+                autocomplete="username"
+                placeholder="email@example.com"
             />
 
             <!-- Password -->

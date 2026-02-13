@@ -21,10 +21,21 @@ return new class extends Migration
             ->update(['has_financial_impact' => true]);
 
         // 3. Drop FK and Column
+        try {
+            Schema::table('contracts', function (Blueprint $table) {
+                $table->dropForeign(['financial_impact_id']);
+            });
+        } catch (\Exception $e) {
+        }
+
+        try {
+            Schema::table('contracts', function (Blueprint $table) {
+                $table->dropIndex(['financial_impact_id']);
+            });
+        } catch (\Exception $e) {
+        }
+
         Schema::table('contracts', function (Blueprint $table) {
-            // Drop foreign key first (name follows Laravel convention: table_column_foreign)
-            // Or use array syntax to let Laravel find it
-            $table->dropForeign(['financial_impact_id']);
             $table->dropColumn('financial_impact_id');
         });
 

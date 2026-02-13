@@ -44,16 +44,16 @@ class ContractExpiringMail extends Mailable implements ShouldQueue
 
     protected function replacePlaceholders(string $template): string
     {
-        $expirationDate = $this->contract->end_date
-            ? $this->contract->end_date->format('d F Y')
+        $expirationDate = $this->contract->CONTR_END_DT
+            ? $this->contract->CONTR_END_DT->format('d F Y')
             : 'Auto Renewal';
 
         $replacements = [
-            '{agreement_name}' => $this->contract->agreement_name ?? '',
-            '{contract_number}' => $this->contract->contract_number,
+            '{agreement_name}' => $this->contract->CONTR_AGREE_NAME ?? '',
+            '{contract_number}' => $this->contract->CONTR_NO,
             '{end_date}' => $expirationDate,
             '{days_remaining}' => $this->daysRemaining,
-            '{counterpart_name}' => $this->contract->description ?? '',
+            '{counterpart_name}' => $this->contract->CONTR_COUNTERPART_NAME ?? '',
         ];
 
         return str_replace(

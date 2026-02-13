@@ -15,19 +15,30 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
+    protected $table = 'LGL_USER';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'USER_CREATED_DT';
+
+    const UPDATED_AT = 'USER_UPDATED_DT';
+
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'user_id',
-        'role_id',
-        'division_id',
-        'department_id',
+        'USER_FULLNAME',
+        'USER_EMAIL',
+        'USER_PASSWORD',
+        'USER_ROLE_ID',
+        'DIV_ID',
+        'DEPT_ID',
+        'USER_ID_NUMBER',
+        'USER_EMAIL_VERIFIED_DT',
+        'USER_CREATED_BY',
+        'USER_UPDATED_BY',
     ];
 
     /**
@@ -36,8 +47,10 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password',
-        'remember_token',
+        'USER_PASSWORD',
+        'USER_REMEMBER_TOKEN',
+        'USER_TWO_FACTOR_SECRET',
+        'USER_TWO_FACTOR_RECOVERY_CODES',
     ];
 
     /**
@@ -48,8 +61,39 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'password' => 'hashed',
+            'USER_PASSWORD' => 'hashed',
+            'USER_TWO_FACTOR_CONFIRMED_DT' => 'datetime',
         ];
+    }
+
+    public function getAuthPasswordName()
+    {
+        return 'USER_PASSWORD';
+    }
+
+    public function getAuthPassword()
+    {
+        return $this->USER_PASSWORD;
+    }
+
+    public function getRememberTokenName()
+    {
+        return 'USER_REMEMBER_TOKEN';
+    }
+
+    // public function getAuthIdentifierName()
+    // {
+    //     return 'USER_EMAIL';
+    // }
+
+    public function getNameAttribute()
+    {
+        return $this->USER_FULLNAME;
+    }
+
+    public function getEmailAttribute()
+    {
+        return $this->USER_EMAIL;
     }
 
     /**
@@ -57,7 +101,7 @@ class User extends Authenticatable
      */
     public function initials(): string
     {
-        return Str::of($this->name)
+        return Str::of($this->USER_FULLNAME)
             ->explode(' ')
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
@@ -69,7 +113,7 @@ class User extends Authenticatable
      */
     public function role(): BelongsTo
     {
-        return $this->belongsTo(Role::class);
+        return $this->belongsTo(Role::class, 'USER_ROLE_ID');
     }
 
     /**
@@ -77,7 +121,7 @@ class User extends Authenticatable
      */
     public function division(): BelongsTo
     {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class, 'DIV_ID');
     }
 
     /**
@@ -85,7 +129,7 @@ class User extends Authenticatable
      */
     public function department(): BelongsTo
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(Department::class, 'DEPT_ID');
     }
 
     /**
@@ -93,7 +137,7 @@ class User extends Authenticatable
      */
     public function assignedContracts(): HasMany
     {
-        return $this->hasMany(Contract::class, 'pic_id');
+        return $this->hasMany(Contract::class, 'CONTR_PIC');
     }
 
     /**
@@ -101,7 +145,7 @@ class User extends Authenticatable
      */
     public function createdContracts(): HasMany
     {
-        return $this->hasMany(Contract::class, 'created_by');
+        return $this->hasMany(Contract::class, 'CONTR_CREATED_BY');
     }
 
     /**
@@ -109,7 +153,7 @@ class User extends Authenticatable
      */
     public function internalNotifications(): HasMany
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(Notification::class, 'user_id');
     }
 
     /**
@@ -126,7 +170,7 @@ class User extends Authenticatable
     public static function getAdminAndLegalUsers()
     {
         return static::whereHas('role', function ($q) {
-            $q->whereIn('slug', ['super-admin', 'legal']);
+            $q->whereIn('ROLE_SLUG', ['super-admin', 'legal']); // Assuming Role model updated too
         })->get();
     }
 
@@ -135,7 +179,7 @@ class User extends Authenticatable
      */
     public function hasRole(string $slug): bool
     {
-        return $this->role && $this->role->slug === $slug;
+        return $this->role && $this->role->ROLE_SLUG === $slug;
     }
 
     /**
@@ -143,7 +187,7 @@ class User extends Authenticatable
      */
     public function hasAnyRole(array $slugs): bool
     {
-        return $this->role && in_array($this->role->slug, $slugs);
+        return $this->role && in_array($this->role->ROLE_SLUG, $slugs);
     }
 
     /**
@@ -156,7 +200,7 @@ class User extends Authenticatable
         }
 
         // Super admin has all permissions
-        if ($this->role->slug === 'super-admin') {
+        if ($this->role->ROLE_SLUG === 'super-admin') {
             return true;
         }
 
@@ -209,5 +253,36 @@ class User extends Authenticatable
     public function canManageContracts(): bool
     {
         return $this->hasPermission('contracts.edit');
+    }
+
+    // 2FA Mapping
+    public function getTwoFactorSecretAttribute()
+    {
+        return $this->attributes['USER_TWO_FACTOR_SECRET'] ?? null;
+    }
+
+    public function setTwoFactorSecretAttribute($value)
+    {
+        $this->attributes['USER_TWO_FACTOR_SECRET'] = $value;
+    }
+
+    public function getTwoFactorRecoveryCodesAttribute()
+    {
+        return $this->attributes['USER_TWO_FACTOR_RECOVERY_CODES'] ?? null;
+    }
+
+    public function setTwoFactorRecoveryCodesAttribute($value)
+    {
+        $this->attributes['USER_TWO_FACTOR_RECOVERY_CODES'] = $value;
+    }
+
+    public function getTwoFactorConfirmedAtAttribute()
+    {
+        return $this->getAttribute('USER_TWO_FACTOR_CONFIRMED_DT');
+    }
+
+    public function setTwoFactorConfirmedAtAttribute($value)
+    {
+        $this->attributes['USER_TWO_FACTOR_CONFIRMED_DT'] = $value;
     }
 }

@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
@@ -23,15 +22,15 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $name = fake()->name();
+
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
-            'two_factor_secret' => Str::random(10),
-            'two_factor_recovery_codes' => Str::random(10),
-            'two_factor_confirmed_at' => now(),
+            'USER_FULLNAME' => $name,
+            'USER_EMAIL' => fake()->unique()->safeEmail(),
+            'USER_PASSWORD' => static::$password ??= Hash::make('password'),
+            'DIV_ID' => null,
+            'DEPT_ID' => null,
+            'USER_ROLE_ID' => \App\Models\Role::factory(),
         ];
     }
 
@@ -41,19 +40,7 @@ class UserFactory extends Factory
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
-    }
-
-    /**
-     * Indicate that the model does not have two-factor authentication configured.
-     */
-    public function withoutTwoFactor(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'two_factor_secret' => null,
-            'two_factor_recovery_codes' => null,
-            'two_factor_confirmed_at' => null,
+            'USER_EMAIL_VERIFIED_DT' => null,
         ]);
     }
 }

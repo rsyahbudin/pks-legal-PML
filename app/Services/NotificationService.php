@@ -26,14 +26,14 @@ class NotificationService
         $template = $this->templateService->getTicketCreatedTemplate();
 
         $data = [
-            'ticket_number' => $ticket->ticket_number,
-            'proposed_document_title' => $ticket->proposed_document_title,
+            'ticket_number' => $ticket->TCKT_NO,
+            'proposed_document_title' => $ticket->TCKT_PROP_DOC_TITLE,
             'document_type' => $ticket->document_type_label,
-            'creator_name' => $ticket->creator->name,
-            'creator_email' => $ticket->creator->email,
-            'division_name' => $ticket->division->name,
-            'department_name' => $ticket->department?->name ?? '-',
-            'created_at' => $ticket->created_at->format('d M Y H:i'),
+            'creator_name' => $ticket->creator->USER_FULLNAME ?? $ticket->creator->name,
+            'creator_email' => $ticket->creator->USER_EMAIL ?? $ticket->creator->email,
+            'division_name' => $ticket->division->REF_DIV_NAME ?? $ticket->division->name,
+            'department_name' => $ticket->department?->REF_DEPT_NAME ?? $ticket->department?->name ?? '-',
+            'created_at' => $ticket->TCKT_CREATED_DT->format('d M Y H:i'),
         ];
 
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
@@ -71,7 +71,7 @@ class NotificationService
             $cc = array_unique(array_filter($cc));
 
             \Log::info('Sending ticket created email', [
-                'ticket_id' => $ticket->id,
+                'ticket_no' => $ticket->TCKT_NO,
                 'to' => $to,
                 'cc' => $cc,
             ]);
@@ -86,13 +86,13 @@ class NotificationService
                     Mail::to($to)->send($mailable);
                 }
 
-                \Log::info('Ticket created email sent successfully', ['ticket_id' => $ticket->id]);
+                \Log::info('Ticket created email sent successfully', ['ticket_no' => $ticket->TCKT_NO]);
             } else {
-                \Log::warning('No valid legal email found', ['ticket_id' => $ticket->id]);
+                \Log::warning('No valid legal email found', ['ticket_no' => $ticket->TCKT_NO]);
             }
         } catch (\Exception $e) {
             \Log::error('Failed to send ticket created email', [
-                'ticket_id' => $ticket->id,
+                'ticket_no' => $ticket->TCKT_NO,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -101,7 +101,7 @@ class NotificationService
 
         // Create notification for legal users
         $this->createNotificationForLegalTeam(
-            "New ticket #{$ticket->ticket_number} requires review",
+            "New ticket #{$ticket->TCKT_NO} requires review",
             $ticket
         );
     }
@@ -114,14 +114,14 @@ class NotificationService
         $template = $this->templateService->getTicketStatusChangedTemplate();
 
         $data = [
-            'ticket_number' => $ticket->ticket_number,
-            'proposed_document_title' => $ticket->proposed_document_title,
+            'ticket_number' => $ticket->TCKT_NO,
+            'proposed_document_title' => $ticket->TCKT_PROP_DOC_TITLE,
             'document_type' => $ticket->document_type_label,
             'old_status' => $this->getStatusLabel($oldStatus),
             'new_status' => $this->getStatusLabel($newStatus),
-            'reviewed_by' => $ticket->reviewer?->name ?? 'System',
-            'reviewed_at' => $ticket->reviewed_at?->format('d M Y H:i') ?? now()->format('d M Y H:i'),
-            'rejection_reason' => $ticket->rejection_reason ? "\nAlasan Penolakan: {$ticket->rejection_reason}" : '',
+            'reviewed_by' => $ticket->reviewer?->USER_FULLNAME ?? $ticket->reviewer?->name ?? 'System',
+            'reviewed_at' => $ticket->TCKT_REVIEWED_DT?->format('d M Y H:i') ?? now()->format('d M Y H:i'),
+            'rejection_reason' => $ticket->TCKT_REJECT_REASON ? "\nAlasan Penolakan: {$ticket->TCKT_REJECT_REASON}" : '',
         ];
 
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
@@ -136,7 +136,7 @@ class NotificationService
 
             // Get legal department email and CC emails
             $legalEmail = Department::getLegalEmail();
-            $legalDept = Department::where('code', 'LEGAL')->orWhere('name', 'LIKE', '%Legal%')->first();
+            $legalDept = Department::where('REF_DEPT_ID', 'LEGAL')->orWhere('REF_DEPT_NAME', 'LIKE', '%Legal%')->first();
 
             if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
                 $cc[] = $legalEmail;
@@ -180,7 +180,7 @@ class NotificationService
             }
         } catch (\Exception $e) {
             \Log::error('Failed to send ticket status change email', [
-                'ticket_id' => $ticket->id,
+                'ticket_no' => $ticket->TCKT_NO,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -188,12 +188,12 @@ class NotificationService
         // Create notifications
         $this->createNotificationForUser(
             $ticket->creator,
-            "Ticket #{$ticket->ticket_number} status changed: {$this->getStatusLabel($newStatus)}",
+            "Ticket #{$ticket->TCKT_NO} status changed: {$this->getStatusLabel($newStatus)}",
             $ticket
         );
 
         $this->createNotificationForLegalTeam(
-            "Ticket #{$ticket->ticket_number} status changed: {$this->getStatusLabel($newStatus)}",
+            "Ticket #{$ticket->TCKT_NO} status changed: {$this->getStatusLabel($newStatus)}",
             $ticket
         );
     }
@@ -206,14 +206,14 @@ class NotificationService
         $template = $this->templateService->getContractStatusChangedTemplate();
 
         $data = [
-            'contract_number' => $contract->contract_number,
-            'agreement_name' => $contract->agreement_name,
+            'contract_number' => $contract->CONTR_NO,
+            'agreement_name' => $contract->CONTR_AGREE_NAME,
             'document_type' => $contract->document_type_label,
             'old_status' => $this->getStatusLabel($oldStatus),
             'new_status' => $this->getStatusLabel($newStatus),
-            'start_date' => $contract->start_date?->format('d M Y') ?? '-',
-            'end_date' => $contract->end_date?->format('d M Y') ?? '-',
-            'termination_reason' => $contract->termination_reason ? "\nAlasan Terminasi: {$contract->termination_reason}" : '',
+            'start_date' => $contract->CONTR_START_DT?->format('d M Y') ?? '-',
+            'end_date' => $contract->CONTR_END_DT?->format('d M Y') ?? '-',
+            'termination_reason' => $contract->CONTR_TERMINATE_REASON ? "\nAlasan Terminasi: {$contract->CONTR_TERMINATE_REASON}" : '',
         ];
 
         $subject = $this->templateService->parsePlaceholders($template['subject'], $data);
@@ -230,7 +230,7 @@ class NotificationService
 
                 // Get legal department email and CC emails
                 $legalEmail = Department::getLegalEmail();
-                $legalDept = Department::where('code', 'LEGAL')->orWhere('name', 'LIKE', '%Legal%')->first();
+                $legalDept = Department::where('REF_DEPT_ID', 'LEGAL')->orWhere('REF_DEPT_NAME', 'LIKE', '%Legal%')->first();
 
                 if ($legalEmail && filter_var($legalEmail, FILTER_VALIDATE_EMAIL)) {
                     $cc[] = $legalEmail;
@@ -274,7 +274,7 @@ class NotificationService
                 }
             } catch (\Exception $e) {
                 \Log::error('Failed to send contract status change email', [
-                    'contract_id' => $contract->id,
+                    'contract_no' => $contract->CONTR_NO,
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -284,13 +284,13 @@ class NotificationService
         if ($contract->creator) {
             $this->createNotificationForUser(
                 $contract->creator,
-                "Contract #{$contract->contract_number} status changed: {$newStatus}",
+                "Contract #{$contract->CONTR_NO} status changed: {$newStatus}",
                 $contract
             );
         }
 
         $this->createNotificationForLegalTeam(
-            "Contract #{$contract->contract_number} status changed: {$newStatus}",
+            "Contract #{$contract->CONTR_NO} status changed: {$newStatus}",
             $contract
         );
     }
@@ -301,11 +301,11 @@ class NotificationService
     private function createNotificationForUser(User $user, string $message, $notifiable): void
     {
         $user->internalNotifications()->create([
-            'type' => 'info',
-            'title' => $message,
-            'message' => $message,
-            'notifiable_type' => get_class($notifiable),
-            'notifiable_id' => $notifiable->id,
+            'NOTIFICATION_TYPE' => 'info',
+            'NOTIF_TITLE' => $message,
+            'NOTIF_MSG' => $message,
+            'NOTIFIABLE_TYPE' => get_class($notifiable),
+            'NOTIFIABLE_ID' => $notifiable->LGL_ROW_ID,
         ]);
     }
 
@@ -327,10 +327,10 @@ class NotificationService
     private function getStatusLabel(string $status): string
     {
         // Try to get status name from database
-        $ticketStatus = \App\Models\TicketStatus::where('code', $status)->first();
+        $ticketStatus = \App\Models\TicketStatus::where('LOV_VALUE', $status)->first();
 
         if ($ticketStatus) {
-            return $ticketStatus->name; // English name from database
+            return $ticketStatus->LOV_DISPLAY_NAME; // English name from database
         }
 
         // Fallback to ucfirst if not found

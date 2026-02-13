@@ -10,18 +10,34 @@ class Division extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_DIVISION';
+
+    protected $primaryKey = 'LGL_ROW_ID';
+
+    const CREATED_AT = 'REF_DIV_CREATED_DT';
+
+    const UPDATED_AT = 'REF_DIV_UPDATED_DT';
+
     protected $fillable = [
-        'name',
-        'code',
-        'description',
-        'is_active',
+        'REF_DIV_NAME',
+        'REF_DIV_ID',
+        'REF_DIV_DESC',
+        'IS_ACTIVE',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
+            'IS_ACTIVE' => 'boolean',
         ];
+    }
+
+    /**
+     * Get the division code.
+     */
+    public function getCodeAttribute(): string
+    {
+        return $this->REF_DIV_ID;
     }
 
     /**
@@ -29,7 +45,7 @@ class Division extends Model
      */
     public function users(): HasMany
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class, 'DIV_ID');
     }
 
     /**
@@ -37,7 +53,7 @@ class Division extends Model
      */
     public function contracts(): HasMany
     {
-        return $this->hasMany(Contract::class);
+        return $this->hasMany(Contract::class, 'CONTR_DIV_ID');
     }
 
     /**
@@ -45,7 +61,7 @@ class Division extends Model
      */
     public function departments(): HasMany
     {
-        return $this->hasMany(Department::class);
+        return $this->hasMany(Department::class, 'DIV_ID');
     }
 
     /**
@@ -53,7 +69,7 @@ class Division extends Model
      */
     public function tickets(): HasMany
     {
-        return $this->hasMany(Ticket::class);
+        return $this->hasMany(Ticket::class, 'DIV_ID');
     }
 
     /**
@@ -61,6 +77,6 @@ class Division extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('IS_ACTIVE', true);
     }
 }

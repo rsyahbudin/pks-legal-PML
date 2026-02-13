@@ -26,35 +26,37 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create users
-        $adminRole = Role::where('slug', 'super-admin')->first();
-        $legalRole = Role::where('slug', 'legal')->first();
-        $userRole = Role::where('slug', 'user')->first();
+        $adminRole = Role::where('ROLE_SLUG', 'super-admin')->first();
+        $legalRole = Role::where('ROLE_SLUG', 'legal')->first();
+        $userRole = Role::where('ROLE_SLUG', 'user')->first();
 
         // Get Legal division and department for default assignment
-        $legalDivision = Division::where('code', 'LEGAL')->first();
-        $legalDepartment = Department::where('code', 'LEGAL')->first();
+        $legalDivision = Division::where('REF_DIV_ID', 'LEGAL')->first();
+        $legalDepartment = Department::where('REF_DEPT_ID', 'LEGAL')->first();
 
         // Admin user - assign to Legal division/dept
         $admin = User::updateOrCreate(
-            ['email' => 'admin@example.com'],
+            ['USER_EMAIL' => 'admin@example.com'],
             [
-                'name' => 'Admin User',
-                'password' => Hash::make('password'),
-                'role_id' => $adminRole->id,
-                'division_id' => $legalDivision->id,
-                'department_id' => $legalDepartment->id,
+                'USER_FULLNAME' => 'Admin User',
+                'USER_ID' => '1234567',
+                'USER_PASSWORD' => Hash::make('password'),
+                'USER_ROLE_ID' => $adminRole->ROLE_ID,
+                'DIV_ID' => $legalDivision?->LGL_ROW_ID,
+                'DEPT_ID' => $legalDepartment?->LGL_ROW_ID,
             ]
         );
 
         // Create test user for legacy compatibility
         User::updateOrCreate(
-            ['email' => 'legal@example.com'],
+            ['USER_EMAIL' => 'legal@example.com'],
             [
-                'name' => 'Legal User',
-                'password' => Hash::make('password'),
-                'role_id' => $legalRole?->id,
-                'division_id' => $legalDivision?->id,
-                'department_id' => $legalDepartment?->id,
+                'USER_FULLNAME' => 'Legal User',
+                'USER_ID' => '12345',
+                'USER_PASSWORD' => Hash::make('password'),
+                'USER_ROLE_ID' => $legalRole?->ROLE_ID,
+                'DIV_ID' => $legalDivision?->LGL_ROW_ID,
+                'DEPT_ID' => $legalDepartment?->LGL_ROW_ID,
             ]
         );
     }

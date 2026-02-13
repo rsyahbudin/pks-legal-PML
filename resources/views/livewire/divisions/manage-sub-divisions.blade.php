@@ -9,8 +9,8 @@ new class extends Component {
     public ?Division $division = null;
     public $departments = [];
     
-    public $name = '';
-    public $code = '';
+    public $ref_dept_name = '';
+    public $ref_dept_id = '';
     public $email = '';
     public $cc_emails = '';
     public $editingId = null;
@@ -29,7 +29,7 @@ new class extends Component {
     public function refreshList()
     {
         if ($this->division) {
-            $this->departments = $this->division->departments()->orderBy('name')->get();
+            $this->departments = $this->division->departments()->orderBy('REF_DEPT_NAME')->get();
         } else {
             $this->departments = [];
         }
@@ -38,23 +38,23 @@ new class extends Component {
     public function save()
     {
         $this->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50',
+            'ref_dept_name' => 'required|string|max:255',
+            'ref_dept_id' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:100',
             'cc_emails' => 'nullable|string',
         ]);
 
         if ($this->editingId) {
             Department::find($this->editingId)->update([
-                'name' => $this->name,
-                'code' => $this->code,
+                'REF_DEPT_NAME' => $this->ref_dept_name,
+                'REF_DEPT_ID' => $this->ref_dept_id,
                 'email' => $this->email,
                 'cc_emails' => $this->cc_emails,
             ]);
         } else {
             $this->division->departments()->create([
-                'name' => $this->name,
-                'code' => $this->code,
+                'REF_DEPT_NAME' => $this->ref_dept_name,
+                'REF_DEPT_ID' => $this->ref_dept_id,
                 'email' => $this->email,
                 'cc_emails' => $this->cc_emails,
             ]);
@@ -67,9 +67,9 @@ new class extends Component {
     public function edit($id)
     {
         $dept = Department::find($id);
-        $this->editingId = $dept->id;
-        $this->name = $dept->name;
-        $this->code = $dept->code;
+        $this->editingId = $dept->LGL_ROW_ID;
+        $this->ref_dept_name = $dept->REF_DEPT_NAME;
+        $this->ref_dept_id = $dept->REF_DEPT_ID;
         $this->email = $dept->email ?? '';
         $this->cc_emails = $dept->cc_emails;
     }
@@ -82,7 +82,7 @@ new class extends Component {
     
     public function resetForm()
     {
-        $this->reset(['name', 'code', 'email', 'cc_emails', 'editingId']);
+        $this->reset(['ref_dept_name', 'ref_dept_id', 'email', 'cc_emails', 'editingId']);
     }
 
     public function close()
@@ -97,7 +97,7 @@ new class extends Component {
         <div>
             <h2 class="text-lg font-bold">Manage Departments</h2>
             @if($division)
-            <p class="text-sm text-neutral-500">{{ $division->name }}</p>
+            <p class="text-sm text-neutral-500">{{ $division->REF_DIV_NAME }}</p>
             @endif
         </div>
 
@@ -107,14 +107,14 @@ new class extends Component {
                 <div class="grid gap-4 sm:grid-cols-2">
                     <flux:field>
                         <flux:label>Department Name</flux:label>
-                        <flux:input wire:model="name" placeholder="Example: IT Support" required />
-                        <flux:error name="name" />
+                        <flux:input wire:model="ref_dept_name" placeholder="Example: IT Support" required />
+                        <flux:error name="ref_dept_name" />
                     </flux:field>
                     
                     <flux:field>
                         <flux:label>Code</flux:label>
-                        <flux:input wire:model="code" placeholder="ITS" />
-                        <flux:error name="code" />
+                        <flux:input wire:model="ref_dept_id" placeholder="ITS" />
+                        <flux:error name="ref_dept_id" />
                     </flux:field>
                 </div>
 
@@ -148,14 +148,14 @@ new class extends Component {
                 @foreach($departments as $dept)
                 <div class="flex items-center justify-between p-3">
                     <div>
-                        <div class="font-medium">{{ $dept->name }} <span class="text-xs text-neutral-500">({{ $dept->code ?? '-' }}) | {{ $dept->email }}</span></div>
+                        <div class="font-medium">{{ $dept->REF_DEPT_NAME }} <span class="text-xs text-neutral-500">({{ $dept->REF_DEPT_ID ?? '-' }}) | {{ $dept->email }}</span></div>
                         @if($dept->cc_emails)
-                        <div class="text-xs text-neutral-500">{{ Str::limit($dept->cc_emails, 50) }}</div>
+                        <div class="text-xs text-neutral-500">{{ Str::limit(is_array($dept->cc_emails) ? implode(', ', $dept->cc_emails) : $dept->cc_emails, 50) }}</div>
                         @endif
                     </div>
                     <div class="flex gap-2">
-                        <flux:button icon="pencil" size="xs" variant="ghost" wire:click="edit({{ $dept->id }})" />
-                        <flux:button icon="trash" size="xs" variant="danger" wire:click="delete({{ $dept->id }})" wire:confirm="Delete this department?" />
+                        <flux:button icon="pencil" size="xs" variant="ghost" wire:click="edit({{ $dept->LGL_ROW_ID }})" />
+                        <flux:button icon="trash" size="xs" variant="danger" wire:click="delete({{ $dept->LGL_ROW_ID }})" wire:confirm="Delete this department?" />
                     </div>
                 </div>
                 @endforeach

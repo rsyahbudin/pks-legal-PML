@@ -59,8 +59,8 @@ new #[Layout('components.layouts.app')] class extends Component
 
         $query = Contract::with(['department', 'division'])
             ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('contract_number', 'like', "%{$this->search}%")
-                    ->orWhere('proposed_document_title', 'like', "%{$this->search}%");
+                $q->where('CONTR_NO', 'like', "%{$this->search}%")
+                    ->orWhere('CONTR_PROP_DOC_TITLE', 'like', "%{$this->search}%");
             }))
             ->when($this->statusFilter, function ($q) {
                 if ($this->statusFilter === 'active') {
@@ -72,14 +72,14 @@ new #[Layout('components.layouts.app')] class extends Component
                 }
             })
             ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
-            ->when($this->divisionFilter, fn ($q) => $q->where('division_id', $this->divisionFilter));
+            ->when($this->divisionFilter, fn ($q) => $q->where('CONTR_DIV_ID', $this->divisionFilter));
 
         // Role-based filtering (Users see only their department contracts, Legal/Admin sees all)
         if (! $user->hasAnyRole(['super-admin', 'legal'])) {
-            $query->where('department_id', $user->department_id);
+            $query->where('CONTR_DEPT_ID', $user->DEPT_ID);
         }
 
-        return $query->orderBy('created_at', 'desc')->paginate($this->perPage);
+        return $query->orderBy('CONTR_CREATED_DT', 'desc')->paginate($this->perPage);
     }
 
     public function editFolderLink($contractId): void
@@ -116,12 +116,12 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function getDivisionsProperty()
     {
-        return \App\Models\Division::active()->orderBy('name')->get();
+        return \App\Models\Division::active()->orderBy('REF_DIV_NAME')->get();
     }
 
     public function getContractStatusesProperty()
     {
-        return \App\Models\ContractStatus::active()->orderBy('sort_order')->get();
+        return \App\Models\ContractStatus::active()->orderBy('LOV_SEQ_NO')->get();
     }
 }; ?>
 
@@ -175,7 +175,7 @@ new #[Layout('components.layouts.app')] class extends Component
             <flux:select wire:model.live="divisionFilter" placeholder="Filter Division">
                 <flux:select.option value="">All Divisions</flux:select.option>
                 @foreach($this->divisions as $division)
-                    <flux:select.option value="{{ $division->id }}">{{ $division->name }}</flux:select.option>
+                    <flux:select.option value="{{ $division->LGL_ROW_ID }}">{{ $division->REF_DIV_NAME }}</flux:select.option>
                 @endforeach
             </flux:select>
         </div>
@@ -208,29 +208,29 @@ new #[Layout('components.layouts.app')] class extends Component
                     @forelse($this->contracts as $contract)
                     <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800">
                         <td class="px-6 py-4 font-medium text-neutral-900 dark:text-white whitespace-nowrap">
-                            {{ $contract->contract_number }}
+                            {{ $contract->CONTR_NO }}
                         </td>
                         <td class="px-6 py-4">
-                            <div class="font-medium text-neutral-900 dark:text-white">{{ $contract->agreement_name }}</div>
+                            <div class="font-medium text-neutral-900 dark:text-white">{{ $contract->CONTR_AGREE_NAME }}</div>
                             <div class="text-xs text-neutral-500">{{ $contract->document_type_label }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            {{ $contract->department->name }}
+                            {{ $contract->department->REF_DEPT_NAME ?? '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            {{ $contract->start_date?->format('d M Y') ?? '-' }}
+                            {{ $contract->CONTR_START_DT?->format('d M Y') ?? '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($contract->is_auto_renewal)
+                            @if($contract->CONTR_IS_AUTO_RENEW)
                                 <div class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
                                     <flux:icon name="arrow-path" class="h-4 w-4" />
                                     <span class="text-xs font-medium">Auto Renewal</span>
                                 </div>
-                                @if($contract->end_date)
-                                    <span class="text-xs text-neutral-400 block mt-1">Next: {{ $contract->end_date->format('d M Y') }}</span>
+                                @if($contract->CONTR_END_DT)
+                                    <span class="text-xs text-neutral-400 block mt-1">Next: {{ $contract->CONTR_END_DT->format('d M Y') }}</span>
                                 @endif
                             @else
-                                {{ $contract->end_date?->format('d M Y') ?? '-' }}
+                                {{ $contract->CONTR_END_DT?->format('d M Y') ?? '-' }}
                             @endif
                         </td>
                         <td class="px-6 py-4 text-center">
@@ -242,9 +242,9 @@ new #[Layout('components.layouts.app')] class extends Component
                         <td class="px-6 py-4 text-end">
                             <div class="flex items-center justify-end gap-2">
                                 @if(auth()->user()->hasAnyRole(['super-admin', 'legal']))
-                                <flux:button wire:click="editFolderLink({{ $contract->id }})" icon="link" size="sm" variant="ghost" class="-my-1" title="Folder Link" />
+                                <flux:button wire:click="editFolderLink({{ $contract->LGL_ROW_ID }})" icon="link" size="sm" variant="ghost" class="-my-1" title="Folder Link" />
                                 @endif
-                                <flux:button :href="route('tickets.show', $contract->ticket_id)" icon="eye" size="sm" variant="ghost" class="-my-1" />
+                                <flux:button :href="route('tickets.show', $contract->TCKT_ID)" icon="eye" size="sm" variant="ghost" class="-my-1" />
                             </div>
                         </td>
                     </tr>
@@ -274,7 +274,7 @@ new #[Layout('components.layouts.app')] class extends Component
     <flux:modal wire:model="showFolderLinkModal" class="space-y-6">
         <div>
             <flux:heading size="lg">Edit Folder Link</flux:heading>
-            <flux:subheading>Contract: {{ $selectedContract?->contract_number }}</flux:subheading>
+            <flux:subheading>Contract: {{ $selectedContract?->CONTR_NO }}</flux:subheading>
         </div>
 
         <flux:field>

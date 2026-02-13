@@ -11,7 +11,7 @@ new class extends Component
     public function getNotificationsProperty()
     {
         return Notification::forUser(auth()->id())
-            ->latest()
+            ->latest('REF_NOTIF_CREATED_DT')
             ->limit(10)
             ->get();
     }
@@ -35,7 +35,7 @@ new class extends Component
     {
         Notification::forUser(auth()->id())
             ->unread()
-            ->update(['read_at' => now()]);
+            ->update(['READ_AT' => now()]);
     }
 
     #[On('notification-created')]
@@ -82,47 +82,44 @@ new class extends Component
                 $url = '#';
 
                 // Determine Icon & Color
-                if (in_array($notification->type, ['contract_expiring', 'warning'])) {
+                if (in_array($notification->NOTIFICATION_TYPE, ['contract_expiring', 'warning'])) {
                     $icon = 'clock';
                     $colorClass = 'bg-yellow-100 dark:bg-yellow-900/30';
                     $iconColor = 'text-yellow-600 dark:text-yellow-400';
-                } elseif (in_array($notification->type, ['contract_expired', 'critical', 'error'])) {
+                } elseif (in_array($notification->NOTIFICATION_TYPE, ['contract_expired', 'critical', 'error'])) {
                     $icon = 'exclamation-circle';
                     $colorClass = 'bg-red-100 dark:bg-red-900/30';
                     $iconColor = 'text-red-600 dark:text-red-400';
-                } elseif ($notification->type === 'info') {
+                } elseif ($notification->NOTIFICATION_TYPE === 'info') {
                     $icon = 'information-circle';
                     $colorClass = 'bg-blue-100 dark:bg-blue-900/30';
                     $iconColor = 'text-blue-600 dark:text-blue-400';
-                } elseif ($notification->type === 'success') {
+                } elseif ($notification->NOTIFICATION_TYPE === 'success') {
                     $icon = 'check-circle';
                     $colorClass = 'bg-green-100 dark:bg-green-900/30';
                     $iconColor = 'text-green-600 dark:text-green-400';
                 }
 
                 // Determine URL
-                if ($notification->notifiable_type === 'App\\Models\\Contract' && $notification->notifiable_id) {
-                    // For contract notifications, link to the related ticket if it exists
-                    $contract = \App\Models\Contract::find($notification->notifiable_id);
-                    $url = $contract && $contract->ticket_id 
-                        ? route('tickets.show', $contract->ticket_id) 
+                if ($notification->NOTIFIABLE_TYPE === 'App\\Models\\Contract' && $notification->NOTIFIABLE_ID) {
+                    $contract = \App\Models\Contract::find($notification->NOTIFIABLE_ID);
+                    $url = $contract && $contract->TCKT_ID 
+                        ? route('tickets.show', $contract->TCKT_ID) 
                         : '#';
-                } elseif ($notification->notifiable_type === 'App\\Models\\Ticket' && $notification->notifiable_id) {
-                    // Direct ticket notification
-                    $url = route('tickets.show', $notification->notifiable_id);
-                } elseif (isset($notification->data['ticket_id'])) {
-                    $url = route('tickets.show', $notification->data['ticket_id']);
-                } elseif (isset($notification->data['contract_id'])) {
-                    // Fallback for contract_id in data
-                    $contract = \App\Models\Contract::find($notification->data['contract_id']);
-                    $url = $contract && $contract->ticket_id 
-                        ? route('tickets.show', $contract->ticket_id) 
+                } elseif ($notification->NOTIFIABLE_TYPE === 'App\\Models\\Ticket' && $notification->NOTIFIABLE_ID) {
+                    $url = route('tickets.show', $notification->NOTIFIABLE_ID);
+                } elseif (isset($notification->NOTIFICATION_DATA['ticket_id'])) {
+                    $url = route('tickets.show', $notification->NOTIFICATION_DATA['ticket_id']);
+                } elseif (isset($notification->NOTIFICATION_DATA['contract_id'])) {
+                    $contract = \App\Models\Contract::find($notification->NOTIFICATION_DATA['contract_id']);
+                    $url = $contract && $contract->TCKT_ID 
+                        ? route('tickets.show', $contract->TCKT_ID) 
                         : '#';
                 }
             @endphp
 
             <div 
-                wire:key="notif-{{ $notification->id }}"
+                wire:key="notif-{{ $notification->LGL_ROW_ID }}"
                 class="group relative flex gap-3 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 {{ !$notification->isRead() ? 'bg-blue-50/50 dark:bg-blue-900/10' : '' }}"
             >
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {{ $colorClass }}">
@@ -131,14 +128,14 @@ new class extends Component
                 
                 <a href="{{ $url }}" wire:navigate class="flex-1 min-w-0 focus:outline-none">
                     <span class="absolute inset-0" aria-hidden="true"></span>
-                    <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ $notification->title }}</p>
-                    <p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 md:line-clamp-none">{{ $notification->message }}</p>
-                    <p class="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{{ $notification->created_at->diffForHumans() }}</p>
+                    <p class="text-sm font-medium text-neutral-900 dark:text-white">{{ $notification->NOTIF_TITLE }}</p>
+                    <p class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2 md:line-clamp-none">{{ $notification->NOTIF_MSG }}</p>
+                    <p class="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{{ $notification->created_at?->diffForHumans() ?? '-' }}</p>
                 </a>
 
                 @if(!$notification->isRead())
                 <button 
-                    wire:click="markAsRead({{ $notification->id }})" 
+                    wire:click="markAsRead({{ $notification->LGL_ROW_ID }})" 
                     class="relative z-10 shrink-0 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400"
                     title="Mark as read"
                 >

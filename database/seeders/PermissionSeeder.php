@@ -11,63 +11,63 @@ class PermissionSeeder extends Seeder
     {
         $permissions = [
             // Dashboard permissions
-            ['name' => 'Lihat Dashboard Ticket Statistics', 'slug' => 'dashboard.tickets.view', 'group' => 'dashboard', 'description' => 'Melihat statistik tiket di dashboard'],
-            ['name' => 'Lihat Dashboard Contract Statistics', 'slug' => 'dashboard.contracts.view', 'group' => 'dashboard', 'description' => 'Melihat statistik kontrak di dashboard'],
-            ['name' => 'Lihat My Tickets', 'slug' => 'dashboard.my-tickets.view', 'group' => 'dashboard', 'description' => 'Melihat tiket milik pengguna di dashboard'],
+            ['PERMISSION_NAME' => 'Lihat Dashboard Ticket Statistics', 'PERMISSION_CODE' => 'dashboard.tickets.view', 'PERMISSION_GROUP' => 'dashboard', 'PERMISSION_DESC' => 'Melihat statistik tiket di dashboard'],
+            ['PERMISSION_NAME' => 'Lihat Dashboard Contract Statistics', 'PERMISSION_CODE' => 'dashboard.contracts.view', 'PERMISSION_GROUP' => 'dashboard', 'PERMISSION_DESC' => 'Melihat statistik kontrak di dashboard'],
+            ['PERMISSION_NAME' => 'Lihat My Tickets', 'PERMISSION_CODE' => 'dashboard.my-tickets.view', 'PERMISSION_GROUP' => 'dashboard', 'PERMISSION_DESC' => 'Melihat tiket milik pengguna di dashboard'],
 
             // Tickets permissions (replacing old contracts.create which is now ticket creation)
-            ['name' => 'Lihat Tickets', 'slug' => 'tickets.view', 'group' => 'tickets', 'description' => 'Melihat daftar tickets'],
-            ['name' => 'Buat Ticket', 'slug' => 'tickets.create', 'group' => 'tickets', 'description' => 'Membuat ticket baru'],
-            ['name' => 'Edit Ticket', 'slug' => 'tickets.edit', 'group' => 'tickets', 'description' => 'Mengedit ticket (legal only)'],
-            ['name' => 'Process Ticket', 'slug' => 'tickets.process', 'group' => 'tickets', 'description' => 'Memproses ticket (legal only)'],
-            ['name' => 'Reject Ticket', 'slug' => 'tickets.reject', 'group' => 'tickets', 'description' => 'Menolak ticket (legal only)'],
-            ['name' => 'Complete Ticket', 'slug' => 'tickets.complete', 'group' => 'tickets', 'description' => 'Menyelesaikan ticket dan membuat contract (legal only)'],
+            ['PERMISSION_NAME' => 'Lihat Tickets', 'PERMISSION_CODE' => 'tickets.view', 'PERMISSION_GROUP' => 'tickets', 'PERMISSION_DESC' => 'Melihat daftar tickets'],
+            ['PERMISSION_NAME' => 'Buat Ticket', 'PERMISSION_CODE' => 'tickets.create', 'PERMISSION_GROUP' => 'tickets', 'PERMISSION_DESC' => 'Membuat ticket baru'],
+            ['PERMISSION_NAME' => 'Edit Ticket', 'PERMISSION_CODE' => 'tickets.edit', 'PERMISSION_GROUP' => 'tickets', 'PERMISSION_DESC' => 'Mengedit ticket (legal only)'],
+            ['PERMISSION_NAME' => 'Process Ticket', 'PERMISSION_CODE' => 'tickets.process', 'PERMISSION_GROUP' => 'tickets', 'PERMISSION_DESC' => 'Memproses ticket (legal only)'],
+            ['PERMISSION_NAME' => 'Reject Ticket', 'PERMISSION_CODE' => 'tickets.reject', 'PERMISSION_GROUP' => 'tickets', 'PERMISSION_DESC' => 'Menolak ticket (legal only)'],
+            ['PERMISSION_NAME' => 'Complete Ticket', 'PERMISSION_CODE' => 'tickets.complete', 'PERMISSION_GROUP' => 'tickets', 'PERMISSION_DESC' => 'Menyelesaikan ticket dan membuat contract (legal only)'],
 
             // Contracts permissions (actual contract management)
-            ['name' => 'Lihat Kontrak', 'slug' => 'contracts.view', 'group' => 'contracts', 'description' => 'Melihat daftar kontrak'],
-            ['name' => 'Edit Kontrak', 'slug' => 'contracts.edit', 'group' => 'contracts', 'description' => 'Mengedit kontrak'],
-            ['name' => 'Terminate Kontrak', 'slug' => 'contracts.terminate', 'group' => 'contracts', 'description' => 'Mengakhiri kontrak'],
-            ['name' => 'Hapus Kontrak', 'slug' => 'contracts.delete', 'group' => 'contracts', 'description' => 'Menghapus kontrak'],
-            ['name' => 'Kirim Pengingat Kontrak', 'slug' => 'contracts.send_reminder', 'group' => 'contracts', 'description' => 'Mengirim email pengingat kontrak secara manual'],
+            ['PERMISSION_NAME' => 'Lihat Kontrak', 'PERMISSION_CODE' => 'contracts.view', 'PERMISSION_GROUP' => 'contracts', 'PERMISSION_DESC' => 'Melihat daftar kontrak'],
+            ['PERMISSION_NAME' => 'Edit Kontrak', 'PERMISSION_CODE' => 'contracts.edit', 'PERMISSION_GROUP' => 'contracts', 'PERMISSION_DESC' => 'Mengedit kontrak'],
+            ['PERMISSION_NAME' => 'Terminate Kontrak', 'PERMISSION_CODE' => 'contracts.terminate', 'PERMISSION_GROUP' => 'contracts', 'PERMISSION_DESC' => 'Mengakhiri kontrak'],
+            ['PERMISSION_NAME' => 'Hapus Kontrak', 'PERMISSION_CODE' => 'contracts.delete', 'PERMISSION_GROUP' => 'contracts', 'PERMISSION_DESC' => 'Menghapus kontrak'],
+            ['PERMISSION_NAME' => 'Kirim Pengingat Kontrak', 'PERMISSION_CODE' => 'contracts.send_reminder', 'PERMISSION_GROUP' => 'contracts', 'PERMISSION_DESC' => 'Mengirim email pengingat kontrak secara manual'],
 
             // Users permissions
-            ['name' => 'Lihat User', 'slug' => 'users.view', 'group' => 'users', 'description' => 'Melihat daftar pengguna'],
-            ['name' => 'Buat User', 'slug' => 'users.create', 'group' => 'users', 'description' => 'Membuat pengguna baru'],
-            ['name' => 'Edit User', 'slug' => 'users.edit', 'group' => 'users', 'description' => 'Mengedit pengguna'],
-            ['name' => 'Hapus User', 'slug' => 'users.delete', 'group' => 'users', 'description' => 'Menghapus pengguna'],
+            ['PERMISSION_NAME' => 'Lihat User', 'PERMISSION_CODE' => 'users.view', 'PERMISSION_GROUP' => 'users', 'PERMISSION_DESC' => 'Melihat daftar pengguna'],
+            ['PERMISSION_NAME' => 'Buat User', 'PERMISSION_CODE' => 'users.create', 'PERMISSION_GROUP' => 'users', 'PERMISSION_DESC' => 'Membuat pengguna baru'],
+            ['PERMISSION_NAME' => 'Edit User', 'PERMISSION_CODE' => 'users.edit', 'PERMISSION_GROUP' => 'users', 'PERMISSION_DESC' => 'Mengedit pengguna'],
+            ['PERMISSION_NAME' => 'Hapus User', 'PERMISSION_CODE' => 'users.delete', 'PERMISSION_GROUP' => 'users', 'PERMISSION_DESC' => 'Menghapus pengguna'],
 
             // Roles permissions
-            ['name' => 'Lihat Role', 'slug' => 'roles.view', 'group' => 'roles', 'description' => 'Melihat daftar role'],
-            ['name' => 'Edit Role', 'slug' => 'roles.edit', 'group' => 'roles', 'description' => 'Mengedit role'],
-            ['name' => 'Manage Role Permissions', 'slug' => 'roles.manage', 'group' => 'roles', 'description' => 'Mengelola permissions untuk setiap role'],
+            ['PERMISSION_NAME' => 'Lihat Role', 'PERMISSION_CODE' => 'roles.view', 'PERMISSION_GROUP' => 'roles', 'PERMISSION_DESC' => 'Melihat daftar role'],
+            ['PERMISSION_NAME' => 'Edit Role', 'PERMISSION_CODE' => 'roles.edit', 'PERMISSION_GROUP' => 'roles', 'PERMISSION_DESC' => 'Mengedit role'],
+            ['PERMISSION_NAME' => 'Manage Role Permissions', 'PERMISSION_CODE' => 'roles.manage', 'PERMISSION_GROUP' => 'roles', 'PERMISSION_DESC' => 'Mengelola permissions untuk setiap role'],
 
             // Divisions
-            ['name' => 'Lihat Divisi', 'slug' => 'divisions.view', 'group' => 'divisions', 'description' => 'Melihat daftar divisi'],
-            ['name' => 'Buat Divisi', 'slug' => 'divisions.create', 'group' => 'divisions', 'description' => 'Membuat divisi baru'],
-            ['name' => 'Edit Divisi', 'slug' => 'divisions.edit', 'group' => 'divisions', 'description' => 'Mengedit divisi'],
-            ['name' => 'Hapus Divisi', 'slug' => 'divisions.delete', 'group' => 'divisions', 'description' => 'Menghapus divisi'],
-            ['name' => 'Manage Divisi', 'slug' => 'divisions.manage', 'group' => 'divisions', 'description' => 'Mengelola divisi (create, edit, delete)'],
+            ['PERMISSION_NAME' => 'Lihat Divisi', 'PERMISSION_CODE' => 'divisions.view', 'PERMISSION_GROUP' => 'divisions', 'PERMISSION_DESC' => 'Melihat daftar divisi'],
+            ['PERMISSION_NAME' => 'Buat Divisi', 'PERMISSION_CODE' => 'divisions.create', 'PERMISSION_GROUP' => 'divisions', 'PERMISSION_DESC' => 'Membuat divisi baru'],
+            ['PERMISSION_NAME' => 'Edit Divisi', 'PERMISSION_CODE' => 'divisions.edit', 'PERMISSION_GROUP' => 'divisions', 'PERMISSION_DESC' => 'Mengedit divisi'],
+            ['PERMISSION_NAME' => 'Hapus Divisi', 'PERMISSION_CODE' => 'divisions.delete', 'PERMISSION_GROUP' => 'divisions', 'PERMISSION_DESC' => 'Menghapus divisi'],
+            ['PERMISSION_NAME' => 'Manage Divisi', 'PERMISSION_CODE' => 'divisions.manage', 'PERMISSION_GROUP' => 'divisions', 'PERMISSION_DESC' => 'Mengelola divisi (create, edit, delete)'],
 
             // Departments
-            ['name' => 'Lihat Departemen', 'slug' => 'departments.view', 'group' => 'departments', 'description' => 'Melihat daftar departemen'],
-            ['name' => 'Buat Departemen', 'slug' => 'departments.create', 'group' => 'departments', 'description' => 'Membuat departemen baru'],
-            ['name' => 'Edit Departemen', 'slug' => 'departments.edit', 'group' => 'departments', 'description' => 'Mengedit departemen'],
-            ['name' => 'Hapus Departemen', 'slug' => 'departments.delete', 'group' => 'departments', 'description' => 'Menghapus departemen'],
-            ['name' => 'Manage Departemen & CC Emails', 'slug' => 'departments.manage', 'group' => 'departments', 'description' => 'Mengelola departemen dan CC email lists'],
+            ['PERMISSION_NAME' => 'Lihat Departemen', 'PERMISSION_CODE' => 'departments.view', 'PERMISSION_GROUP' => 'departments', 'PERMISSION_DESC' => 'Melihat daftar departemen'],
+            ['PERMISSION_NAME' => 'Buat Departemen', 'PERMISSION_CODE' => 'departments.create', 'PERMISSION_GROUP' => 'departments', 'PERMISSION_DESC' => 'Membuat departemen baru'],
+            ['PERMISSION_NAME' => 'Edit Departemen', 'PERMISSION_CODE' => 'departments.edit', 'PERMISSION_GROUP' => 'departments', 'PERMISSION_DESC' => 'Mengedit departemen'],
+            ['PERMISSION_NAME' => 'Hapus Departemen', 'PERMISSION_CODE' => 'departments.delete', 'PERMISSION_GROUP' => 'departments', 'PERMISSION_DESC' => 'Menghapus departemen'],
+            ['PERMISSION_NAME' => 'Manage Departemen & CC Emails', 'PERMISSION_CODE' => 'departments.manage', 'PERMISSION_GROUP' => 'departments', 'PERMISSION_DESC' => 'Mengelola departemen dan CC email lists'],
 
             // Settings
-            ['name' => 'Lihat Pengaturan', 'slug' => 'settings.view', 'group' => 'settings', 'description' => 'Melihat pengaturan sistem'],
-            ['name' => 'Edit Pengaturan', 'slug' => 'settings.edit', 'group' => 'settings', 'description' => 'Mengubah pengaturan sistem'],
-            ['name' => 'Edit Template Email', 'slug' => 'email_templates.edit', 'group' => 'settings', 'description' => 'Mengedit template email pengingat'],
+            ['PERMISSION_NAME' => 'Lihat Pengaturan', 'PERMISSION_CODE' => 'settings.view', 'PERMISSION_GROUP' => 'settings', 'PERMISSION_DESC' => 'Melihat pengaturan sistem'],
+            ['PERMISSION_NAME' => 'Edit Pengaturan', 'PERMISSION_CODE' => 'settings.edit', 'PERMISSION_GROUP' => 'settings', 'PERMISSION_DESC' => 'Mengubah pengaturan sistem'],
+            ['PERMISSION_NAME' => 'Edit Template Email', 'PERMISSION_CODE' => 'email_templates.edit', 'PERMISSION_GROUP' => 'settings', 'PERMISSION_DESC' => 'Mengedit template email pengingat'],
 
             // Reports
-            ['name' => 'Lihat Laporan', 'slug' => 'reports.view', 'group' => 'reports', 'description' => 'Melihat laporan dan statistik'],
-            ['name' => 'Export Laporan', 'slug' => 'reports.export', 'group' => 'reports', 'description' => 'Export laporan ke Excel/CSV (Tickets, Contracts)'],
+            ['PERMISSION_NAME' => 'Lihat Laporan', 'PERMISSION_CODE' => 'reports.view', 'PERMISSION_GROUP' => 'reports', 'PERMISSION_DESC' => 'Melihat laporan dan statistik'],
+            ['PERMISSION_NAME' => 'Export Laporan', 'PERMISSION_CODE' => 'reports.export', 'PERMISSION_GROUP' => 'reports', 'PERMISSION_DESC' => 'Export laporan ke Excel/CSV (Tickets, Contracts)'],
         ];
 
         foreach ($permissions as $permission) {
             Permission::updateOrCreate(
-                ['slug' => $permission['slug']],
+                ['PERMISSION_CODE' => $permission['PERMISSION_CODE']],
                 $permission
             );
         }

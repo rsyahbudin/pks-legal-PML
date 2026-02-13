@@ -12,25 +12,25 @@ class RoleSeeder extends Seeder
     {
         $roles = [
             [
-                'name' => 'Super Admin',
-                'slug' => 'super-admin',
-                'description' => 'Administrator dengan akses penuh ke seluruh sistem',
+                'ROLE_NAME' => 'Super Admin',
+                'ROLE_SLUG' => 'super-admin',
+                'ROLE_DESCRIPTION' => 'Administrator dengan akses penuh ke seluruh sistem',
             ],
             [
-                'name' => 'Legal',
-                'slug' => 'legal',
-                'description' => 'Tim Legal yang mengelola dan memproses tickets serta contracts',
+                'ROLE_NAME' => 'Legal',
+                'ROLE_SLUG' => 'legal',
+                'ROLE_DESCRIPTION' => 'Tim Legal yang mengelola dan memproses tickets serta contracts',
             ],
             [
-                'name' => 'User',
-                'slug' => 'user',
-                'description' => 'User dari departemen lain yang dapat membuat ticket legal request',
+                'ROLE_NAME' => 'User',
+                'ROLE_SLUG' => 'user',
+                'ROLE_DESCRIPTION' => 'User dari departemen lain yang dapat membuat ticket legal request',
             ],
         ];
 
         foreach ($roles as $role) {
             Role::updateOrCreate(
-                ['slug' => $role['slug']],
+                ['ROLE_SLUG' => $role['ROLE_SLUG']],
                 $role
             );
         }
@@ -39,15 +39,15 @@ class RoleSeeder extends Seeder
         $allPermissions = Permission::all();
 
         // Super Admin - all permissions
-        $superAdmin = Role::where('slug', 'super-admin')->first();
+        $superAdmin = Role::where('ROLE_SLUG', 'super-admin')->first();
         if ($superAdmin) {
-            $superAdmin->permissions()->sync($allPermissions->pluck('id'));
+            $superAdmin->permissions()->sync($allPermissions->pluck('LGL_ROW_ID'));
         }
 
         // Legal - full ticket & contract management
-        $legal = Role::where('slug', 'legal')->first();
+        $legal = Role::where('ROLE_SLUG', 'legal')->first();
         if ($legal) {
-            $legalPermissions = Permission::whereIn('slug', [
+            $legalPermissions = Permission::whereIn('PERMISSION_CODE', [
                 // Dashboard
                 'dashboard.tickets.view',
                 'dashboard.aging.view',
@@ -67,14 +67,14 @@ class RoleSeeder extends Seeder
                 // Reference data
                 'divisions.view',
                 'departments.view',
-            ])->pluck('id');
+            ])->pluck('LGL_ROW_ID');
             $legal->permissions()->sync($legalPermissions);
         }
 
         // User - create tickets and view
-        $user = Role::where('slug', 'user')->first();
+        $user = Role::where('ROLE_SLUG', 'user')->first();
         if ($user) {
-            $userPermissions = Permission::whereIn('slug', [
+            $userPermissions = Permission::whereIn('PERMISSION_CODE', [
                 // Dashboard
                 'dashboard.my-tickets.view',
                 'dashboard.contracts.view',
@@ -83,7 +83,7 @@ class RoleSeeder extends Seeder
                 'tickets.create',
                 // Contracts - view only
                 'contracts.view',
-            ])->pluck('id');
+            ])->pluck('LGL_ROW_ID');
             $user->permissions()->sync($userPermissions);
         }
     }

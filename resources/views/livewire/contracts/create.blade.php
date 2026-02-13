@@ -1,84 +1,114 @@
 <?php
 
-use App\Models\Ticket;
-use App\Models\Division;
 use App\Models\Department;
+use App\Models\Division;
+use App\Models\Ticket;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
-use Livewire\Attributes\Layout;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
 
-new #[Layout('components.layouts.app')] class extends Component {
+new #[Layout('components.layouts.app')] class extends Component
+{
     use WithFileUploads;
 
     // Common fields
-    public $division_id;
-    public $department_id;
+    public $DIV_ID;
+
+    public $DEPT_ID;
+
     public int $has_financial_impact = 0;
+
     public string $payment_type = '';
+
     public string $recurring_description = '';
+
     public string $proposed_document_title = '';
+
     public $draft_document;
+
     public string $document_type = '';
-    
+
     // Conditional: perjanjian/nda
     public string $counterpart_name = '';
+
     public string $agreement_start_date = '';
+
     public string $agreement_duration = '';
+
     public int $is_auto_renewal = 0;
+
     public string $renewal_period = '';
+
     public string $renewal_notification_days = '';
+
     public string $agreement_end_date = '';
+
     public string $termination_notification_days = '';
-    
+
     // Conditional: surat_kuasa
     public string $kuasa_pemberi = '';
+
     public string $kuasa_penerima = '';
+
     public string $kuasa_start_date = '';
+
     public string $kuasa_end_date = '';
-    
+
     // Common for all
     public int $tat_legal_compliance = 0;
+
     public $mandatory_documents = [];
+
     public $approval_document;
 
     public function mount(): void
     {
         // Auto-fill division dan department dari user login
-        $user = auth()->user();
-        $this->division_id = $user->division_id;
-        $this->department_id = $user->department_id;
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (! $user->hasPermission('tickets.create')) {
+            abort(403, 'You do not have permission to create a ticket.');
+        }
+
+        $this->DIV_ID = $user->DIV_ID;
+        $this->DEPT_ID = $user->DEPT_ID;
     }
 
     public function getDivisionsProperty()
     {
-        return Division::active()->orderBy('name')->get();
+        return Division::active()->orderBy('REF_DIV_NAME')->get();
     }
 
     public function getDepartmentsProperty()
     {
-        if (!$this->division_id) {
+        if (! $this->DIV_ID) {
             return collect();
         }
-        return Department::where('division_id', $this->division_id)->orderBy('name')->get();
+
+        return Department::where('DIV_ID', $this->DIV_ID)->orderBy('REF_DEPT_NAME')->get();
     }
 
-    public function save(): void
+    public function save()
     {
         try {
-            $user = auth()->user();
+            /** @var \App\Models\User|null $user */
+            $user = Auth::user();
 
-            if (!$user->hasPermission('tickets.create')) {
+            if (! $user->hasPermission('tickets.create')) {
                 $this->dispatch('notify', type: 'error', message: 'You do not have permission to create a ticket.');
+
                 return;
             }
 
             // Build validation rules
             $rules = [
-                'division_id' => ['required', 'exists:divisions,id'],
-                'department_id' => ['required', 'exists:departments,id'],
+                'DIV_ID' => ['required', 'exists:LGL_DIVISION,LGL_ROW_ID'],
+                'DEPT_ID' => ['required', 'exists:LGL_DEPARTMENT,LGL_ROW_ID'],
                 'has_financial_impact' => ['required', 'boolean'],
                 'payment_type' => ['nullable', 'required_if:has_financial_impact,true', 'string', 'max:50'],
                 'recurring_description' => ['nullable', 'string', 'max:200'],
@@ -96,14 +126,14 @@ new #[Layout('components.layouts.app')] class extends Component {
                 $rules['agreement_start_date'] = ['required', 'date'];
                 $rules['agreement_duration'] = ['required', 'string', 'max:100'];
                 $rules['is_auto_renewal'] = ['required', 'boolean'];
-                
+
                 if ($this->is_auto_renewal) {
                     $rules['renewal_period'] = ['required', 'string', 'max:100'];
                     $rules['renewal_notification_days'] = ['required', 'integer', 'min:1'];
                 } else {
                     $rules['agreement_end_date'] = ['required', 'date', 'after:agreement_start_date'];
                 }
-                
+
                 $rules['termination_notification_days'] = ['nullable', 'integer', 'min:1'];
             } elseif ($this->document_type === 'surat_kuasa') {
                 $rules['kuasa_pemberi'] = ['required', 'string', 'max:255'];
@@ -114,63 +144,78 @@ new #[Layout('components.layouts.app')] class extends Component {
 
             $validated = $this->validate($rules);
 
+            // Calculate termination notification date
+            $terminationNotifDt = null;
+            if ($this->agreement_end_date && $this->termination_notification_days) {
+                $terminationNotifDt = \Illuminate\Support\Carbon::parse($this->agreement_end_date)
+                    ->subDays((int) $this->termination_notification_days);
+            }
+
             // Create ticket
             $ticket = Ticket::create([
-                'division_id' => $this->division_id,
-                'department_id' => $this->department_id,
-                'has_financial_impact' => $validated['has_financial_impact'],
+                'DIV_ID' => $this->DIV_ID,
+                'DEPT_ID' => $this->DEPT_ID,
+                'TCKT_HAS_FIN_IMPACT' => $validated['has_financial_impact'],
                 'payment_type' => $this->payment_type ?: null,
                 'recurring_description' => $this->recurring_description ?: null,
-                'proposed_document_title' => $validated['proposed_document_title'],
-                'document_type_id' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
-                'counterpart_name' => $this->counterpart_name ?: null,
-                'agreement_start_date' => $this->agreement_start_date ?: null,
-                'agreement_duration' => $this->agreement_duration ?: null,
-                'is_auto_renewal' => $this->is_auto_renewal,
-                'renewal_period' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
-                'renewal_notification_days' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
-                'agreement_end_date' => (!$this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
-                'termination_notification_days' => $this->termination_notification_days ?: null,
-                'kuasa_pemberi' => $this->kuasa_pemberi ?: null,
-                'kuasa_penerima' => $this->kuasa_penerima ?: null,
-                'kuasa_start_date' => $this->kuasa_start_date ?: null,
-                'kuasa_end_date' => $this->kuasa_end_date ?: null,
-                'tat_legal_compliance' => $validated['tat_legal_compliance'],
-                'status_id' => \App\Models\TicketStatus::getIdByCode('open'),
-                'created_by' => $user->id,
+                'TCKT_PROP_DOC_TITLE' => $validated['proposed_document_title'],
+                'TCKT_DOC_TYPE_ID' => \App\Models\DocumentType::getIdByCode($validated['document_type']),
+                'TCKT_COUNTERPART_NAME' => $this->counterpart_name ?: null,
+                'TCKT_AGREE_START_DT' => $this->agreement_start_date ?: null,
+                'TCKT_AGREE_DURATION' => $this->agreement_duration ?: null,
+                'TCKT_IS_AUTO_RENEW' => $this->is_auto_renewal,
+                'TCKT_RENEW_PERIOD' => $this->is_auto_renewal ? ($this->renewal_period ?: null) : null,
+                'TCKT_RENEW_NOTIF_DAYS' => $this->is_auto_renewal ? ($this->renewal_notification_days ?: null) : null,
+                'TCKT_AGREE_END_DT' => (! $this->is_auto_renewal && $this->agreement_end_date) ? $this->agreement_end_date : null,
+                'TCKT_TERMINATE_NOTIF_DT' => $terminationNotifDt,
+                'TCKT_GRANTOR' => $this->kuasa_pemberi ?: null,
+                'TCKT_GRANTEE' => $this->kuasa_penerima ?: null,
+                'TCKT_GRANT_START_DT' => $this->kuasa_start_date ?: null,
+                'TCKT_GRANT_END_DT' => $this->kuasa_end_date ?: null,
+                'TCKT_TAT_LGL_COMPLNCE' => $validated['tat_legal_compliance'],
+                'TCKT_STS_ID' => \App\Models\TicketStatus::getIdByCode('open'),
+                'TCKT_CREATED_BY' => $user->LGL_ROW_ID,
             ]);
 
             // Handle file uploads
             if ($this->draft_document) {
-                $draftPath = $this->draft_document->store("tickets/{$ticket->id}/draft", 'public');
-                $ticket->update(['draft_document_path' => $draftPath]);
+                $draftPath = $this->draft_document->store("tickets/{$ticket->LGL_ROW_ID}/draft", 'public');
+                $ticket->update(['TCKT_DOC_PATH' => $draftPath]);
             }
-            
+
             if ($this->mandatory_documents && count($this->mandatory_documents) > 0) {
                 $mandatoryPaths = [];
                 foreach ($this->mandatory_documents as $file) {
                     $mandatoryPaths[] = [
                         'name' => $file->getClientOriginalName(),
-                        'path' => $file->store("tickets/{$ticket->id}/mandatory", 'public'),
+                        'path' => $file->store("tickets/{$ticket->LGL_ROW_ID}/mandatory", 'public'),
                     ];
                 }
-                $ticket->update(['mandatory_documents_path' => $mandatoryPaths]);
-            }
-            
-            if ($this->approval_document) {
-                $approvalPath = $this->approval_document->store("tickets/{$ticket->id}/approval", 'public');
-                $ticket->update(['approval_document_path' => $approvalPath]);
+                $ticket->update(['TCKT_DOC_REQUIRED_PATH' => $mandatoryPaths]);
             }
 
-            // Send notification
-            app(NotificationService::class)->notifyTicketCreated($ticket);
+            if ($this->approval_document) {
+                $approvalPath = $this->approval_document->store("tickets/{$ticket->LGL_ROW_ID}/approval", 'public');
+                $ticket->update(['TCKT_DOC_APPROVAL_PATH' => $approvalPath]);
+            }
+
+            // Send notification (separate try-catch so ticket creation always succeeds)
+            try {
+                app(NotificationService::class)->notifyTicketCreated($ticket);
+            } catch (\Exception $notifException) {
+                Log::warning('Ticket notification failed but ticket was created', [
+                    'ticket_id' => $ticket->LGL_ROW_ID,
+                    'error' => $notifException->getMessage(),
+                ]);
+            }
 
             session()->flash('success', 'Ticket created successfully and notification sent to legal team.');
-            $this->redirect(route('tickets.index'), navigate: true);
+
+            return $this->redirect(route('tickets.index'), navigate: true);
 
         } catch (\Exception $e) {
             Log::error('Ticket creation failed', [
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -201,24 +246,24 @@ new #[Layout('components.layouts.app')] class extends Component {
                 <!-- Division (readonly, auto-filled) -->
                 <flux:field>
                     <flux:label>User Directorate/Division *</flux:label>
-                    <flux:select wire:model="division_id" name="division_id" disabled>
+                    <flux:select wire:model="DIV_ID" name="DIV_ID" disabled>
                         <option value="">-- Select Division --</option>
                         @foreach($this->divisions as $division)
-                        <option value="{{ $division->id }}">{{ $division->name }}</option>
+                        <option value="{{ $division->LGL_ROW_ID }}">{{ $division->REF_DIV_NAME }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:error name="division_id" />
+                    <flux:error name="DIV_ID" />
                 </flux:field>
 
                 <flux:field>
                     <flux:label>User Department *</flux:label>
-                    <flux:select wire:model="department_id" name="department_id" disabled>
+                    <flux:select wire:model="DEPT_ID" name="DEPT_ID" disabled>
                         <option value="">-- Select Department --</option>
                         @foreach($this->departments as $dept)
-                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        <option value="{{ $dept->LGL_ROW_ID }}">{{ $dept->REF_DEPT_NAME }}</option>
                         @endforeach
                     </flux:select>
-                    <flux:error name="department_id" />
+                    <flux:error name="DEPT_ID" />
                 </flux:field>
 
                 <!-- Financial Impact -->

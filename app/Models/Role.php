@@ -11,17 +11,26 @@ class Role extends Model
 {
     use HasFactory;
 
+    protected $table = 'LGL_ROLE';
+
+    protected $primaryKey = 'ROLE_ID'; // Migration renamed 'id' to 'ROLE_ID'
+
+    const CREATED_AT = 'REF_ROLE_CREATED_DT';
+
+    const UPDATED_AT = 'REF_ROLE_UPDATED_DT';
+
     protected $fillable = [
-        'name',
-        'slug',
-        'description',
-        'is_system',
+        'ROLE_NAME',
+        'ROLE_SLUG',
+        'GUARD_NAME',
+        'ROLE_DESCRIPTION',
+        'IS_ACTIVE',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_system' => 'boolean',
+            'IS_ACTIVE' => 'boolean',
         ];
     }
 
@@ -30,7 +39,7 @@ class Role extends Model
      */
     public function users(): HasMany
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class, 'USER_ROLE_ID');
     }
 
     /**
@@ -38,7 +47,7 @@ class Role extends Model
      */
     public function permissions(): BelongsToMany
     {
-        return $this->belongsToMany(Permission::class, 'role_permission');
+        return $this->belongsToMany(Permission::class, 'LGL_ROLE_PERMISSION', 'ROLE_ID', 'PERMISSION_ID');
     }
 
     /**
@@ -46,7 +55,17 @@ class Role extends Model
      */
     public function hasPermission(string $slug): bool
     {
-        return $this->permissions()->where('slug', $slug)->exists();
+        // Assuming Permission model uses PERMISSION_CODE or slug?
+        // Migration didn't rename 'slug' in Permission?
+        // Permission migration lines 556-588:
+        // `name` -> `PERMISSION_NAME`.
+        // `guard_name` -> `GUARD_NAME`.
+        // No rename for 'slug' or 'code'?
+        // Wait. `Permission.php` had `PERMISSION_CODE`.
+        // If migration didn't rename it, maybe it was already `PERMISSION_CODE`?
+        // Or I missed it.
+        // Assuming `PERMISSION_CODE` exists.
+        return $this->permissions()->where('PERMISSION_CODE', $slug)->exists();
     }
 
     /**
@@ -55,14 +74,17 @@ class Role extends Model
     public function givePermission(Permission|int|string $permission): void
     {
         if (is_string($permission)) {
-            $permission = Permission::where('slug', $permission)->firstOrFail();
+            $permission = Permission::where('PERMISSION_CODE', $permission)->firstOrFail();
         }
 
         if (is_int($permission)) {
             $permission = Permission::findOrFail($permission);
         }
 
-        $this->permissions()->syncWithoutDetaching([$permission->id]);
+        // Use PK of Permission (LGL_ROW_ID)
+        // But pivoting uses permission_id column which refers to LGL_ROW_ID?
+        // Yes, likely.
+        $this->permissions()->syncWithoutDetaching([$permission->LGL_ROW_ID]);
     }
 
     /**
@@ -71,14 +93,14 @@ class Role extends Model
     public function revokePermission(Permission|int|string $permission): void
     {
         if (is_string($permission)) {
-            $permission = Permission::where('slug', $permission)->firstOrFail();
+            $permission = Permission::where('PERMISSION_CODE', $permission)->firstOrFail();
         }
 
         if (is_int($permission)) {
             $permission = Permission::findOrFail($permission);
         }
 
-        $this->permissions()->detach($permission->id);
+        $this->permissions()->detach($permission->LGL_ROW_ID);
     }
 
     /**

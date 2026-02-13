@@ -14,7 +14,7 @@ use App\Models\User;
 
 beforeEach(function () {
     $this->division = Division::factory()->create();
-    $this->department = Department::factory()->create(['division_id' => $this->division->id]);
+    $this->department = Department::factory()->create(['DIV_ID' => $this->division->LGL_ROW_ID]);
 
     // Create role with reports.export permission
     $this->role = Role::factory()->create(['slug' => 'legal']);
@@ -29,9 +29,9 @@ beforeEach(function () {
     $this->role->permissions()->sync([$permission->id]);
 
     $this->user = User::factory()->create([
-        'role_id' => $this->role->id,
-        'division_id' => $this->division->id,
-        'department_id' => $this->department->id,
+        'USER_ROLE_ID' => $this->role->ROLE_ID,
+        'DIV_ID' => $this->division->LGL_ROW_ID,
+        'DEPT_ID' => $this->department->LGL_ROW_ID,
     ]);
 });
 
@@ -45,30 +45,30 @@ test('authenticated user with permission can export contracts to excel', functio
     // Create contract status
     $status = ContractStatus::firstOrCreate(
         ['code' => 'active'],
-        ['name' => 'Active', 'color' => 'green', 'is_active' => true, 'sort_order' => 1]
+        ['name' => 'Active', 'color' => 'green', 'is_active' => true, 'LOV_SEQ_NO' => 1]
     );
 
     // Create a ticket first
     $ticket = Ticket::factory()->create([
-        'division_id' => $this->division->id,
-        'department_id' => $this->department->id,
-        'counterpart_name' => 'PT Test Company',
+        'DIV_ID' => $this->division->LGL_ROW_ID,
+        'DEPT_ID' => $this->department->LGL_ROW_ID,
+        'TCKT_COUNTERPART_NAME' => 'PT Test Company',
     ]);
 
     // Create a contract
     Contract::create([
-        'ticket_id' => $ticket->id,
-        'contract_number' => 'CTR-TST-26010001',
-        'agreement_name' => 'Test Agreement',
-        'proposed_document_title' => 'Test Contract Title',
-        'document_type_id' => $docType->id,
-        'division_id' => $this->division->id,
-        'department_id' => $this->department->id,
-        'pic_id' => $this->user->id,
-        'start_date' => now(),
-        'end_date' => now()->addYear(),
-        'status_id' => $status->id,
-        'created_by' => $this->user->id,
+        'TCKT_ID' => $ticket->LGL_ROW_ID,
+        'CONTR_NO' => 'CTR-TST-26010001',
+        'CONTR_AGREE_NAME' => 'Test Agreement',
+        'CONTR_PROP_DOC_TITLE' => 'Test Contract Title',
+        'CONTR_DOC_TYPE_ID' => $docType->LGL_ROW_ID,
+        'CONTR_DIV_ID' => $this->division->LGL_ROW_ID,
+        'CONTR_DEPT_ID' => $this->department->LGL_ROW_ID,
+        'CONTR_PIC_ID' => $this->user->LGL_ROW_ID,
+        'CONTR_START_DT' => now(),
+        'CONTR_END_DT' => now()->addYear(),
+        'CONTR_STS_ID' => $status->LGL_ROW_ID,
+        'CONTR_CREATED_BY' => $this->user->LGL_ROW_ID,
     ]);
 
     $response = $this->actingAs($this->user)
@@ -87,9 +87,9 @@ test('unauthenticated user cannot export contracts', function () {
 test('user without permission cannot export contracts', function () {
     $noPermRole = Role::factory()->create(['slug' => 'no-perm']);
     $user = User::factory()->create([
-        'role_id' => $noPermRole->id,
-        'division_id' => $this->division->id,
-        'department_id' => $this->department->id,
+        'USER_ROLE_ID' => $noPermRole->ROLE_ID,
+        'DIV_ID' => $this->division->LGL_ROW_ID,
+        'DEPT_ID' => $this->department->LGL_ROW_ID,
     ]);
 
     $response = $this->actingAs($user)
@@ -106,33 +106,33 @@ test('contract export respects filters', function () {
 
     $status = ContractStatus::firstOrCreate(
         ['code' => 'active'],
-        ['name' => 'Active', 'color' => 'green', 'is_active' => true, 'sort_order' => 1]
+        ['name' => 'Active', 'color' => 'green', 'is_active' => true, 'LOV_SEQ_NO' => 1]
     );
 
     $ticket = Ticket::factory()->create([
-        'division_id' => $this->division->id,
-        'department_id' => $this->department->id,
-        'counterpart_name' => 'Filtered Company',
+        'DIV_ID' => $this->division->LGL_ROW_ID,
+        'DEPT_ID' => $this->department->LGL_ROW_ID,
+        'TCKT_COUNTERPART_NAME' => 'Filtered Company',
     ]);
 
     Contract::create([
-        'ticket_id' => $ticket->id,
-        'contract_number' => 'CTR-TST-26010002',
-        'agreement_name' => 'Filtered Agreement',
-        'document_type_id' => $docType->id,
-        'division_id' => $this->division->id,
-        'department_id' => $this->department->id,
-        'pic_id' => $this->user->id,
-        'start_date' => now(),
-        'end_date' => now()->addYear(),
-        'status_id' => $status->id,
-        'created_by' => $this->user->id,
+        'TCKT_ID' => $ticket->LGL_ROW_ID,
+        'CONTR_NO' => 'CTR-TST-26010002',
+        'CONTR_AGREE_NAME' => 'Filtered Agreement',
+        'CONTR_DOC_TYPE_ID' => $docType->LGL_ROW_ID,
+        'CONTR_DIV_ID' => $this->division->LGL_ROW_ID,
+        'CONTR_DEPT_ID' => $this->department->LGL_ROW_ID,
+        'CONTR_PIC_ID' => $this->user->LGL_ROW_ID,
+        'CONTR_START_DT' => now(),
+        'CONTR_END_DT' => now()->addYear(),
+        'CONTR_STS_ID' => $status->LGL_ROW_ID,
+        'CONTR_CREATED_BY' => $this->user->LGL_ROW_ID,
     ]);
 
     $response = $this->actingAs($this->user)
         ->get(route('contracts.export', [
             'type' => 'perjanjian',
-            'division' => $this->division->id,
+            'division' => $this->division->LGL_ROW_ID,
         ]));
 
     $response->assertSuccessful();

@@ -12,9 +12,9 @@ new #[Layout('components.layouts.app')] class extends Component {
     public bool $showModal = false;
     public ?int $editingId = null;
 
-    public string $name = '';
-    public string $code = '';
-    public string $description = '';
+    public string $ref_div_name = '';
+    public string $ref_div_id = '';
+    public string $ref_div_desc = '';
     public bool $is_active = true;
 
     public function updatedSearch(): void
@@ -25,16 +25,16 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function getDivisionsProperty()
     {
         return Division::query()
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('code', 'like', "%{$this->search}%"))
+            ->when($this->search, fn($q) => $q->where('REF_DIV_NAME', 'like', "%{$this->search}%")
+                ->orWhere('REF_DIV_ID', 'like', "%{$this->search}%"))
             ->withCount(['users', 'contracts', 'tickets'])
-            ->orderBy('name')
+            ->orderBy('REF_DIV_NAME')
             ->paginate(10);
     }
 
     public function create(): void
     {
-        $this->reset(['editingId', 'name', 'code', 'description', 'is_active']);
+        $this->reset(['editingId', 'ref_div_name', 'ref_div_id', 'ref_div_desc', 'is_active']);
         $this->is_active = true;
         $this->showModal = true;
     }
@@ -42,28 +42,35 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function edit(int $id): void
     {
         $division = Division::findOrFail($id);
-        $this->editingId = $division->id;
-        $this->name = $division->name;
-        $this->code = $division->code;
-        $this->description = $division->description ?? '';
-        $this->is_active = $division->is_active;
+        $this->editingId = $division->LGL_ROW_ID;
+        $this->ref_div_name = $division->REF_DIV_NAME;
+        $this->ref_div_id = $division->REF_DIV_ID;
+        $this->ref_div_desc = $division->REF_DIV_DESC ?? '';
+        $this->is_active = $division->IS_ACTIVE;
         $this->showModal = true;
     }
 
     public function save(): void
     {
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:20', $this->editingId ? "unique:divisions,code,{$this->editingId}" : 'unique:divisions,code'],
-            'description' => ['nullable', 'string', 'max:500'],
+            'ref_div_name' => ['required', 'string', 'max:255'],
+            'ref_div_id' => ['required', 'string', 'max:20', $this->editingId ? "unique:LGL_DIVISION,REF_DIV_ID,{$this->editingId},LGL_ROW_ID" : 'unique:LGL_DIVISION,REF_DIV_ID'],
+            'ref_div_desc' => ['nullable', 'string', 'max:500'],
             'is_active' => ['boolean'],
         ]);
 
+        $data = [
+            'REF_DIV_NAME' => $validated['ref_div_name'],
+            'REF_DIV_ID' => $validated['ref_div_id'],
+            'REF_DIV_DESC' => $validated['ref_div_desc'],
+            'IS_ACTIVE' => $validated['is_active'],
+        ];
+
         if ($this->editingId) {
-            Division::findOrFail($this->editingId)->update($validated);
+            Division::findOrFail($this->editingId)->update($data);
             session()->flash('success', 'Division successfully updated.');
         } else {
-            Division::create($validated);
+            Division::create($data);
             session()->flash('success', 'Division successfully added.');
         }
 
@@ -126,15 +133,15 @@ new #[Layout('components.layouts.app')] class extends Component {
                 </thead>
                 <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
                     @forelse($this->divisions as $division)
-                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="div-{{ $division->id }}">
+                    <tr class="hover:bg-neutral-50 dark:hover:bg-zinc-800" wire:key="div-{{ $division->LGL_ROW_ID }}">
                         <td class="px-6 py-4 font-mono text-sm font-medium text-neutral-900 dark:text-white">
-                            {{ $division->code }}
+                            {{ $division->REF_DIV_ID }}
                         </td>
                         <td class="px-6 py-4 font-medium text-neutral-900 dark:text-white">
-                            {{ $division->name }}
+                            {{ $division->REF_DIV_NAME }}
                         </td>
-                        <td class="px-6 py-4 truncate max-w-xs" title="{{ $division->description }}">
-                            {{ Str::limit($division->description, 50) ?? '-' }}
+                        <td class="px-6 py-4 truncate max-w-xs" title="{{ $division->REF_DIV_DESC }}">
+                            {{ Str::limit($division->REF_DIV_DESC, 50) ?? '-' }}
                         </td>
                         <!-- <td class="px-6 py-4 text-center">
                             <flux:badge size="sm" color="zinc">{{ $division->users_count }}</flux:badge>
@@ -146,7 +153,7 @@ new #[Layout('components.layouts.app')] class extends Component {
                             <flux:badge size="sm" color="zinc">{{ $division->contracts_count }}</flux:badge>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            @if($division->is_active)
+                            @if($division->IS_ACTIVE)
                             <flux:badge size="sm" color="green" inset="top bottom">Active</flux:badge>
                             @else
                             <flux:badge size="sm" color="zinc" inset="top bottom">Inactive</flux:badge>
@@ -157,10 +164,10 @@ new #[Layout('components.layouts.app')] class extends Component {
                                 <flux:button icon="ellipsis-horizontal" size="sm" variant="ghost" />
                                 <flux:menu>
                                     @if(auth()->user()?->hasPermission('divisions.manage'))
-                                    <flux:menu.item icon="pencil" wire:click="edit({{ $division->id }})">Edit</flux:menu.item>
-                                    <flux:menu.item icon="squares-plus" wire:click="$dispatch('manage-sub-divisions', { divisionId: {{ $division->id }} })">Manage Dept</flux:menu.item>
+                                    <flux:menu.item icon="pencil" wire:click="edit({{ $division->LGL_ROW_ID }})">Edit</flux:menu.item>
+                                    <flux:menu.item icon="squares-plus" wire:click="$dispatch('manage-sub-divisions', { divisionId: {{ $division->LGL_ROW_ID }} })">Manage Dept</flux:menu.item>
                                     <flux:menu.separator />
-                                    <flux:menu.item icon="trash" wire:click="delete({{ $division->id }})" wire:confirm="Are you sure?" variant="danger">Delete</flux:menu.item>
+                                    <flux:menu.item icon="trash" wire:click="delete({{ $division->LGL_ROW_ID }})" wire:confirm="Are you sure?" variant="danger">Delete</flux:menu.item>
                                     @endif
                                 </flux:menu>
                             </flux:dropdown>
@@ -194,18 +201,18 @@ new #[Layout('components.layouts.app')] class extends Component {
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
                     <flux:label>Code</flux:label>
-                    <flux:input wire:model="code" placeholder="IT" required />
-                    <flux:error name="code" />
+                    <flux:input wire:model="ref_div_id" placeholder="IT" required />
+                    <flux:error name="ref_div_id" />
                 </flux:field>
                 <flux:field>
                     <flux:label>Name</flux:label>
-                    <flux:input wire:model="name" required />
-                    <flux:error name="name" />
+                    <flux:input wire:model="ref_div_name" required />
+                    <flux:error name="ref_div_name" />
                 </flux:field>
             </div>
             <flux:field>
                 <flux:label>Description</flux:label>
-                <flux:textarea wire:model="description" rows="2" />
+                <flux:textarea wire:model="ref_div_desc" rows="2" />
             </flux:field>
 
             <flux:switch wire:model="is_active" label="Active" />
