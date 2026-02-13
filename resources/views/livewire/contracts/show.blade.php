@@ -112,11 +112,11 @@ new #[Layout('components.layouts.app')] class extends Component
 
     public function openPreDoneModal(): void
     {
-        // Reset values
-        $this->preDoneQ1 = false;
-        $this->preDoneQ2 = false;
-        $this->preDoneQ3 = false;
-        $this->preDoneRemarks = '';
+        // Pre-fill with existing values from ticket (if already answered)
+        $this->preDoneQ1 = (bool) $this->ticket->TCKT_POST_QUEST_1;
+        $this->preDoneQ2 = (bool) $this->ticket->TCKT_POST_QUEST_2;
+        $this->preDoneQ3 = (bool) $this->ticket->TCKT_POST_QUEST_3;
+        $this->preDoneRemarks = $this->ticket->TCKT_POST_RMK ?? '';
 
         $this->showPreDoneModal = true;
     }
@@ -544,7 +544,7 @@ new #[Layout('components.layouts.app')] class extends Component
         
         <div class="space-y-3">
             <div class="flex items-start gap-3">
-                @if($ticket->pre_done_question_1)
+                @if($ticket->TCKT_POST_QUEST_1)
                     <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                 @else
                     <flux:icon.x-circle class="size-5 text-red-600 dark:text-red-400 flex-shrink-0" />
@@ -560,7 +560,7 @@ new #[Layout('components.layouts.app')] class extends Component
             </div>
 
             <div class="flex items-start gap-3">
-                @if($ticket->pre_done_question_2)
+                @if($ticket->TCKT_POST_QUEST_2)
                     <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                 @else
                     <flux:icon.x-circle class="size-5 text-red-600 dark:text-red-400 flex-shrink-0" />
@@ -576,7 +576,7 @@ new #[Layout('components.layouts.app')] class extends Component
             </div>
 
             <div class="flex items-start gap-3">
-                @if($ticket->pre_done_question_3)
+                @if($ticket->TCKT_POST_QUEST_3)
                     <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                 @else
                     <flux:icon.x-circle class="size-5 text-red-600 dark:text-red-400 flex-shrink-0" />

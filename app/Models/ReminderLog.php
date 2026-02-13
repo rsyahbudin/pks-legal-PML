@@ -19,22 +19,17 @@ class ReminderLog extends Model
     const UPDATED_AT = 'REF_REM_UPDATED_DT';
 
     protected $fillable = [
-        'LGL_ROW_ID_CONTRACT', // Renamed contract_id
-        'user_id', // Not renamed
-        'type_id', // Not renamed
-        'days_remaining', // Not renamed
-        'REMINDER_DATE', // Renamed (assumed)
+        'LGL_ROW_ID_CONTRACT',
+        'user_id',
+        'type_id',
+        'days_remaining',
         'SENT_AT',
-        'IS_SENT',
-        'ERROR_MESSAGE',
     ];
 
     protected function casts(): array
     {
         return [
             'SENT_AT' => 'datetime',
-            'REMINDER_DATE' => 'date',
-            'IS_SENT' => 'boolean',
         ];
     }
 
@@ -91,7 +86,6 @@ class ReminderLog extends Model
             'type_id' => $typeId,
             'days_remaining' => $daysRemaining,
             'SENT_AT' => now(),
-            'IS_SENT' => true,
         ]);
     }
 }

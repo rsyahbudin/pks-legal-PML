@@ -20,7 +20,7 @@ class UpdateExpiredContracts extends Command
      *
      * @var string
      */
-    protected $description = 'Update contract status to expired when end_date has passed';
+    protected $description = 'Update contract status to expired when CONTR_END_DT has passed';
 
     /**
      * Execute the console command.
@@ -29,11 +29,11 @@ class UpdateExpiredContracts extends Command
     {
         $this->info('Checking for expired contracts...');
 
-        // Find all active contracts that have passed their end_date
+        // Find all active contracts that have passed their end date
         $expiredContracts = Contract::with('ticket')
-            ->whereHas('status', fn ($q) => $q->where('code', 'active'))
-            ->whereNotNull('end_date')
-            ->whereDate('end_date', '<', now())
+            ->whereHas('status', fn ($q) => $q->where('LOV_VALUE', 'active'))
+            ->whereNotNull('CONTR_END_DT')
+            ->whereDate('CONTR_END_DT', '<', now())
             ->get();
 
         if ($expiredContracts->isEmpty()) {
@@ -47,19 +47,19 @@ class UpdateExpiredContracts extends Command
 
         foreach ($expiredContracts as $contract) {
             $oldStatus = $contract->status?->code ?? 'active';
-            $contract->update(['status_id' => \App\Models\ContractStatus::getIdByCode('expired')]);
+            $contract->update(['CONTR_STS_ID' => \App\Models\ContractStatus::getIdByCode('expired')]);
 
             // Auto-close the related ticket
-            if ($contract->ticket && $contract->ticket->status !== 'closed') {
-                $contract->ticket->update(['status_id' => \App\Models\TicketStatus::getIdByCode('closed')]);
-                $this->line("  → Ticket #{$contract->ticket->ticket_number} auto-closed");
+            if ($contract->ticket && $contract->ticket->TCKT_STS_ID !== \App\Models\TicketStatus::getIdByCode('closed')) {
+                $contract->ticket->update(['TCKT_STS_ID' => \App\Models\TicketStatus::getIdByCode('closed')]);
+                $this->line("  → Ticket #{$contract->ticket->TCKT_NO} auto-closed");
             }
 
             // Send notification about status change
             $notificationService->notifyContractStatusChanged($contract, $oldStatus, 'expired');
 
             $count++;
-            $this->line("✓ Contract #{$contract->contract_number} marked as expired");
+            $this->line("✓ Contract #{$contract->CONTR_NO} marked as expired");
         }
 
         $this->info("Successfully updated {$count} contract(s) to expired status.");

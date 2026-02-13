@@ -383,12 +383,10 @@ class Contract extends Model
         }
 
         $this->activityLogs()->create([
-            'user_id' => auth()->id(),
-            'action' => "Contract terminated: {$reason}",
-            'metadata' => [
-                'contract_number' => $this->CONTR_NO,
-                'terminated_at' => $this->CONTR_TERMINATE_DT->toDateTimeString(),
-            ],
+            'LOG_CAUSER_ID' => auth()->id(),
+            'LOG_EVENT' => 'contract_terminated',
+            'LOG_NAME' => "Contract terminated: {$reason}",
+            'LOG_DESC' => "Contract {$this->CONTR_NO} terminated at {$this->CONTR_TERMINATE_DT->toDateTimeString()}",
         ]);
     }
 }

@@ -37,7 +37,7 @@ class SendContractReminders extends Command
         $includedTypes = ['perjanjian', 'adendum', 'amandemen'];
 
         // Get Document Type IDs for included types
-        $documentTypeIds = \App\Models\DocumentType::whereIn('LOV_VALUE', $includedTypes)->pluck('LGL_ROW_ID')->toArray();
+        $documentTypeIds = \App\Models\DocumentType::whereIn('code', $includedTypes)->pluck('LGL_ROW_ID')->toArray();
         $activeStatusId = \App\Models\ContractStatus::getIdByCode('active');
 
         // Get all active contracts with these document types
@@ -145,13 +145,11 @@ class SendContractReminders extends Command
                     foreach ($adminUsers as $admin) {
                         Notification::create([
                             'user_id' => $admin->LGL_ROW_ID,
-                            'title' => 'Reminder Email Sent',
-                            'message' => "Auto reminder sent for contract {$contract->CONTR_NO} to {$recipient->email}",
-                            'type' => 'info',
-                            'data' => [
-                                'contract_id' => $contract->LGL_ROW_ID,
-                                'recipient_email' => $recipient->email,
-                            ],
+                            'NOTIF_TITLE' => 'Reminder Email Sent',
+                            'NOTIF_MSG' => "Auto reminder sent for contract {$contract->CONTR_NO} to {$recipient->email}",
+                            'NOTIFICATION_TYPE' => 'info',
+                            'NOTIFIABLE_TYPE' => Contract::class,
+                            'NOTIFIABLE_ID' => $contract->LGL_ROW_ID,
                         ]);
                     }
 
@@ -177,14 +175,11 @@ class SendContractReminders extends Command
                     foreach ($adminUsers as $admin) {
                         Notification::create([
                             'user_id' => $admin->LGL_ROW_ID,
-                            'title' => 'Reminder Email Failed',
-                            'message' => "Failed to send auto reminder for contract {$contract->CONTR_NO} to {$recipient->email}",
-                            'type' => 'critical',
-                            'data' => [
-                                'contract_id' => $contract->LGL_ROW_ID,
-                                'recipient_email' => $recipient->email,
-                                'error' => $e->getMessage(),
-                            ],
+                            'NOTIF_TITLE' => 'Reminder Email Failed',
+                            'NOTIF_MSG' => "Failed to send auto reminder for contract {$contract->CONTR_NO} to {$recipient->email}",
+                            'NOTIFICATION_TYPE' => 'critical',
+                            'NOTIFIABLE_TYPE' => Contract::class,
+                            'NOTIFIABLE_ID' => $contract->LGL_ROW_ID,
                         ]);
                     }
 

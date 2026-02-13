@@ -85,7 +85,7 @@ new #[Layout('components.layouts.app')] class extends Component
         $this->payment_type = $this->ticket->payment_type ?? '';
         $this->recurring_description = $this->ticket->recurring_description ?? '';
         $this->proposed_document_title = $this->ticket->TCKT_PROP_DOC_TITLE;
-        $this->document_type = $this->ticket->documentType?->LOV_VALUE ?? '';
+        $this->document_type = $this->ticket->documentType?->code ?? '';
         $this->tat_legal_compliance = $this->ticket->TCKT_TAT_LGL_COMPLNCE;
 
         // Conditional fields

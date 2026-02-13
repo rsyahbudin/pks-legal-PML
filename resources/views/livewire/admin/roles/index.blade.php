@@ -20,8 +20,8 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function getRolesProperty()
     {
         return Role::withCount('permissions')
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%"))
-            ->orderBy('name')
+            ->when($this->search, fn($q) => $q->where('ROLE_NAME', 'like', "%{$this->search}%"))
+            ->orderBy('ROLE_NAME')
             ->get();
     }
 
@@ -39,10 +39,10 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function edit(int $id): void
     {
         $role = Role::findOrFail($id);
-        $this->editingId = $role->id;
-        $this->name = $role->name;
-        $this->slug = $role->slug;
-        $this->description = $role->description ?? '';
+        $this->editingId = $role->ROLE_ID;
+        $this->name = $role->ROLE_NAME;
+        $this->slug = $role->ROLE_SLUG;
+        $this->description = $role->ROLE_DESCRIPTION ?? '';
         $this->showModal = true;
     }
 
@@ -50,15 +50,21 @@ new #[Layout('components.layouts.app')] class extends Component {
     {
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:50', $this->editingId ? "unique:roles,slug,{$this->editingId}" : 'unique:roles,slug'],
+            'slug' => ['required', 'string', 'max:50', $this->editingId ? "unique:LGL_ROLE,ROLE_SLUG,{$this->editingId},ROLE_ID" : 'unique:LGL_ROLE,ROLE_SLUG'],
             'description' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $roleData = [
+            'ROLE_NAME' => $validated['name'],
+            'ROLE_SLUG' => $validated['slug'],
+            'ROLE_DESCRIPTION' => $validated['description'] ?? null,
+        ];
+
         if ($this->editingId) {
-            Role::findOrFail($this->editingId)->update($validated);
+            Role::findOrFail($this->editingId)->update($roleData);
             session()->flash('success', 'Role successfully updated.');
         } else {
-            Role::create($validated);
+            Role::create($roleData);
             session()->flash('success', 'Role successfully added.');
         }
 
@@ -79,7 +85,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     public function editPermissions(int $id): void
     {
         $this->editingRole = Role::with('permissions')->findOrFail($id);
-        $this->selectedPermissions = $this->editingRole->permissions->pluck('id')->toArray();
+        $this->selectedPermissions = $this->editingRole->permissions->pluck('LGL_ROW_ID')->toArray();
         $this->showPermissionModal = true;
     }
 
@@ -111,27 +117,27 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach($this->roles as $role)
-        <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900" wire:key="role-{{ $role->id }}">
+        <div class="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-zinc-900" wire:key="role-{{ $role->ROLE_ID }}">
             <div class="flex items-start justify-between">
                 <div>
-                    <h3 class="font-semibold text-neutral-900 dark:text-white">{{ $role->name }}</h3>
-                    <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $role->slug }}</p>
+                    <h3 class="font-semibold text-neutral-900 dark:text-white">{{ $role->ROLE_NAME }}</h3>
+                    <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ $role->ROLE_SLUG }}</p>
                 </div>
                 @if($role->is_system)
                 <flux:badge color="amber">System</flux:badge>
                 @endif
             </div>
-            @if($role->description)
-            <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">{{ $role->description }}</p>
+            @if($role->ROLE_DESCRIPTION)
+            <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">{{ $role->ROLE_DESCRIPTION }}</p>
             @endif
             <div class="mt-3 flex items-center justify-between">
                 <span class="text-sm text-neutral-500">{{ $role->permissions_count }} permissions</span>
                 @if(auth()->user()?->hasPermission('roles.manage'))
                 <div class="flex gap-2">
-                    <flux:button size="sm" variant="ghost" icon="shield-check" wire:click="editPermissions({{ $role->id }})" title="Edit Permissions" />
-                    <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $role->id }})" />
+                    <flux:button size="sm" variant="ghost" icon="shield-check" wire:click="editPermissions({{ $role->ROLE_ID }})" title="Edit Permissions" />
+                    <flux:button size="sm" variant="ghost" icon="pencil" wire:click="edit({{ $role->ROLE_ID }})" />
                     @if(!$role->is_system)
-                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $role->id }})" wire:confirm="Are you sure?" />
+                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="delete({{ $role->ROLE_ID }})" wire:confirm="Are you sure?" />
                     @endif
                 </div>
                 @endif
@@ -167,7 +173,7 @@ new #[Layout('components.layouts.app')] class extends Component {
     <!-- Permission Modal -->
     <flux:modal wire:model="showPermissionModal" class="w-full max-w-2xl">
         <div class="space-y-4">
-            <flux:heading>Edit Permissions: {{ $editingRole?->name }}</flux:heading>
+            <flux:heading>Edit Permissions: {{ $editingRole?->ROLE_NAME }}</flux:heading>
             <div class="max-h-96 overflow-y-auto space-y-4">
                 @foreach($this->permissionsGrouped as $group => $permissions)
                 <div class="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
@@ -175,8 +181,8 @@ new #[Layout('components.layouts.app')] class extends Component {
                     <div class="grid gap-2 sm:grid-cols-2">
                         @foreach($permissions as $permission)
                         <label class="flex items-center gap-2 text-sm">
-                            <input type="checkbox" value="{{ $permission->id }}" wire:model="selectedPermissions" class="rounded border-neutral-300 text-blue-600 focus:ring-blue-500">
-                            {{ $permission->name }}
+                            <input type="checkbox" value="{{ $permission->LGL_ROW_ID }}" wire:model="selectedPermissions" class="rounded border-neutral-300 text-blue-600 focus:ring-blue-500">
+                            {{ $permission->PERMISSION_NAME }}
                         </label>
                         @endforeach
                     </div>

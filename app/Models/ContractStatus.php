@@ -47,6 +47,14 @@ class ContractStatus extends Model
     }
 
     /**
+     * Get the display name.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->LOV_DISPLAY_NAME ?? $this->LOV_VALUE ?? 'Unknown';
+    }
+
+    /**
      * Get status ID by code (cached for performance).
      */
     public static function getIdByCode(string $code): ?int

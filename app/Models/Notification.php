@@ -25,7 +25,6 @@ class Notification extends Model
         'NOTIFICATION_TYPE',
         'NOTIF_TITLE',
         'NOTIF_MSG',
-        'NOTIFICATION_DATA',
         'NOTIFIABLE_TYPE',
         'NOTIFIABLE_ID',
         'READ_AT',
@@ -37,7 +36,6 @@ class Notification extends Model
             'READ_AT' => 'datetime',
             'REF_NOTIF_CREATED_DT' => 'datetime',
             'REF_NOTIF_UPDATED_DT' => 'datetime',
-            'NOTIFICATION_DATA' => 'array',
         ];
     }
 

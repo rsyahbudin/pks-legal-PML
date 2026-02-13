@@ -68,7 +68,7 @@ new #[Layout('components.layouts.app')] class extends Component
                 } elseif ($this->statusFilter === 'expired') {
                     $q->expired();
                 } else {
-                    $q->whereHas('status', fn ($sq) => $sq->where('code', $this->statusFilter));
+                    $q->whereHas('status', fn ($sq) => $sq->where('LOV_VALUE', $this->statusFilter));
                 }
             })
             ->when($this->typeFilter, fn ($q) => $q->whereHas('documentType', fn ($sq) => $sq->where('code', $this->typeFilter)))
@@ -86,7 +86,7 @@ new #[Layout('components.layouts.app')] class extends Component
     {
         $contract = Contract::findOrFail($contractId);
         $this->selectedContract = $contract;
-        $this->folder_link = $contract->folder_link ?? '';
+        $this->folder_link = $contract->CONTR_DIR_SHARE_LINK ?? '';
         $this->showFolderLinkModal = true;
     }
 
@@ -96,10 +96,10 @@ new #[Layout('components.layouts.app')] class extends Component
             'folder_link' => ['nullable', 'url', 'max:500'],
         ]);
 
-        $oldLink = $this->selectedContract->folder_link;
+        $oldLink = $this->selectedContract->CONTR_DIR_SHARE_LINK;
 
         $this->selectedContract->update([
-            'folder_link' => $this->folder_link ?: null,
+            'CONTR_DIR_SHARE_LINK' => $this->folder_link ?: null,
         ]);
 
         // Log activity to the ticket
@@ -166,7 +166,7 @@ new #[Layout('components.layouts.app')] class extends Component
             <flux:select wire:model.live="statusFilter" placeholder="Filter Status">
                 <flux:select.option value="">All Statuses</flux:select.option>
                 @foreach($this->contractStatuses as $status)
-                    <flux:select.option value="{{ $status->code }}">{{ $status->name }}</flux:select.option>
+                    <flux:select.option value="{{ $status->LOV_VALUE }}">{{ $status->LOV_DISPLAY_NAME }}</flux:select.option>
                 @endforeach
             </flux:select>
         </div>

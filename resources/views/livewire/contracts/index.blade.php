@@ -272,7 +272,7 @@ new #[Layout('components.layouts.app')] class extends Component
                         </td>
                         <td class="px-4 py-3 text-center">
                             
-                            <flux:badge  size="sm" inset="top bottom">{{ $ticket->status?->name ?? 'Unknown' }}</flux:badge>
+                            <flux:badge :color="$ticket->status?->color ?? 'neutral'" size="sm" inset="top bottom">{{ $ticket->status?->name ?? 'Unknown' }}</flux:badge>
                         </td>
                         <td class="px-4 py-3 text-center text-sm text-neutral-600 dark:text-neutral-300">
                             {{ $ticket->TCKT_CREATED_DT->format('d/m/Y H:i') }}
