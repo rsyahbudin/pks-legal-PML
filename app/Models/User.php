@@ -49,8 +49,6 @@ class User extends Authenticatable
     protected $hidden = [
         'USER_PASSWORD',
         'USER_REMEMBER_TOKEN',
-        'USER_TWO_FACTOR_SECRET',
-        'USER_TWO_FACTOR_RECOVERY_CODES',
     ];
 
     /**
@@ -62,21 +60,20 @@ class User extends Authenticatable
     {
         return [
             'USER_PASSWORD' => 'hashed',
-            'USER_TWO_FACTOR_CONFIRMED_DT' => 'datetime',
         ];
     }
 
-    public function getAuthPasswordName()
+    public function getAuthPasswordName(): string
     {
         return 'USER_PASSWORD';
     }
 
-    public function getAuthPassword()
+    public function getAuthPassword(): ?string
     {
         return $this->USER_PASSWORD;
     }
 
-    public function getRememberTokenName()
+    public function getRememberTokenName(): string
     {
         return 'USER_REMEMBER_TOKEN';
     }
@@ -86,12 +83,12 @@ class User extends Authenticatable
     //     return 'USER_EMAIL';
     // }
 
-    public function getNameAttribute()
+    public function getNameAttribute(): ?string
     {
         return $this->USER_FULLNAME;
     }
 
-    public function getEmailAttribute()
+    public function getEmailAttribute(): ?string
     {
         return $this->USER_EMAIL;
     }
@@ -170,7 +167,7 @@ class User extends Authenticatable
     public static function getAdminAndLegalUsers()
     {
         return static::whereHas('role', function ($q) {
-            $q->whereIn('ROLE_SLUG', ['super-admin', 'legal']); // Assuming Role model updated too
+            $q->whereIn('ROLE_SLUG', ['super-admin', 'legal']);
         })->get();
     }
 
@@ -253,36 +250,5 @@ class User extends Authenticatable
     public function canManageContracts(): bool
     {
         return $this->hasPermission('contracts.edit');
-    }
-
-    // 2FA Mapping
-    public function getTwoFactorSecretAttribute()
-    {
-        return $this->attributes['USER_TWO_FACTOR_SECRET'] ?? null;
-    }
-
-    public function setTwoFactorSecretAttribute($value)
-    {
-        $this->attributes['USER_TWO_FACTOR_SECRET'] = $value;
-    }
-
-    public function getTwoFactorRecoveryCodesAttribute()
-    {
-        return $this->attributes['USER_TWO_FACTOR_RECOVERY_CODES'] ?? null;
-    }
-
-    public function setTwoFactorRecoveryCodesAttribute($value)
-    {
-        $this->attributes['USER_TWO_FACTOR_RECOVERY_CODES'] = $value;
-    }
-
-    public function getTwoFactorConfirmedAtAttribute()
-    {
-        return $this->getAttribute('USER_TWO_FACTOR_CONFIRMED_DT');
-    }
-
-    public function setTwoFactorConfirmedAtAttribute($value)
-    {
-        $this->attributes['USER_TWO_FACTOR_CONFIRMED_DT'] = $value;
     }
 }

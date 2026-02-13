@@ -20,15 +20,17 @@ class ReminderType extends Model
     protected $fillable = [
         'REF_REMIND_TYPE_ID',
         'REF_REMIND_TYPE_NAME',
-        'REF_REMIND_TYPE_DESC',
         'REF_REMIND_TYPE_IS_ACTIVE',
         'REF_REMIND_TYPE_CREATED_BY',
         'REF_REMIND_TYPE_UPDATED_BY',
     ];
 
-    protected $casts = [
-        'REF_REMIND_TYPE_IS_ACTIVE' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'REF_REMIND_TYPE_IS_ACTIVE' => 'boolean',
+        ];
+    }
 
     /**
      * Get ID by code (cached).

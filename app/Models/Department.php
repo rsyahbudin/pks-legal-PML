@@ -22,14 +22,17 @@ class Department extends Model
     protected $fillable = [
         'DIV_ID',
         'REF_DEPT_NAME',
-        'REF_DEPT_ID', // was code
-        'email', // Migration didn't rename email
-        'cc_emails', // Migration didn't rename cc_emails
+        'REF_DEPT_ID',
+        'email',
+        'cc_emails',
     ];
 
-    protected $casts = [
-        'cc_emails' => 'array',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'cc_emails' => 'array',
+        ];
+    }
 
     /**
      * Get cc_emails as array (handles null and string cases).

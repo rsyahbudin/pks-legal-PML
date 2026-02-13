@@ -20,11 +20,10 @@ class DocumentType extends Model
     const UPDATED_AT = 'REF_DOC_TYPE_UPDATED_DT';
 
     protected $fillable = [
-        'code', // Not renamed
+        'code',
         'REF_DOC_TYPE_NAME',
-        // 'name_en', dropped
-        'description', // Not renamed
-        'requires_contract', // Not renamed
+        'description',
+        'requires_contract',
         'REF_DOC_TYPE_IS_ACTIVE',
     ];
 
@@ -84,21 +83,5 @@ class DocumentType extends Model
     public function requiresContract(): bool
     {
         return $this->requires_contract;
-    }
-
-    /**
-     * Get the icon name for UI rendering.
-     */
-    public function getIconAttribute($value): string
-    {
-        return $value ?? 'document';
-    }
-
-    /**
-     * Get the color for UI rendering.
-     */
-    public function getColorAttribute($value): string
-    {
-        return $value ?? 'neutral';
     }
 }

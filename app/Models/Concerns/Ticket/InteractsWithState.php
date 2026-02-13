@@ -20,8 +20,7 @@ trait InteractsWithState
             throw new \Exception("Division not found for ID: {$divisionId}");
         }
 
-        // Truncate division code to max 3 characters
-        $divCode = strtoupper(substr($division->code ?? $division->REF_DIV_ID ?? 'UNK', 0, 3));
+        $divCode = strtoupper(substr($division->code ?? 'UNK', 0, 3));
 
         // Format: TIC-DIV-YYMM (e.g., TIC-LEG-2602)
         $year = now()->format('y');
@@ -161,9 +160,6 @@ trait InteractsWithState
         $status = 'active';
         $endDate = $this->TCKT_AGREE_END_DT;
 
-        // Handle Surat Kuasa using kuasa_end_date
-        // Assuming DocumentType 'code' column is still 'code'. It was renamed to 'DOC_TYPE_CODE'?
-        // Need to check DocumentType model. Assuming attribute alias or direct access.
         if ($this->documentType?->code === 'surat_kuasa') {
             $endDate = $this->TCKT_GRANT_END_DT;
         }
@@ -195,9 +191,6 @@ trait InteractsWithState
         ]);
     }
 
-    /**
-     * Log activity for this ticket.
-     */
     /**
      * Log activity for this ticket.
      */

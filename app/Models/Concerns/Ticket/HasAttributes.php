@@ -81,10 +81,6 @@ trait HasAttributes
      */
     public function getStatusColorAttribute(): string
     {
-        // Color is no longer in DB??
-        // LGL_LOV_MASTER dropped color column.
-        // It should be handled in Model or View helper based on LOV_VALUE.
-        // Return gray as default, or map here.
         $code = $this->status?->LOV_VALUE;
 
         return match ($code) {

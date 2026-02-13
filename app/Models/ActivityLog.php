@@ -16,7 +16,7 @@ class ActivityLog extends Model
 
     protected $primaryKey = 'LGL_ROW_ID';
 
-    const CREATED_AT = 'REF_CONTR_CREATED_DT'; // Migration uses this (likely typo but must match)
+    const CREATED_AT = 'REF_CONTR_CREATED_DT';
 
     const UPDATED_AT = 'REF_CONTR_UPDATED_DT';
 
@@ -56,7 +56,7 @@ class ActivityLog extends Model
     /**
      * Get the created_at attribute.
      */
-    public function getCreatedAtAttribute()
+    public function getCreatedAtAttribute(): mixed
     {
         return $this->REF_CONTR_CREATED_DT;
     }
@@ -64,7 +64,7 @@ class ActivityLog extends Model
     /**
      * Get the updated_at attribute.
      */
-    public function getUpdatedAtAttribute()
+    public function getUpdatedAtAttribute(): mixed
     {
         return $this->REF_CONTR_UPDATED_DT;
     }
@@ -158,31 +158,19 @@ class ActivityLog extends Model
 
         $changes = [];
         $fieldLabels = [
-            'contract_number' => 'Contract Number',
             'CONTR_NO' => 'Contract Number',
-            'division_id' => 'Division',
-            'DIV_ID' => 'Division',
-            'department_id' => 'Department',
-            'DEPT_ID' => 'Department',
-            'pic_id' => 'PIC',
+            'CONTR_DIV_ID' => 'Division',
+            'CONTR_DEPT_ID' => 'Department',
             'CONTR_PIC' => 'PIC',
-            'pic_name' => 'PIC Name', // pic_name removed?
-            'pic_email' => 'PIC Email', // pic_email removed?
-            'start_date' => 'Start Date',
             'CONTR_START_DT' => 'Start Date',
-            'end_date' => 'End Date',
             'CONTR_END_DT' => 'End Date',
-            'is_auto_renewal' => 'Auto Renewal',
             'CONTR_IS_AUTO_RENEW' => 'Auto Renewal',
-            'description' => 'Description',
             'CONTR_DESC' => 'Description',
+            'CONTR_STS_ID' => 'Status',
+            'CONTR_DOC_DRAFT_PATH' => 'Document',
             'REF_DIV_DESC' => 'Description',
             'REF_DIV_NAME' => 'Division Name',
             'IS_ACTIVE' => 'Active Status',
-            'status' => 'Status',
-            'CONTR_STS_ID' => 'Status', // Value might be ID. Description logic handles 'status' special case?
-            'document_path' => 'Document',
-            'CONTR_DOC_PATH' => 'Document',
         ];
 
         $statusLabels = [
@@ -197,18 +185,13 @@ class ActivityLog extends Model
             $newValue = $this->LOG_NEW_VALUES[$field] ?? null;
 
             if ($oldValue != $newValue) {
-                // Format values based on field type
-                if (in_array($field, ['status', 'CONTR_STS_ID'])) {
-                    // If ID, we might need to lookup. But old logic used string code?
-                    // Migration: contract_statuses id used.
-                    // If values are IDs, this map logic 'draft'/'active' might not work unless values are strings.
-                    // Assuming they are strings or IDs mixed.
+                if ($field === 'CONTR_STS_ID') {
                     $oldValue = $statusLabels[$oldValue] ?? $oldValue;
                     $newValue = $statusLabels[$newValue] ?? $newValue;
-                } elseif (in_array($field, ['is_auto_renewal', 'CONTR_IS_AUTO_RENEW'])) {
+                } elseif ($field === 'CONTR_IS_AUTO_RENEW') {
                     $oldValue = $oldValue ? 'Yes' : 'No';
                     $newValue = $newValue ? 'Yes' : 'No';
-                } elseif (in_array($field, ['start_date', 'end_date', 'CONTR_START_DT', 'CONTR_END_DT'])) {
+                } elseif (in_array($field, ['CONTR_START_DT', 'CONTR_END_DT'])) {
                     if ($oldValue) {
                         try {
                             $oldValue = \Carbon\Carbon::parse($oldValue)->format('d F Y');
@@ -221,7 +204,7 @@ class ActivityLog extends Model
                         } catch (\Exception $e) {
                         }
                     }
-                } elseif (in_array($field, ['document_path', 'CONTR_DOC_PATH'])) {
+                } elseif ($field === 'CONTR_DOC_DRAFT_PATH') {
                     $oldValue = $oldValue ? 'Exists' : 'None';
                     $newValue = $newValue ? 'Exists' : 'None';
                 }

@@ -375,9 +375,7 @@ class Contract extends Model
         ]);
 
         // Auto-close associated ticket
-        // Ticket model fields will change too! TCKT_STS_ID
-        if ($this->ticket && $this->ticket->status !== 'closed') { // Ticket model accessor 'status' might return object now?
-            // Assuming Ticket model logic will be updated.
+        if ($this->ticket && $this->ticket->status?->LOV_VALUE !== 'closed') {
             $this->ticket->update(['TCKT_STS_ID' => TicketStatus::getIdByCode('closed')]);
             $this->ticket->logActivity('Ticket ditutup otomatis karena contract terminated');
         }
